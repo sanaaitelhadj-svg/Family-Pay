@@ -1,0 +1,36 @@
+{
+  "app": {
+    "payer": {
+      "title": "Espace Payeur",
+      "subtitle": "Gérez les dépenses de vos bénéficiaires"
+    }
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "beneficiaries": "Mes bénéficiaires",
+    "envelopes": "Enveloppes",
+    "history": "Historique",
+    "settings": "Paramètres"
+  },
+  "errors": {
+    "insufficient_balance": "Solde insuffisant",
+    "qr_expired": "QR Code expiré",
+    "rule_violated": "Règle de dépense non respectée",
+    "partner_not_allowed": "Partenaire non autorisé",
+    "network_error": "Erreur réseau, veuillez réessayer"
+  },
+  "wallet": {
+    "title": "Mon Portefeuille",
+    "balance": "Solde disponible",
+    "recharge": "Recharger",
+    "currency": "MAD"
+  },
+  "envelope": {
+    "food": "Nourriture",
+    "health": "Santé",
+    "clothes": "Vêtements",
+    "education": "Éducation",
+    "leisure": "Loisirs",
+    "general": "Général"
+  }
+}

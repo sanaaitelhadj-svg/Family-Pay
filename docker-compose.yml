@@ -1,0 +1,156 @@
+name: familypay
+
+services:
+  # ── BASE DE DONNÉES ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: familypay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-familypay}
+      POSTGRES_USER: ${POSTGRES_USER:-familypay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-familypay} -d ${POSTGRES_DB:-familypay}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── CACHE / SESSIONS / QR CODES ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: familypay-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── STOCKAGE FICHIERS (KYC, PHOTOS) ─────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: familypay-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-familypay}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── BACKEND API ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: familypay-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-familypay}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-familypay}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      QR_SECRET: ${QR_SECRET:?QR_SECRET is required}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-familypay}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      CORS_ORIGINS: http://localhost:3001,http://localhost:3002,http://localhost:3003
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./apps/backend/src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── APP PAYEUR ───────────────────────────────────────────────────────────────
+  payer:
+    build:
+      context: ./apps/payer
+      dockerfile: Dockerfile
+      target: development
+    container_name: familypay-payer
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:4000
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./apps/payer/src:/app/src:ro
+
+  # ── APP BÉNÉFICIAIRE ─────────────────────────────────────────────────────────
+  beneficiary:
+    build:
+      context: ./apps/beneficiary
+      dockerfile: Dockerfile
+      target: development
+    container_name: familypay-beneficiary
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:4000
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./apps/beneficiary/src:/app/src:ro
+
+  # ── INTERFACE PARTENAIRE ─────────────────────────────────────────────────────
+  partner:
+    build:
+      context: ./apps/partner
+      dockerfile: Dockerfile
+      target: development
+    container_name: familypay-partner
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:4000
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./apps/partner/src:/app/src:ro
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  default:
+    name: familypay-network

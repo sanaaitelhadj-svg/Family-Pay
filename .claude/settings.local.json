@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(extract-text \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\FamilyPay_CDC_V1 \\(1\\).docx\")",
+      "Bash(pandoc \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\FamilyPay_CDC_V1 \\(1\\).docx\" -t markdown)",
+      "Bash(extract-text \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\FamilyPay_Plan_Sprints_V1 \\(1\\).docx\")",
+      "Bash(pandoc \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\FamilyPay_Plan_Sprints_V1 \\(1\\).docx\" -t markdown)",
+      "Bash(extract-text \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\FamilyPay_Architecture_Technique \\(4\\).docx\")",
+      "Bash(pandoc \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\FamilyPay_Architecture_Technique \\(4\\).docx\" -t markdown)",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\cdc_tmp.docx\" \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\cdc_tmp.zip\" -Force)",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\sprints_tmp.docx\" \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\sprints_tmp.zip\" -Force)",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\arch_tmp.docx\" \"C:\\\\Users\\\\VTTG9709\\\\Downloads\\\\arch_tmp.zip\" -Force)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

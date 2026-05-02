@@ -1,0 +1,154 @@
+name: CI — FamilyPay
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ── LINT & TYPE CHECK ──────────────────────────────────────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+  # ── TESTS BACKEND ──────────────────────────────────────────────────────────
+  test-backend:
+    name: Tests Backend
+    runs-on: ubuntu-latest
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: familypay_test
+          POSTGRES_USER: familypay_test
+          POSTGRES_PASSWORD: test_password_ci
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://familypay_test:test_password_ci@localhost:5432/familypay_test
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ''
+      JWT_SECRET: ci_test_jwt_secret_not_for_production
+      JWT_REFRESH_SECRET: ci_test_refresh_secret_not_for_production
+      QR_SECRET: ci_test_qr_secret_not_for_production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prisma migrations (test DB)
+        run: npm run db:migrate --workspace=apps/backend
+        env:
+          DATABASE_URL: postgresql://familypay_test:test_password_ci@localhost:5432/familypay_test
+
+      - name: Run backend tests
+        run: npm run test --workspace=apps/backend
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: apps/backend/coverage/
+
+  # ── TESTS FRONTEND ─────────────────────────────────────────────────────────
+  test-frontend:
+    name: Tests Frontend
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test payer
+        run: npm run test --workspace=apps/payer
+
+      - name: Test beneficiary
+        run: npm run test --workspace=apps/beneficiary
+
+      - name: Test partner
+        run: npm run test --workspace=apps/partner
+
+  # ── BUILD ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build all apps
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+
+      - name: Build summary
+        run: echo "✅ All apps built successfully"

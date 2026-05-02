@@ -1,0 +1,38 @@
+{
+  "app": {
+    "beneficiary": {
+      "title": "Mon Wallet",
+      "subtitle": "Dépense chez nos partenaires"
+    }
+  },
+  "nav": {
+    "wallet": "Mon Wallet",
+    "qrcode": "Payer",
+    "history": "Mes achats",
+    "requests": "Demandes",
+    "savings": "Mon épargne"
+  },
+  "errors": {
+    "insufficient_balance": "Solde insuffisant",
+    "qr_expired": "QR Code expiré — génère-en un nouveau",
+    "rule_violated": "Dépense non autorisée",
+    "partner_not_allowed": "Ce partenaire n'est pas autorisé",
+    "network_error": "Erreur réseau, veuillez réessayer"
+  },
+  "wallet": {
+    "title": "Mon Portefeuille",
+    "balance": "Solde",
+    "qr_generate": "Générer mon QR Code",
+    "qr_expires_in": "Expire dans",
+    "qr_seconds": "secondes",
+    "currency": "MAD"
+  },
+  "envelope": {
+    "food": "Nourriture",
+    "health": "Santé",
+    "clothes": "Vêtements",
+    "education": "Éducation",
+    "leisure": "Loisirs",
+    "general": "Général"
+  }
+}

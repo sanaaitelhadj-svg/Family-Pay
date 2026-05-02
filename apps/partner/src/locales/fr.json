@@ -1,0 +1,28 @@
+{
+  "app": {
+    "partner": {
+      "title": "Interface Partenaire",
+      "subtitle": "Acceptez les paiements FamilyPay"
+    }
+  },
+  "nav": {
+    "scan": "Scanner QR",
+    "history": "Transactions",
+    "analytics": "Analytiques",
+    "settings": "Paramètres"
+  },
+  "errors": {
+    "qr_expired": "QR Code expiré",
+    "qr_invalid": "QR Code invalide",
+    "insufficient_balance": "Solde bénéficiaire insuffisant",
+    "network_error": "Erreur réseau, veuillez réessayer"
+  },
+  "payment": {
+    "scan_qr": "Scanner le QR Code",
+    "enter_amount": "Saisir le montant",
+    "confirm": "Confirmer le paiement",
+    "success": "Paiement accepté",
+    "fallback_pin": "Saisie manuelle PIN",
+    "currency": "MAD"
+  }
+}

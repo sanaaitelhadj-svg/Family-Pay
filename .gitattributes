@@ -1,0 +1,20 @@
+# Normaliser les fins de ligne
+* text=auto eol=lf
+
+# Scripts shell — toujours LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows batch — toujours CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Fichiers binaires
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.dump binary
