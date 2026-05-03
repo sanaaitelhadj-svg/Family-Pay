@@ -12,7 +12,12 @@ export type FamilyPayErrorCode =
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'VALIDATION_ERROR'
-  | 'INTERNAL_ERROR';
+  | 'INTERNAL_ERROR'
+  | 'EMAIL_ALREADY_EXISTS'
+  | 'INVALID_CREDENTIALS'
+  | 'ACCOUNT_DISABLED'
+  | 'INVALID_REFRESH_TOKEN'
+  | 'REFRESH_TOKEN_REVOKED';
 
 export class FamilyPayError extends Error {
   constructor(

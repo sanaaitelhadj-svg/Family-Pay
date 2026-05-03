@@ -1,10 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger.js';
 
-// ── CLIENT ADMIN (sans RLS — migrations, seeds, tests isolation) ──────────────
-export const prismaAdmin = new PrismaClient();
+// ── CLIENT ADMIN (postgres superuser — bypass RLS : auth, seeds, tests) ────────
+export const prismaAdmin = new PrismaClient({
+  datasources: { db: { url: process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL } },
+});
 
-// ── CLIENT PAR DÉFAUT ─────────────────────────────────────────────────────────
+// ── CLIENT APPLICATIF (familypay_app — soumis au RLS) ─────────────────────────
 export const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development'
     ? [{ emit: 'event', level: 'query' }]
@@ -19,8 +21,6 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// ── HELPER — Toute opération financière doit passer par withTenant() ──────────
-// Injecte SET LOCAL app.tenant_id ce qui active les politiques RLS.
 export async function withTenant<T>(
   tenantId: string,
   fn: (tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>) => Promise<T>,
@@ -31,7 +31,6 @@ export async function withTenant<T>(
   });
 }
 
-// ── HELPER — Contexte tenant sans transaction wrapping (lecture seule) ─────────
 export async function setTenantContext(tenantId: string): Promise<void> {
   await prisma.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantId);
 }

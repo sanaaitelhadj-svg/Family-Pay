@@ -6,6 +6,7 @@ import { globalRateLimiter } from './middleware/rate-limit.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { healthRouter } from './routes/health.js';
+import { authRouter } from './routes/auth.js';
 
 export function createApp() {
   const app = express();
@@ -27,9 +28,9 @@ export function createApp() {
   app.use(requestLogger);
   app.use(globalRateLimiter);
 
-  app.use('/health', healthRouter);
+  app.use('/health',   healthRouter);
+  app.use('/api/auth', authRouter);
 
-  // Routes will be added in Sprint 1+
   app.use(errorHandler);
 
   return app;
