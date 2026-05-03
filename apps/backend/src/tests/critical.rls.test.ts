@@ -7,18 +7,22 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { PrismaClient } from '@prisma/client';
 
 // Clients séparés pour simuler deux tenants indépendants
+const dbAdmin = new PrismaClient({
+  datasources: { db: { url: "postgresql://postgres:postgres@localhost:5432/familypay" } },
+});
+
 const db = new PrismaClient({
   datasources: { db: { url: process.env.DATABASE_URL } },
 });
 
 // ── HELPERS ────────────────────────────────────────────────────────────────────
 async function createTenant(name: string) {
-  return db.tenant.create({ data: { name, plan: 'FREE' } });
+  return dbAdmin.tenant.create({ data: { name, plan: 'FREE' } });
 }
 
 async function createUser(tenantId: string, role: 'PAYER' | 'BENEFICIARY' | 'PARTNER') {
   const suffix = Math.random().toString(36).slice(2, 8);
-  return db.user.create({
+  return dbAdmin.user.create({
     data: {
       tenantId,
       role,
@@ -30,16 +34,16 @@ async function createUser(tenantId: string, role: 'PAYER' | 'BENEFICIARY' | 'PAR
 }
 
 async function createWallet(tenantId: string, userId: string, balance = 500) {
-  return db.wallet.create({
+  return dbAdmin.wallet.create({
     data: { tenantId, userId, balance, currency: 'MAD' },
   });
 }
 
 // Exécuter dans le contexte d'un tenant (active les politiques RLS)
-async function withTenantCtx<T>(tenantId: string, fn: () => Promise<T>): Promise<T> {
+async function withTenantCtx<T>(tenantId: string, fn: (tx: typeof db) => Promise<T>): Promise<T> {
   return db.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantId);
-    return fn();
+    return fn(tx as unknown as typeof db);
   }) as Promise<T>;
 }
 
@@ -71,8 +75,8 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
     const walletB = await createWallet(tenantB.id, userB.id, 1000);
 
     // Dans le contexte de tenant A, le wallet de tenant B ne doit PAS apparaître
-    const walletsVisibleFromA = await withTenantCtx(tenantA.id, () =>
-      db.wallet.findMany(),
+    const walletsVisibleFromA = await withTenantCtx(tenantA.id, (tx) =>
+      tx.wallet.findMany(),
     );
 
     const visibleIds = walletsVisibleFromA.map((w) => w.id);
@@ -84,7 +88,7 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
     const walletB = await createWallet(tenantB.id, userB.id);
 
     // Créer une enveloppe pour tenant B (hors contexte RLS — admin)
-    const envelopeB = await db.envelope.create({
+    const envelopeB = await dbAdmin.envelope.create({
       data: {
         tenantId: tenantB.id,
         walletId: walletB.id,
@@ -94,8 +98,8 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
       },
     });
 
-    const envelopesFromA = await withTenantCtx(tenantA.id, () =>
-      db.envelope.findMany(),
+    const envelopesFromA = await withTenantCtx(tenantA.id, (tx) =>
+      tx.envelope.findMany(),
     );
 
     expect(envelopesFromA.map((e) => e.id)).not.toContain(envelopeB.id);
@@ -108,7 +112,7 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
     const wB = await createWallet(tenantB.id, payerB.id, 500);
 
     // Transaction dans tenant B
-    const txB = await db.transaction.create({
+    const txB = await dbAdmin.transaction.create({
       data: {
         tenantId: tenantB.id,
         fromWalletId: wB.id,
@@ -118,8 +122,8 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
       },
     });
 
-    const txsFromA = await withTenantCtx(tenantA.id, () =>
-      db.transaction.findMany(),
+    const txsFromA = await withTenantCtx(tenantA.id, (tx) =>
+      tx.transaction.findMany(),
     );
 
     expect(txsFromA.map((t) => t.id)).not.toContain(txB.id);
@@ -134,8 +138,8 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
     const wA2 = await createWallet(tenantA.id, userA2.id);
     const wB1 = await createWallet(tenantB.id, userB1.id);
 
-    const walletsFromA = await withTenantCtx(tenantA.id, () =>
-      db.wallet.findMany(),
+    const walletsFromA = await withTenantCtx(tenantA.id, (tx) =>
+      tx.wallet.findMany(),
     );
 
     const ids = walletsFromA.map((w) => w.id);
@@ -147,7 +151,7 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
   test('qr_codes from tenant B are invisible from tenant A', async () => {
     const benB = await createUser(tenantB.id, 'BENEFICIARY');
 
-    const qrB = await db.qrCode.create({
+    const qrB = await dbAdmin.qrCode.create({
       data: {
         tenantId: tenantB.id,
         beneficiaryId: benB.id,
@@ -156,8 +160,8 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
       },
     });
 
-    const qrsFromA = await withTenantCtx(tenantA.id, () =>
-      db.qrCode.findMany(),
+    const qrsFromA = await withTenantCtx(tenantA.id, (tx) =>
+      tx.qrCode.findMany(),
     );
 
     expect(qrsFromA.map((q) => q.id)).not.toContain(qrB.id);
@@ -173,7 +177,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     const payer = await createUser(tenantA.id, 'PAYER');
     const wallet = await createWallet(tenantA.id, payer.id, 1000);
 
-    const tx = await db.transaction.create({
+    const tx = await dbAdmin.transaction.create({
       data: {
         tenantId: tenantA.id,
         fromWalletId: wallet.id,
@@ -185,7 +189,7 @@ describe('CRITICAL — Transactions Immutability', () => {
 
     // Toute tentative de modification DOIT échouer
     await expect(
-      db.transaction.update({
+      dbAdmin.transaction.update({
         where: { id: tx.id },
         data: { amount: 999 },
       }),
@@ -196,7 +200,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     const payer = await createUser(tenantA.id, 'PAYER');
     const wallet = await createWallet(tenantA.id, payer.id, 500);
 
-    const tx = await db.transaction.create({
+    const tx = await dbAdmin.transaction.create({
       data: {
         tenantId: tenantA.id,
         fromWalletId: wallet.id,
@@ -207,7 +211,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     });
 
     await expect(
-      db.transaction.update({
+      dbAdmin.transaction.update({
         where: { id: tx.id },
         data: { status: 'COMPLETED' },
       }),
@@ -218,7 +222,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     const payer = await createUser(tenantA.id, 'PAYER');
     const wallet = await createWallet(tenantA.id, payer.id, 500);
 
-    const tx = await db.transaction.create({
+    const tx = await dbAdmin.transaction.create({
       data: {
         tenantId: tenantA.id,
         fromWalletId: wallet.id,
@@ -229,7 +233,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     });
 
     await expect(
-      db.transaction.delete({ where: { id: tx.id } }),
+      dbAdmin.transaction.delete({ where: { id: tx.id } }),
     ).rejects.toThrow(/IMMUTABLE_TRANSACTION/);
   });
 
@@ -237,7 +241,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     const payer = await createUser(tenantA.id, 'PAYER');
     const wallet = await createWallet(tenantA.id, payer.id, 500);
 
-    const originalTx = await db.transaction.create({
+    const originalTx = await dbAdmin.transaction.create({
       data: {
         tenantId: tenantA.id,
         fromWalletId: wallet.id,
@@ -248,7 +252,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     });
 
     // Annulation = nouvelle transaction REVERSAL (pas d'UPDATE)
-    const reversalTx = await db.transaction.create({
+    const reversalTx = await dbAdmin.transaction.create({
       data: {
         tenantId: tenantA.id,
         toWalletId: wallet.id,
@@ -263,7 +267,7 @@ describe('CRITICAL — Transactions Immutability', () => {
     expect(reversalTx.reversalOfId).toBe(originalTx.id);
 
     // L'original est INCHANGÉ
-    const original = await db.transaction.findUnique({ where: { id: originalTx.id } });
+    const original = await dbAdmin.transaction.findUnique({ where: { id: originalTx.id } });
     expect(original?.status).toBe('COMPLETED');
     expect(original?.amount.toString()).toBe('200');
   });
@@ -279,7 +283,7 @@ describe('CRITICAL — Financial Constraints', () => {
     const wallet = await createWallet(tenantA.id, payer.id, 100);
 
     await expect(
-      db.wallet.update({
+      dbAdmin.wallet.update({
         where: { id: wallet.id },
         data: { balance: -1 },
       }),
@@ -290,7 +294,7 @@ describe('CRITICAL — Financial Constraints', () => {
     const ben = await createUser(tenantA.id, 'BENEFICIARY');
     const wallet = await createWallet(tenantA.id, ben.id, 500);
 
-    const envelope = await db.envelope.create({
+    const envelope = await dbAdmin.envelope.create({
       data: {
         tenantId: tenantA.id,
         walletId: wallet.id,
@@ -301,7 +305,7 @@ describe('CRITICAL — Financial Constraints', () => {
     });
 
     await expect(
-      db.envelope.update({
+      dbAdmin.envelope.update({
         where: { id: envelope.id },
         data: { balance: -0.01 },
       }),
@@ -313,7 +317,7 @@ describe('CRITICAL — Financial Constraints', () => {
     const wallet = await createWallet(tenantA.id, payer.id, 500);
 
     await expect(
-      db.transaction.create({
+      dbAdmin.transaction.create({
         data: {
           tenantId: tenantA.id,
           fromWalletId: wallet.id,
@@ -325,7 +329,7 @@ describe('CRITICAL — Financial Constraints', () => {
     ).rejects.toThrow(/positive_transaction_amount|check.*constraint/i);
 
     await expect(
-      db.transaction.create({
+      dbAdmin.transaction.create({
         data: {
           tenantId: tenantA.id,
           fromWalletId: wallet.id,
@@ -341,7 +345,7 @@ describe('CRITICAL — Financial Constraints', () => {
     const payer = await createUser(tenantA.id, 'PAYER');
     const wallet = await createWallet(tenantA.id, payer.id, 100);
 
-    const updated = await db.wallet.update({
+    const updated = await dbAdmin.wallet.update({
       where: { id: wallet.id },
       data: { balance: 0 },
     });
@@ -359,7 +363,7 @@ describe('CRITICAL — Financial Constraints', () => {
 
     // Simuler une transaction atomique qui échoue en milieu de traitement
     await expect(
-      db.$transaction(async (tx) => {
+      dbAdmin.$transaction(async (tx) => {
         // Débit bénéficiaire
         await tx.wallet.update({
           where: { id: benWallet.id },
@@ -371,7 +375,7 @@ describe('CRITICAL — Financial Constraints', () => {
     ).rejects.toThrow('PARTNER_NOT_FOUND');
 
     // Le solde doit être INCHANGÉ (rollback automatique)
-    const walletAfter = await db.wallet.findUnique({ where: { id: benWallet.id } });
+    const walletAfter = await dbAdmin.wallet.findUnique({ where: { id: benWallet.id } });
     expect(Number(walletAfter?.balance)).toBe(balanceBefore);
   });
 });
@@ -394,12 +398,12 @@ describe('CRITICAL — Data Integrity', () => {
     const payer = await createUser(tenantA.id, 'PAYER');
     const ben   = await createUser(tenantA.id, 'BENEFICIARY');
 
-    await db.beneficiaryLink.create({
+    await dbAdmin.beneficiaryLink.create({
       data: { payerId: payer.id, beneficiaryId: ben.id, relationship: 'enfant' },
     });
 
     await expect(
-      db.beneficiaryLink.create({
+      dbAdmin.beneficiaryLink.create({
         data: { payerId: payer.id, beneficiaryId: ben.id, relationship: 'ami' },
       }),
     ).rejects.toThrow(/unique.*constraint|duplicate key/i);
@@ -409,7 +413,7 @@ describe('CRITICAL — Data Integrity', () => {
     const ben = await createUser(tenantA.id, 'BENEFICIARY');
     const token = `unique-token-${Date.now()}`;
 
-    await db.qrCode.create({
+    await dbAdmin.qrCode.create({
       data: {
         tenantId: tenantA.id,
         beneficiaryId: ben.id,
@@ -419,7 +423,7 @@ describe('CRITICAL — Data Integrity', () => {
     });
 
     await expect(
-      db.qrCode.create({
+      dbAdmin.qrCode.create({
         data: {
           tenantId: tenantA.id,
           beneficiaryId: ben.id,
@@ -429,4 +433,33 @@ describe('CRITICAL — Data Integrity', () => {
       }),
     ).rejects.toThrow(/unique.*constraint|duplicate key/i);
   });
+});
+
+// TEST DIAGNOSTIC RLS
+test('diagnostic: set_tenant_context persists in Prisma transaction', async () => {
+  const result = await db.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantA.id);
+    const ctx = await tx.$queryRaw<{tid: string}[]>`SELECT current_setting('app.tenant_id', TRUE) as tid`;
+    return ctx[0].tid;
+  });
+  console.log('Tenant context dans transaction Prisma:', result);
+  expect(result).toBe(tenantA.id);
+});
+
+test('diagnostic2: RLS wallet filter in transaction', async () => {
+  const userB = await createUser(tenantB.id, 'PAYER');
+  const walletB = await createWallet(tenantB.id, userB.id, 1000);
+
+  const result = await db.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantA.id);
+    const ctx = await tx.$queryRaw<{tid: string}[]>`SELECT current_setting('app.tenant_id', TRUE) as tid`;
+    const wallets = await tx.$queryRaw<{id: string}[]>`SELECT id FROM wallets`;
+    console.log('Context:', ctx[0].tid);
+    console.log('Wallets raw:', wallets.map(w => w.id));
+    console.log('WalletB id:', walletB.id);
+    const prismaWallets = await tx.wallet.findMany();
+    console.log('Wallets prisma:', prismaWallets.map(w => w.id));
+    return { ctx: ctx[0].tid, raw: wallets, prisma: prismaWallets };
+  });
+  console.log('Result:', JSON.stringify(result, null, 2));
 });

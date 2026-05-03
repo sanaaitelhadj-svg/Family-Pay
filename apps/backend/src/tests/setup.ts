@@ -1,12 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 
-const db = new PrismaClient({
-  datasources: { db: { url: process.env.DATABASE_URL } },
+const dbAdmin = new PrismaClient({
+  datasources: { db: { url: 'postgresql://postgres:postgres@localhost:5432/familypay' } },
 });
 
-// TRUNCATE bypass les triggers ROW-level (deleteMany serait bloqué sur transactions)
 afterEach(async () => {
-  await db.$executeRawUnsafe(`
+  await dbAdmin.$executeRawUnsafe(`
     TRUNCATE TABLE
       occasions, fund_requests, transactions, qr_codes,
       rules, envelopes, partners, wallets,
@@ -16,5 +15,5 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await db.$disconnect();
+  await dbAdmin.$disconnect();
 });
