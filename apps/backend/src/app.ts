@@ -7,12 +7,13 @@ import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
+import { walletRouter } from './routes/wallet.js';
+import { envelopeRouter } from './routes/envelope.js';
 
 export function createApp() {
   const app = express();
 
   app.set('trust proxy', 1);
-
   app.use(helmet());
   app.use(cors({
     origin: process.env.CORS_ORIGINS?.split(',') ?? [
@@ -28,10 +29,11 @@ export function createApp() {
   app.use(requestLogger);
   app.use(globalRateLimiter);
 
-  app.use('/health',   healthRouter);
-  app.use('/api/auth', authRouter);
+  app.use('/health',         healthRouter);
+  app.use('/api/auth',       authRouter);
+  app.use('/api/wallets',    walletRouter);
+  app.use('/api/envelopes',  envelopeRouter);
 
   app.use(errorHandler);
-
   return app;
 }

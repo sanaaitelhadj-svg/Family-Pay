@@ -17,7 +17,13 @@ export type FamilyPayErrorCode =
   | 'INVALID_CREDENTIALS'
   | 'ACCOUNT_DISABLED'
   | 'INVALID_REFRESH_TOKEN'
-  | 'REFRESH_TOKEN_REVOKED';
+  | 'REFRESH_TOKEN_REVOKED'
+  | 'WALLET_NOT_FOUND'
+  | 'WALLET_FROZEN'
+  | 'ENVELOPE_NOT_FOUND'
+  | 'ENVELOPE_INACTIVE'
+  | 'SAME_ENVELOPE_TRANSFER'
+  | 'ENVELOPE_WALLET_MISMATCH';
 
 export class FamilyPayError extends Error {
   constructor(

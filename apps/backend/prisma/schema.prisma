@@ -138,6 +138,7 @@ model Wallet {
   envelopes         Envelope[]
   transactionsSent  Transaction[] @relation("WalletSent")
   transactionsRecvd Transaction[] @relation("WalletReceived")
+  partners         Partner[]
 
   @@index([tenantId])
   @@map("wallets")

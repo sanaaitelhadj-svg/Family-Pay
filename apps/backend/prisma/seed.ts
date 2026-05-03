@@ -94,20 +94,20 @@ async function main() {
 
   // ── ENVELOPPES ─────────────────────────────────────────────────────────────
   const envelopeData = [
-    { category: 'FOOD' as const,      label: 'Nourriture',  balance: 500, maxPerTx: 200 },
-    { category: 'HEALTH' as const,    label: 'Santé',       balance: 300, maxPerTx: 300 },
-    { category: 'EDUCATION' as const, label: 'Éducation',   balance: 400, maxPerTx: 400 },
-    { category: 'LEISURE' as const,   label: 'Loisirs',     balance: 150, maxPerTx: 100 },
-    { category: 'CLOTHES' as const,   label: 'Vêtements',   balance: 200, maxPerTx: 200 },
-    { category: 'GENERAL' as const,   label: 'Général',     balance: 100, maxPerTx: 100 },
+    { id: '00000000-0000-0000-0001-000000000001', category: 'FOOD' as const,      label: 'Nourriture',  balance: 500, maxPerTx: 200 },
+    { id: '00000000-0000-0000-0002-000000000001', category: 'HEALTH' as const,    label: 'Santé',       balance: 300, maxPerTx: 300 },
+    { id: '00000000-0000-0000-0003-000000000001', category: 'EDUCATION' as const, label: 'Éducation',   balance: 400, maxPerTx: 400 },
+    { id: '00000000-0000-0000-0004-000000000001', category: 'LEISURE' as const,   label: 'Loisirs',     balance: 150, maxPerTx: 100 },
+    { id: '00000000-0000-0000-0005-000000000001', category: 'CLOTHES' as const,   label: 'Vêtements',   balance: 200, maxPerTx: 200 },
+    { id: '00000000-0000-0000-0006-000000000001', category: 'GENERAL' as const,   label: 'Général',     balance: 100, maxPerTx: 100 },
   ];
 
   for (const e of envelopeData) {
     await db.envelope.upsert({
-      where: { id: `00000000-0000-0000-${e.category.padStart(4, '0')}-000000000001` },
+      where: { id: e.id },
       update: {},
       create: {
-        id: `00000000-0000-0000-${e.category.padStart(4, '0')}-000000000001`,
+        id: e.id,
         tenantId: tenant.id,
         walletId: benWallet.id,
         category: e.category,
