@@ -1,0 +1,370 @@
+// ALTIVAX FamilyPay — Schéma Prisma V1
+// PostgreSQL 16 + RLS multi-tenant
+// RÈGLE ABSOLUE : La table transactions est IMMUABLE (INSERT only, jamais d'UPDATE)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TENANTS — Multi-tenant (une instance = un tenant)
+// ═══════════════════════════════════════════════════════════════════════════════
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  plan      Plan     @default(FREE)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  wallets      Wallet[]
+  envelopes    Envelope[]
+  transactions Transaction[]
+  partners     Partner[]
+  rules        Rule[]
+  qrCodes      QrCode[]
+  occasions    Occasion[]
+
+  @@map("tenants")
+}
+
+enum Plan {
+  FREE
+  FAMILY     // 49 MAD/mois
+  PREMIUM    // 99 MAD/mois
+  PRO_B2B    // 199 MAD/mois
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USERS — 4 rôles : payer | beneficiary | partner | admin
+// ═══════════════════════════════════════════════════════════════════════════════
+model User {
+  id                String     @id @default(uuid())
+  tenantId          String
+  tenant            Tenant     @relation(fields: [tenantId], references: [id])
+  email             String?    @unique
+  phone             String?    @unique
+  passwordHash      String?
+  role              Role
+  firstName         String?
+  lastName          String?
+  avatarUrl         String?
+  kycStatus         KycStatus  @default(PENDING)
+  kycDocumentUrl    String?
+  isMinor           Boolean    @default(false)
+  twoFaEnabled      Boolean    @default(false)
+  twoFaSecret       String?
+  biometricEnabled  Boolean    @default(false)
+  fcmToken          String?    // Firebase push notification token
+  isActive          Boolean    @default(true)
+  lastLoginAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  wallet              Wallet?
+  // Relations payeur
+  payerLinks          BeneficiaryLink[] @relation("PayerLinks")
+  // Relations bénéficiaire
+  beneficiaryLinks    BeneficiaryLink[] @relation("BeneficiaryLinks")
+  // Partenaire associé
+  partner             Partner?
+  // QR codes générés
+  qrCodes             QrCode[]
+  // Demandes de fonds envoyées
+  fundRequestsSent    FundRequest[]    @relation("FundRequestsSent")
+  // Demandes de fonds reçues
+  fundRequestsReceived FundRequest[]   @relation("FundRequestsReceived")
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+enum Role {
+  PAYER
+  BENEFICIARY
+  PARTNER
+  ADMIN
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BENEFICIARY LINKS — Lien payeur ↔ bénéficiaire
+// ═══════════════════════════════════════════════════════════════════════════════
+model BeneficiaryLink {
+  id            String   @id @default(uuid())
+  payerId       String
+  payer         User     @relation("PayerLinks", fields: [payerId], references: [id])
+  beneficiaryId String
+  beneficiary   User     @relation("BeneficiaryLinks", fields: [beneficiaryId], references: [id])
+  relationship  String   // enfant | conjoint | parent | ami | employé
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@unique([payerId, beneficiaryId])
+  @@index([payerId])
+  @@index([beneficiaryId])
+  @@map("beneficiary_links")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WALLETS — 1 par utilisateur | solde JAMAIS négatif (CHECK balance >= 0)
+// ═══════════════════════════════════════════════════════════════════════════════
+model Wallet {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  // balance >= 0 est enforced par un CHECK PostgreSQL dans la migration
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
+  currency  String   @default("MAD")
+  frozen    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  envelopes         Envelope[]
+  transactionsSent  Transaction[] @relation("WalletSent")
+  transactionsRecvd Transaction[] @relation("WalletReceived")
+
+  @@index([tenantId])
+  @@map("wallets")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENVELOPES — Enveloppes thématiques | solde JAMAIS négatif
+// ═══════════════════════════════════════════════════════════════════════════════
+model Envelope {
+  id                  String          @id @default(uuid())
+  tenantId            String
+  tenant              Tenant          @relation(fields: [tenantId], references: [id])
+  walletId            String
+  wallet              Wallet          @relation(fields: [walletId], references: [id])
+  category            EnvelopeCategory
+  label               String
+  // balance >= 0 est enforced par un CHECK PostgreSQL dans la migration
+  balance             Decimal         @default(0) @db.Decimal(12, 2)
+  maxPerTransaction   Decimal?        @db.Decimal(12, 2)
+  // JSON array des UUIDs partenaires autorisés (null = tous)
+  allowedPartnerIds   String[]        @default([])
+  autoReloadEnabled   Boolean         @default(false)
+  autoReloadAmount    Decimal?        @db.Decimal(12, 2)
+  autoReloadDay       Int?            // 1-28 (jour du mois)
+  carryOverBalance    Boolean         @default(true)
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  rules        Rule[]
+  transactions Transaction[]
+
+  @@index([tenantId])
+  @@index([walletId])
+  @@map("envelopes")
+}
+
+enum EnvelopeCategory {
+  FOOD
+  HEALTH
+  CLOTHES
+  EDUCATION
+  LEISURE
+  GENERAL
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RULES — Règles intelligentes sur les enveloppes
+// ═══════════════════════════════════════════════════════════════════════════════
+model Rule {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  envelopeId String
+  envelope   Envelope @relation(fields: [envelopeId], references: [id])
+  type       RuleType
+  // conditions JSON : { start_hour, end_hour, allowed_days, daily_max, geo_lat, geo_lng, geo_radius_km }
+  conditions Json
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([envelopeId])
+  @@map("rules")
+}
+
+enum RuleType {
+  TIME          // actif uniquement entre heures X et Y
+  DAY           // actif uniquement certains jours
+  DAILY_LIMIT   // plafond journalier en MAD
+  GEO           // rayon géographique (V2)
+  CONDITIONAL   // condition personnalisée (V2)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARTNERS — Marchands partenaires
+// ═══════════════════════════════════════════════════════════════════════════════
+model Partner {
+  id           String        @id @default(uuid())
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id])
+  businessName String
+  category     String        // restaurant | pharmacie | epicerie | vetements | education | loisirs
+  registrationNumber String? // RC / SIRET
+  logoUrl      String?
+  address      String?
+  city         String?
+  isPremium    Boolean       @default(false)
+  isVerified   Boolean       @default(false)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  wallet       Wallet?       @relation(fields: [walletId], references: [id])
+  walletId     String?
+  transactions Transaction[]
+
+  @@index([tenantId])
+  @@map("partners")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QR CODES — TTL 60 secondes FIXE | usage unique
+// NE JAMAIS augmenter TTL sans autorisation explicite
+// ═══════════════════════════════════════════════════════════════════════════════
+model QrCode {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  beneficiaryId String
+  beneficiary   User      @relation(fields: [beneficiaryId], references: [id])
+  token         String    @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  amountUsed    Decimal?  @db.Decimal(12, 2)
+  createdAt     DateTime  @default(now())
+
+  transaction Transaction?
+
+  @@index([tenantId])
+  @@index([beneficiaryId])
+  @@index([token])
+  @@map("qr_codes")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRANSACTIONS — IMMUABLES : INSERT ONLY — JAMAIS d'UPDATE
+// Toute annulation = nouvelle transaction inverse (type: REVERSAL)
+// Un trigger PostgreSQL enforce cette règle au niveau DB
+// ═══════════════════════════════════════════════════════════════════════════════
+model Transaction {
+  id             String            @id @default(uuid())
+  tenantId       String
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  fromWalletId   String?
+  fromWallet     Wallet?           @relation("WalletSent", fields: [fromWalletId], references: [id])
+  toWalletId     String?
+  toWallet       Wallet?           @relation("WalletReceived", fields: [toWalletId], references: [id])
+  envelopeId     String?
+  envelope       Envelope?         @relation(fields: [envelopeId], references: [id])
+  partnerId      String?
+  partner        Partner?          @relation(fields: [partnerId], references: [id])
+  qrCodeId       String?           @unique
+  qrCode         QrCode?           @relation(fields: [qrCodeId], references: [id])
+  // amount > 0 est enforced par un CHECK PostgreSQL dans la migration
+  amount         Decimal           @db.Decimal(12, 2)
+  type           TransactionType
+  status         TransactionStatus @default(PENDING)
+  // Référence à la transaction originale (pour REVERSAL)
+  reversalOfId   String?
+  metadata       Json?
+  // createdAt est immuable — index pour requêtes chronologiques
+  createdAt      DateTime          @default(now())
+
+  @@index([tenantId])
+  @@index([fromWalletId])
+  @@index([toWalletId])
+  @@index([envelopeId])
+  @@index([partnerId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  PAYMENT     // paiement bénéficiaire → partenaire
+  RELOAD      // recharge wallet (virement / CMI)
+  TRANSFER    // transfert entre enveloppes
+  REVERSAL    // annulation (transaction inverse — jamais d'UPDATE)
+  FUND_REQUEST_APPROVED // demande de fonds approuvée
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FUND REQUESTS — Demandes de fonds bénéficiaire → payeur
+// ═══════════════════════════════════════════════════════════════════════════════
+model FundRequest {
+  id            String            @id @default(uuid())
+  senderId      String
+  sender        User              @relation("FundRequestsSent", fields: [senderId], references: [id])
+  receiverId    String
+  receiver      User              @relation("FundRequestsReceived", fields: [receiverId], references: [id])
+  amount        Decimal           @db.Decimal(12, 2)
+  message       String?
+  status        FundRequestStatus @default(PENDING)
+  respondedAt   DateTime?
+  createdAt     DateTime          @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@map("fund_requests")
+}
+
+enum FundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OCCASIONS — Mode cagnotte / occasion spéciale
+// ═══════════════════════════════════════════════════════════════════════════════
+model Occasion {
+  id                String   @id @default(uuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  creatorId         String
+  beneficiaryId     String
+  title             String
+  message           String?
+  targetAmount      Decimal  @db.Decimal(12, 2)
+  currentAmount     Decimal  @default(0) @db.Decimal(12, 2)
+  restrictPartnerId String?  // restreindre à un partenaire (ex: jouets)
+  activatesAt       DateTime
+  expiresAt         DateTime
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([beneficiaryId])
+  @@map("occasions")
+}
