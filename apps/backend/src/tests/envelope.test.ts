@@ -16,9 +16,7 @@ function makeEmail() {
 }
 
 beforeEach(async () => {
-  await prismaAdmin.tenant.create({
-    data: { id: TENANT_ID, name: 'Envelope Test Tenant', plan: 'FREE' },
-  });
+  await prismaAdmin.tenant.upsert({ where: { id: TENANT_ID }, create: { id: TENANT_ID, name: 'Envelope Test Tenant', plan: 'FREE' }, update: {} });
 
   const payerRes = await api.post('/api/auth/register').send({
     email: makeEmail(), password: 'Test1234!', role: 'PAYER',

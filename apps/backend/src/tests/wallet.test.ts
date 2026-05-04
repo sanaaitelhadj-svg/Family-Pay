@@ -7,9 +7,7 @@ const api = supertest(createApp());
 const TENANT_ID = '00000000-0000-0000-0000-000000000098';
 
 beforeEach(async () => {
-  await prismaAdmin.tenant.create({
-    data: { id: TENANT_ID, name: 'Wallet Test Tenant', plan: 'FREE' },
-  });
+  await prismaAdmin.tenant.upsert({ where: { id: TENANT_ID }, create: { id: TENANT_ID, name: 'Wallet Test Tenant', plan: 'FREE' }, update: {} });
 });
 
 function makeEmail() {

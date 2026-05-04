@@ -12,9 +12,7 @@ const TEST_TENANT_ID = '00000000-0000-0000-0000-000000000099';
 
 // Recréer le tenant avant chaque test (setup.ts le truncate après)
 beforeEach(async () => {
-  await prismaAdmin.tenant.create({
-    data: { id: TEST_TENANT_ID, name: 'Auth Test Tenant', plan: 'FREE' },
-  });
+  await prismaAdmin.tenant.upsert({ where: { id: TEST_TENANT_ID }, create: { id: TEST_TENANT_ID, name: 'Auth Test Tenant', plan: 'FREE' }, update: {} });
 });
 
 function makeEmail() {
