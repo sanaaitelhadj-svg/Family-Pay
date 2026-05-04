@@ -20,3 +20,17 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     next(new FamilyPayError('UNAUTHORIZED', 401, 'Invalid or expired token'));
   }
 }
+
+export function requireRole(...roles: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      next(new FamilyPayError('UNAUTHORIZED', 401, 'Not authenticated'));
+      return;
+    }
+    if (!roles.includes(req.user.role)) {
+      next(new FamilyPayError('FORBIDDEN', 403, `Rôle ${req.user.role} non autorisé`));
+      return;
+    }
+    next();
+  };
+}

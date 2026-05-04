@@ -9,6 +9,8 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { walletRouter } from './routes/wallet.js';
 import { envelopeRouter } from './routes/envelope.js';
+import { qrRouter } from './routes/qr.js';
+import { paymentRouter } from './routes/payment.js';
 
 export function createApp() {
   const app = express();
@@ -33,6 +35,8 @@ export function createApp() {
   app.use('/api/auth',       authRouter);
   app.use('/api/wallets',    walletRouter);
   app.use('/api/envelopes',  envelopeRouter);
+  app.use('/api/qrcodes',   qrRouter);
+  app.use('/api/payments',  paymentRouter);
 
   app.use(errorHandler);
   return app;
