@@ -24,7 +24,10 @@ export type FamilyPayErrorCode =
   | 'ENVELOPE_INACTIVE'
   | 'SAME_ENVELOPE_TRANSFER'
   | 'ENVELOPE_WALLET_MISMATCH'
-  | 'PARTNER_NOT_FOUND';
+  | 'PARTNER_NOT_FOUND'
+  | 'FUND_REQUEST_NOT_FOUND'
+  | 'FUND_REQUEST_ALREADY_RESPONDED'
+  | 'OCCASION_NOT_FOUND';
 
 export class FamilyPayError extends Error {
   constructor(

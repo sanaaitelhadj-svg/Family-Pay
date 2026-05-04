@@ -11,6 +11,8 @@ import { walletRouter } from './routes/wallet.js';
 import { envelopeRouter } from './routes/envelope.js';
 import { qrRouter } from './routes/qr.js';
 import { paymentRouter } from './routes/payment.js';
+import { fundRequestRouter } from './routes/fund-request.js';
+import { occasionRouter } from './routes/occasion.js';
 
 export function createApp() {
   const app = express();
@@ -36,7 +38,9 @@ export function createApp() {
   app.use('/api/wallets',    walletRouter);
   app.use('/api/envelopes',  envelopeRouter);
   app.use('/api/qrcodes',   qrRouter);
-  app.use('/api/payments',  paymentRouter);
+  app.use('/api/payments',      paymentRouter);
+  app.use('/api/fund-requests', fundRequestRouter);
+  app.use('/api/occasions',     occasionRouter);
 
   app.use(errorHandler);
   return app;
