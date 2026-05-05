@@ -30,7 +30,7 @@ export async function generateQrCode(
     tx.qrCode.create({ data: { tenantId, beneficiaryId, token, expiresAt } }),
   );
 
-  return { id: qrRecord.id, token, expiresAt };
+  return { id: (qrRecord as any).id, token, expiresAt };
 }
 
 export function decodeQrToken(token: string): QrPayload {

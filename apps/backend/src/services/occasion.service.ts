@@ -34,8 +34,8 @@ export async function createOccasion(creatorId: string, tenantId: string, input:
     }),
   );
 
-  notifyUser(input.beneficiaryId, 'occasion:created', { occasionId: occasion.id, title: input.title });
-  return occasion;
+  notifyUser(input.beneficiaryId, 'occasion:created', { occasionId: (occasion as any).id, title: input.title });
+  return occasion as any;
 }
 
 export async function listOccasions(tenantId: string, beneficiaryId?: string, activeOnly = true) {
@@ -53,7 +53,7 @@ export async function listOccasions(tenantId: string, beneficiaryId?: string, ac
 export async function getOccasion(id: string, tenantId: string) {
   const occasion = await withTenant(tenantId, (tx) => tx.occasion.findUnique({ where: { id } }));
   if (!occasion) throw new FamilyPayError('OCCASION_NOT_FOUND', 404, 'Occasion introuvable');
-  return occasion;
+  return occasion as any;
 }
 
 export async function deactivateOccasion(id: string, creatorId: string, tenantId: string) {

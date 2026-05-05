@@ -18,7 +18,8 @@
     "db:reset": "prisma migrate reset --force",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo",
+    "prebuild": "prisma generate"
   },
   "dependencies": {
     "express": "^4.21.2",

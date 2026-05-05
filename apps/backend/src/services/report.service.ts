@@ -27,7 +27,7 @@ export async function getMonthlyReport(
     const benefWallets = beneficiaryIds.length > 0
       ? await tx.wallet.findMany({ where: { userId: { in: beneficiaryIds } } })
       : [];
-    const walletToUser = new Map(benefWallets.map((w) => [w.id, w.userId]));
+    const walletToUser = new Map<string, string>(benefWallets.map((w) => [String(w.id), String(w.userId)]));
     const walletIds = benefWallets.map((w) => w.id);
 
     const payments = walletIds.length > 0
