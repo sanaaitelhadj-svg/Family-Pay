@@ -27,7 +27,10 @@ export type FamilyPayErrorCode =
   | 'PARTNER_NOT_FOUND'
   | 'FUND_REQUEST_NOT_FOUND'
   | 'FUND_REQUEST_ALREADY_RESPONDED'
-  | 'OCCASION_NOT_FOUND';
+  | 'OCCASION_NOT_FOUND'
+  | 'USER_NOT_FOUND'
+  | 'LINK_ALREADY_EXISTS'
+  | 'LINK_NOT_FOUND';
 
 export class FamilyPayError extends Error {
   constructor(
