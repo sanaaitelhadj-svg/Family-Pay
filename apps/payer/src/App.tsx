@@ -1,28 +1,31 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { CreateEnvelopePage } from './pages/CreateEnvelopePage';
 
-function HomePage() {
-  const { t } = useTranslation();
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 to-blue-800 flex items-center justify-center">
-      <div className="text-center text-white p-8">
-        <h1 className="text-4xl font-bold mb-2">ALTIVAX</h1>
-        <h2 className="text-2xl font-semibold text-blue-300 mb-6">FamilyPay</h2>
-        <p className="text-lg text-blue-200 mb-2">{t('app.payer.title')}</p>
-        <p className="text-sm text-blue-400">{t('app.payer.subtitle')}</p>
-        <div className="mt-8 px-4 py-2 bg-blue-600 rounded-lg text-sm text-blue-100">
-          Sprint 0a — Infrastructure ✅
-        </div>
-      </div>
-    </div>
-  );
-}
+const qc = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
+});
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <QueryClientProvider client={qc}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/" element={
+          <ProtectedRoute><DashboardPage /></ProtectedRoute>
+        } />
+        <Route path="/envelopes/new" element={
+          <ProtectedRoute><CreateEnvelopePage /></ProtectedRoute>
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toaster position="top-right" />
+    </QueryClientProvider>
   );
 }
