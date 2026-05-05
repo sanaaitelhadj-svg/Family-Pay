@@ -14,7 +14,7 @@ export async function list(req: AuthRequest, res: Response, next: NextFunction):
 export async function getOne(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) throw new FamilyPayError('UNAUTHORIZED', 401, 'Not authenticated');
-    res.json(await envelopeService.getEnvelope(req.params.id, req.user.tenantId));
+    res.json(await envelopeService.getEnvelope(req.params.id as string, req.user.tenantId));
   } catch (err) { next(err); }
 }
 
@@ -34,14 +34,14 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
 export async function update(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) throw new FamilyPayError('UNAUTHORIZED', 401, 'Not authenticated');
-    res.json(await envelopeService.updateEnvelope(req.params.id, req.user.tenantId, req.body));
+    res.json(await envelopeService.updateEnvelope(req.params.id as string, req.user.tenantId, req.body));
   } catch (err) { next(err); }
 }
 
 export async function deactivate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) throw new FamilyPayError('UNAUTHORIZED', 401, 'Not authenticated');
-    res.json(await envelopeService.deactivateEnvelope(req.params.id, req.user.tenantId));
+    res.json(await envelopeService.deactivateEnvelope(req.params.id as string, req.user.tenantId));
   } catch (err) { next(err); }
 }
 

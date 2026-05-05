@@ -56,7 +56,7 @@ export async function getMonthlyReport(
     // By beneficiary
     const byBenefMap = new Map<string, { email: string; spent: number; txCount: number; categories: Map<string, number> }>();
     for (const link of links) {
-      byBenefMap.set(link.beneficiaryId, { email: link.beneficiary.email, spent: 0, txCount: 0, categories: new Map() });
+      byBenefMap.set(link.beneficiaryId, { email: link.beneficiary.email ?? "", spent: 0, txCount: 0, categories: new Map() });
     }
 
     // Get envelopeId → category mapping
@@ -64,7 +64,7 @@ export async function getMonthlyReport(
     const envelopes = envelopeIds.length > 0
       ? await tx.envelope.findMany({ where: { id: { in: envelopeIds } }, select: { id: true, category: true } })
       : [];
-    const envCategory = new Map(envelopes.map(e => [e.id, e.category]));
+    const envCategory = new Map<string, string>(envelopes.map(e => [e.id, String(e.category)]));
 
     for (const t of payments) {
       const userId = walletToUser.get(t.fromWalletId!);

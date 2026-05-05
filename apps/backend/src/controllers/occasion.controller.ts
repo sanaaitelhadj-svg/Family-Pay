@@ -25,14 +25,14 @@ export async function list(req: AuthRequest, res: Response, next: NextFunction) 
 
 export async function getOne(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const result = await svc.getOccasion(req.params.id, req.user!.tenantId);
+    const result = await svc.getOccasion(req.params.id as string, req.user!.tenantId);
     res.json(result);
   } catch (err) { next(err); }
 }
 
 export async function deactivate(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const result = await svc.deactivateOccasion(req.params.id, req.user!.id, req.user!.tenantId);
+    const result = await svc.deactivateOccasion(req.params.id as string, req.user!.id, req.user!.tenantId);
     res.json(result);
   } catch (err) { next(err); }
 }

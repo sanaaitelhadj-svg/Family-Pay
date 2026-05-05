@@ -25,7 +25,7 @@ export async function withTenant<T>(
   tenantId: string,
   fn: (tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>) => Promise<T>,
 ): Promise<T> {
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx): Promise<T> => {
     await tx.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantId);
     return fn(tx);
   });

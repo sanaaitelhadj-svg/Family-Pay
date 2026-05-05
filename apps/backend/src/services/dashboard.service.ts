@@ -75,7 +75,7 @@ export async function getPayerDashboard(
 
       beneficiaries.push({
         userId: link.beneficiaryId,
-        email: link.beneficiary.email,
+        email: link.beneficiary.email ?? "",
         walletBalance: Number(wallet?.balance ?? 0),
         envelopes: envelopeViews,
       });

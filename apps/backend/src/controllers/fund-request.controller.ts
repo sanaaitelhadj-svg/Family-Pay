@@ -19,14 +19,14 @@ export async function list(req: AuthRequest, res: Response, next: NextFunction) 
 
 export async function approve(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const result = await svc.approveFundRequest(req.params.id, req.user!.id, req.user!.tenantId);
+    const result = await svc.approveFundRequest(req.params.id as string, req.user!.id, req.user!.tenantId);
     res.json(result);
   } catch (err) { next(err); }
 }
 
 export async function reject(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const result = await svc.rejectFundRequest(req.params.id, req.user!.id);
+    const result = await svc.rejectFundRequest(req.params.id as string, req.user!.id);
     res.json(result);
   } catch (err) { next(err); }
 }
