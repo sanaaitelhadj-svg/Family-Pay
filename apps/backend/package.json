@@ -19,7 +19,7 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "clean": "rm -rf dist .turbo",
-    "prebuild": "prisma generate"
+    "prebuild": "prisma generate && prisma migrate deploy"
   },
   "dependencies": {
     "express": "^4.21.2",
