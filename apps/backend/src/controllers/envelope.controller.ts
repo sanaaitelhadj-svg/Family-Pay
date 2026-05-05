@@ -56,3 +56,12 @@ export async function transfer(req: AuthRequest, res: Response, next: NextFuncti
     ));
   } catch (err) { next(err); }
 }
+
+export async function fund(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) throw new FamilyPayError('UNAUTHORIZED', 401, 'Not authenticated');
+    const { amount } = req.body;
+    if (amount === undefined) throw new FamilyPayError('VALIDATION_ERROR', 400, 'Missing amount');
+    res.json(await envelopeService.fundEnvelope(req.user.id, req.user.tenantId, req.params.id as string, Number(amount)));
+  } catch (err) { next(err); }
+}

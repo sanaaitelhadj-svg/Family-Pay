@@ -11,3 +11,4 @@ envelopeRouter.post('/',         authenticate, requireRole('PAYER'), ctrl.create
 envelopeRouter.get('/:id',       authenticate, ctrl.getOne);
 envelopeRouter.patch('/:id',     authenticate, ctrl.update);
 envelopeRouter.delete('/:id',    authenticate, requireRole('PAYER'), ctrl.deactivate);
+envelopeRouter.post('/:id/fund',  authenticate, requireRole('PAYER'), ctrl.fund);

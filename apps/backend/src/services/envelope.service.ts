@@ -159,3 +159,58 @@ export async function transfer(
     };
   });
 }
+
+export async function fundEnvelope(
+  payerId: string,
+  tenantId: string,
+  envelopeId: string,
+  amount: number,
+) {
+  if (amount <= 0) throw new FamilyPayError('VALIDATION_ERROR', 400, 'Amount must be strictly positive');
+
+  return withTenant(tenantId, async (tx) => {
+    const payerWallet = await tx.wallet.findUnique({ where: { userId: payerId } });
+    if (!payerWallet) throw new FamilyPayError('WALLET_NOT_FOUND', 404, 'Wallet payeur introuvable');
+    if (payerWallet.frozen) throw new FamilyPayError('WALLET_FROZEN', 400, 'Wallet gelé');
+    if (Number(payerWallet.balance) < amount)
+      throw new FamilyPayError('INSUFFICIENT_BALANCE', 400, 'Solde payeur insuffisant');
+
+    const envelope = await tx.envelope.findUnique({
+      where: { id: envelopeId },
+      include: { wallet: true },
+    });
+    if (!envelope || !envelope.isActive)
+      throw new FamilyPayError('ENVELOPE_NOT_FOUND', 404, 'Enveloppe introuvable');
+
+    // Vérifier lien payeur↔bénéficiaire
+    const link = await prisma.beneficiaryLink.findFirst({
+      where: { payerId, beneficiaryId: envelope.wallet.userId, isActive: true },
+    });
+    if (!link) throw new FamilyPayError('FORBIDDEN', 403, 'Bénéficiaire non lié à ce payeur');
+
+    const dec = new Decimal(amount);
+
+    await tx.wallet.update({ where: { id: payerWallet.id }, data: { balance: { decrement: dec } } });
+    await tx.envelope.update({ where: { id: envelopeId }, data: { balance: { increment: dec } } });
+    await tx.wallet.update({ where: { id: envelope.walletId }, data: { balance: { increment: dec } } });
+
+    await tx.transaction.create({
+      data: {
+        tenantId,
+        fromWalletId: payerWallet.id,
+        toWalletId: envelope.walletId,
+        envelopeId,
+        amount: dec,
+        type: 'TRANSFER',
+        status: 'COMPLETED',
+        metadata: { source: 'PAYER_FUND_ENVELOPE', payerId },
+      },
+    });
+
+    return {
+      envelopeId,
+      newEnvelopeBalance: Number(envelope.balance) + amount,
+      payerBalance: Number(payerWallet.balance) - amount,
+    };
+  });
+}

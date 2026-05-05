@@ -17,6 +17,7 @@ import { occasionRouter } from './routes/occasion.js';
 import dashboardRouter from './routes/dashboard.js';
 import transactionRouter from './routes/transaction.js';
 import reportRouter from './routes/report.js';
+import { beneficiaryLinkRouter } from './routes/beneficiary-link.js';
 export function createApp() {
   const app = express();
 
@@ -47,6 +48,7 @@ export function createApp() {
   app.use('/api/dashboard',     dashboardRouter);
   app.use('/api/transactions',  transactionRouter);
   app.use('/api/reports',       reportRouter);
+  app.use('/api/beneficiary-links', beneficiaryLinkRouter);
 
   app.use(errorHandler);
   return app;
