@@ -6,10 +6,10 @@ import { api } from '../lib/api';
 interface Transaction {
   id: string;
   type: string;
-  amount: string;
-  currency: string;
+  amount: string | number;
+  currency?: string;
   status: string;
-  description: string | null;
+  description?: string | null;
   createdAt: string;
 }
 
@@ -28,7 +28,7 @@ const STATUS_COLOR: Record<string, string> = {
 export function TransactionsPage() {
   const { data: txs, isLoading } = useQuery<Transaction[]>({
     queryKey: ['transactions'],
-    queryFn: () => api.get('/api/transactions').then((r) => r.data),
+    queryFn: () => api.get('/api/transactions').then((r) => r.data.transactions ?? r.data),
   });
 
   if (isLoading) {
@@ -68,7 +68,7 @@ export function TransactionsPage() {
               </div>
               <div className="ml-4 text-right flex-shrink-0">
                 <p className="font-semibold text-gray-800">
-                  {parseFloat(tx.amount).toFixed(2)} {tx.currency}
+                  {parseFloat(String(tx.amount)).toFixed(2)} {tx.currency ?? 'MAD'}
                 </p>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full font-medium ${
