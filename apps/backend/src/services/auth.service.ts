@@ -25,37 +25,41 @@ export async function register(data: {
 
   const passwordHash = await bcrypt.hash(data.password, 12);
 
-  const user = await prismaAdmin.user.create({
-    data: {
-      tenantId: data.tenantId,
-      email: data.email,
-      phone: data.phone,
-      passwordHash,
-      role: data.role,
-      firstName: data.firstName,
-      lastName: data.lastName,
-    },
-    select: { id: true, email: true, role: true, tenantId: true, firstName: true, lastName: true },
-  });
-
-  const wallet = await prismaAdmin.wallet.create({
-    data: { tenantId: data.tenantId, userId: user.id, balance: 0, currency: 'MAD' },
-  });
-
-  // Auto-créer le profil Partner si rôle PARTNER
-  if (data.role === 'PARTNER') {
-    await prismaAdmin.partner.create({
+  // Création atomique : user + wallet + partner (si PARTNER) dans une seule transaction
+  const { user, wallet } = await prismaAdmin.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
       data: {
         tenantId: data.tenantId,
-        userId: user.id,
-        walletId: wallet.id,
-        businessName: `${data.firstName} ${data.lastName}`,
-        category: 'general',
-        isActive: true,
-        isVerified: false,
+        email: data.email,
+        phone: data.phone,
+        passwordHash,
+        role: data.role,
+        firstName: data.firstName,
+        lastName: data.lastName,
       },
+      select: { id: true, email: true, role: true, tenantId: true, firstName: true, lastName: true },
     });
-  }
+
+    const createdWallet = await tx.wallet.create({
+      data: { tenantId: data.tenantId, userId: createdUser.id, balance: 0, currency: 'MAD' },
+    });
+
+    if (data.role === 'PARTNER') {
+      await tx.partner.create({
+        data: {
+          tenantId: data.tenantId,
+          userId: createdUser.id,
+          walletId: createdWallet.id,
+          businessName: `${data.firstName} ${data.lastName}`,
+          category: 'restaurant',
+          isActive: true,
+          isVerified: false,
+        },
+      });
+    }
+
+    return { user: createdUser, wallet: createdWallet };
+  });
 
   const accessToken = generateAccessToken(user.id, user.tenantId, user.role);
   const { token: refreshToken, jti } = generateRefreshToken(user.id, user.tenantId, user.role);

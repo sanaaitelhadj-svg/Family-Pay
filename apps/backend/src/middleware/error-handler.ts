@@ -13,6 +13,8 @@ export function errorHandler(
     return;
   }
 
-  logger.error('Unhandled error', { err: err.message, stack: err.stack });
-  res.status(500).json({ error: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' });
+  logger.error('Unhandled error', { err: err.message, stack: err.stack, name: err.name });
+  // En dev/staging on expose le détail pour faciliter le debug
+  const detail = process.env.NODE_ENV !== 'production' ? err.message : 'An unexpected error occurred.';
+  res.status(500).json({ error: 'INTERNAL_ERROR', message: detail, _debug: err.message });
 }
