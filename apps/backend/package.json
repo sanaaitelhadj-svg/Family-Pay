@@ -1,11 +1,12 @@
 {
   "name": "@familypay/backend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "prestart": "prisma migrate deploy",
     "start": "node dist/index.js",
     "lint": "eslint src --ext ts",
     "type-check": "tsc --noEmit",
@@ -19,7 +20,7 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "clean": "rm -rf dist .turbo",
-    "prebuild": "prisma generate && prisma migrate deploy"
+    "prebuild": "prisma generate"
   },
   "dependencies": {
     "express": "^4.21.2",
