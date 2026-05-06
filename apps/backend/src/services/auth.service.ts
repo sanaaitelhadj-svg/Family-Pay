@@ -38,9 +38,24 @@ export async function register(data: {
     select: { id: true, email: true, role: true, tenantId: true, firstName: true, lastName: true },
   });
 
-  await prismaAdmin.wallet.create({
+  const wallet = await prismaAdmin.wallet.create({
     data: { tenantId: data.tenantId, userId: user.id, balance: 0, currency: 'MAD' },
   });
+
+  // Auto-créer le profil Partner si rôle PARTNER
+  if (data.role === 'PARTNER') {
+    await prismaAdmin.partner.create({
+      data: {
+        tenantId: data.tenantId,
+        userId: user.id,
+        walletId: wallet.id,
+        businessName: `${data.firstName} ${data.lastName}`,
+        category: 'general',
+        isActive: true,
+        isVerified: false,
+      },
+    });
+  }
 
   const accessToken = generateAccessToken(user.id, user.tenantId, user.role);
   const { token: refreshToken, jti } = generateRefreshToken(user.id, user.tenantId, user.role);
