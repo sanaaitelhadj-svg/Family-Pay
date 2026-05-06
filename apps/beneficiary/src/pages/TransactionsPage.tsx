@@ -26,15 +26,27 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function TransactionsPage() {
-  const { data: txs, isLoading } = useQuery<Transaction[]>({
+  const { data: txs, isLoading, isError } = useQuery<Transaction[]>({
     queryKey: ['transactions'],
-    queryFn: () => api.get('/api/transactions').then((r) => r.data.transactions ?? r.data),
+    queryFn: async () => {
+      const r = await api.get('/api/transactions');
+      const d = r.data;
+      return Array.isArray(d) ? d : (d.transactions ?? []);
+    },
   });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20 text-gray-400">
         Chargement…
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center py-20 text-red-400">
+        Erreur lors du chargement
       </div>
     );
   }
@@ -63,7 +75,7 @@ export function TransactionsPage() {
                   <p className="text-xs text-gray-500 truncate mt-0.5">{tx.description}</p>
                 )}
                 <p className="text-xs text-gray-400 mt-1">
-                  {format(new Date(tx.createdAt), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                  {tx.createdAt ? format(new Date(tx.createdAt), 'dd MMM yyyy à HH:mm', { locale: fr }) : '—'}
                 </p>
               </div>
               <div className="ml-4 text-right flex-shrink-0">
