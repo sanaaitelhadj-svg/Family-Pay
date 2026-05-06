@@ -1,6 +1,6 @@
 # ALTIVAX FamilyPay — Plan Sprints V2
 ## 14 Sprints — ~32 semaines | Révisé le 2026-05-06
-### Avancement : 10.5 sprints réalisés | 128 tests automatisés | 17 commits pushés sur `main`
+### Avancement : 12.5 sprints réalisés | 128 tests automatisés | 19 commits pushés sur `main`
 
 > **Conventions**
 > - SP = Story Points (1 SP ≈ 1 jour-développeur)
@@ -521,6 +521,88 @@ Vercel (déploiement SPA statique)
 
 ---
 
+### Sprint 6.7 — App Partenaire Beta + Test E2E QR Complet 🆕 ✅ 🟢 RÉALISÉ
+**Objectif :** Livrer l'App Partenaire en production et valider le flux QR bout-en-bout en conditions réelles.
+**Durée :** 1 semaine | **SP Total : 8**
+**Commit :** `ed4817b` | **URL :** `https://family-pay-partner.vercel.app`
+
+| Tâche | SP | Priorité | Statut |
+|---|---|---|---|
+| Setup `apps/partner` : Vite + React + TypeScript + TailwindCSS | 1 | P1 | ✅ |
+| Client API Axios avec intercepteur JWT (`familypay-partner-auth`) | 1 | P1 | ✅ |
+| Page Login + Page Register (role=PARTNER, tenantId beta) | 1 | P1 | ✅ |
+| Dashboard Partenaire — stats CA, nb transactions, partenaire vérifié/non | 1 | P1 | ✅ |
+| Page Scanner — champ token QR + montant → `POST /api/payments` | 2 | P1 | ✅ |
+| Page Transactions — historique paginé (shape `{ transactions, total, page }`) | 1 | P1 | ✅ |
+| Déploiement Vercel + CORS Railway mis à jour (3 apps) | 1 | P1 | ✅ |
+
+**Fix backend Auth :** `auth.service.ts` auto-crée un enregistrement `Partner` DB lors de l'inscription d'un utilisateur rôle `PARTNER` (wallet + partner record en une seule transaction).
+
+**Test E2E QR complet validé en production :**
+- [x] Bénéficiaire se connecte → génère QR Code (60s countdown)
+- [x] Partenaire scanne token QR + saisit montant 50 MAD → paiement confirmé ✅
+- [x] Solde bénéficiaire débité, solde partenaire crédité
+- [x] Historique transactions visible dans les deux apps
+- [x] Replay attack : deuxième utilisation du même QR → `QR_ALREADY_USED` ✅
+
+**Bugs résolus :**
+- Transactions page blanche → shape `{ transactions: [], total, page }` (pas un tableau plat)
+- Vercel Turbo : `packageManager` manquant dans `package.json` racine → ajouté `yarn@1.22.19`
+- CORS_ORIGINS Railway étendu aux 3 apps Vercel
+
+**Définition of Done :**
+- [x] 3 apps Vercel opérationnelles (Payer + Bénéficiaire + Partenaire)
+- [x] Paiement QR E2E validé en production
+- [x] Push GitHub → redéploiement auto des 3 apps
+- [x] `git tag familypay-sprint-6.7-complete`
+
+---
+
+### Sprint 6.8 — App Unifié (Single-App Multi-Rôle) 🆕 ✅ 🟢 RÉALISÉ
+**Objectif :** Fusionner les 3 apps frontend en une seule URL avec routage basé sur le rôle.
+**Durée :** 1 semaine | **SP Total : 8**
+**Commit :** `c55042a` | **URL :** `https://family-pay-app-six.vercel.app`
+
+> **Contexte :** 3 apps séparées = 3 URLs à gérer, 3 déploiements, 3 stores d'auth distincts. Ce sprint livre un SPA unifié — l'utilisateur accède à une seule URL, sélectionne son rôle à l'inscription, et est automatiquement redirigé vers son espace après login.
+
+| Tâche | SP | Priorité | Statut |
+|---|---|---|---|
+| Setup `apps/app` : Vite + React + TypeScript + TailwindCSS + React Query | 1 | P1 | ✅ |
+| Store auth Zustand unifié (`familypay-app-auth`) avec type `UserRole` | 1 | P1 | ✅ |
+| `RoleRedirect` — redirection automatique `/` → `/payer` / `/beneficiary` / `/partner` | 1 | P1 | ✅ |
+| `ProtectedRoute` avec guard par rôle(s) | 1 | P1 | ✅ |
+| Page Register 2 étapes : Étape 1 = choix rôle (cards visuelles), Étape 2 = formulaire | 1 | P1 | ✅ |
+| Layouts Payer (indigo) + Bénéficiaire (emerald) + Partenaire (blue) avec bottom nav | 1 | P1 | ✅ |
+| Toutes pages portées : DashboardPage × 3, QRPage, ScanPage, Transactions × 3, FundRequest, CreateEnvelope | 1 | P1 | ✅ |
+| `vercel.json` avec `rewrites` SPA + déploiement Vercel (Root: `apps/app`) | 1 | P1 | ✅ |
+
+**Architecture routage :**
+```
+/login         → LoginPage (public)
+/register      → RegisterPage 2 étapes (public)
+/             → RoleRedirect (→ /payer | /beneficiary | /partner selon user.role)
+/payer/*       → ProtectedRoute(PAYER) → PayerLayout + pages
+/beneficiary/* → ProtectedRoute(BENEFICIARY) → BeneficiaryLayout + pages
+/partner/*     → ProtectedRoute(PARTNER) → PartnerLayout + pages
+*              → Navigate to /
+```
+
+**UX Register — Sélection de rôle :**
+- Étape 1 : 3 cartes visuelles (👨‍👩‍👧 Payeur, 👶 Bénéficiaire, 🏪 Partenaire)
+- Étape 2 : Formulaire (prénom, nom, email, téléphone, mot de passe)
+- Bouton "← Changer de rôle" pour revenir à l'étape 1
+
+**Définition of Done :**
+- [x] Build Vite propre (979 modules, 348 KB JS gzippé à 110 KB)
+- [x] App accessible sur `https://family-pay-app-six.vercel.app`
+- [x] Login PAYER → `/payer/dashboard`, BENEFICIARY → `/beneficiary`, PARTNER → `/partner`
+- [x] Register avec sélection de rôle fonctionnel
+- [x] SPA rewrites configurés (pas de 404 sur refresh)
+- [x] CORS_ORIGINS Railway mis à jour avec la nouvelle URL
+- [x] `git tag familypay-sprint-6.8-complete`
+
+---
+
 ### Sprint 7 — Intégration Paiement Réel (CMI) ✅ (Critique)
 **Objectif :** Les recharges wallet passent par le vrai processeur de paiement marocain.
 **Durée :** 3 semaines | **SP Total : 18**
@@ -660,8 +742,8 @@ Vercel (déploiement SPA statique)
 | Phase 0 — Fondations | S0a, S0b, S0c | ~5 semaines | 2 ✅ | 🟢 S0a ✅ 🟢 S0b ✅ ⬜ S0c |
 | Phase 1 — MVP Local | S1 → S5 | ~12 semaines | 5 ✅ | 🟢 S1 ✅ 🟢 S2 ✅ 🟢 S3 ✅ 🟢 S4 ✅ 🟢 S5 ✅ |
 | Phase 1.5 — Beta Fermé | S5.5 | 2 semaines | — | ⬜ |
-| Phase 2 — Cloud & Prod | S6 → S12 | ~15 semaines | 5 ✅ | 🟢 S6 ✅ 🟢 S6.5 ✅ 🟢 S6.6 ✅ ⬜ S7+ |
-| **TOTAL** | **14+ sprints** | **~34 semaines** | **12 ✅** | **10.5/14 réalisés — 128 tests ✅** |
+| Phase 2 — Cloud & Prod | S6 → S12 | ~15 semaines | 7 ✅ | 🟢 S6 ✅ 🟢 S6.5 ✅ 🟢 S6.6 ✅ 🟢 S6.7 ✅ 🟢 S6.8 ✅ ⬜ S7+ |
+| **TOTAL** | **14+ sprints** | **~34 semaines** | **14 ✅** | **12.5/14 réalisés — 128 tests ✅** |
 
 ### Compteur de tests automatisés
 
@@ -710,5 +792,5 @@ t('errors.insufficient_balance')       // i18n obligatoire
 
 ---
 
-*Document généré le 2026-05-02 — Mis à jour le 2026-05-06 (Sprint 6.6 ✅ — Bugs E2E corrigés + App Bénéficiaire Vercel live) — ALTIVAX FamilyPay V2*
+*Document généré le 2026-05-02 — Mis à jour le 2026-05-06 (Sprint 6.8 ✅ — App Unifié live : `family-pay-app-six.vercel.app` — 3 rôles, 1 URL) — ALTIVAX FamilyPay V2*
 *Contact : contact@altivax.com | altivax.com | +212 678 742 172*
