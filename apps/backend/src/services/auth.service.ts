@@ -31,7 +31,7 @@ export async function register(data: {
       data: {
         tenantId: data.tenantId,
         email: data.email,
-        phone: data.phone,
+        phone: data.phone || undefined,   // chaîne vide → NULL (évite la violation unique)
         passwordHash,
         role: data.role,
         firstName: data.firstName,
