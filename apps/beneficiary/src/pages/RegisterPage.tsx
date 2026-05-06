@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/auth.store';
 
-const BETA_TENANT_ID = 'beta-tenant-001';
+const BETA_TENANT_ID = '00000000-0000-0000-0000-000000000001';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ export function RegisterPage() {
         role: 'BENEFICIARY',
         tenantId: BETA_TENANT_ID,
       });
-      setAuth(data.token, data.user);
+      setAuth(data.accessToken, data.user);
       toast.success('Compte créé avec succès !');
       navigate('/');
     } catch (err: any) {

@@ -6,16 +6,18 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 
-// Clients séparés pour simuler deux tenants indépendants
+// Client superuser pour créer les données de test (bypass RLS)
+// PostgreSQL superusers always bypass RLS — seul ce client peut insérer sans contexte tenant
 const dbAdmin = new PrismaClient({
-  datasources: { db: { url: "postgresql://postgres:postgres@localhost:5432/familypay" } },
+  datasources: { db: { url: 'postgresql://postgres:postgres@localhost:5432/familypay' } },
 });
 
+// Client applicatif (familypay_app — non-superuser) : sujet aux politiques RLS
 const db = new PrismaClient({
   datasources: { db: { url: process.env.DATABASE_URL } },
 });
 
-// ── HELPERS ────────────────────────────────────────────────────────────────────
+// ── HELPERS (toujours via dbAdmin pour ne pas déclencher RLS) ──────────────────
 async function createTenant(name: string) {
   return dbAdmin.tenant.create({ data: { name, plan: 'FREE' } });
 }
@@ -39,7 +41,7 @@ async function createWallet(tenantId: string, userId: string, balance = 500) {
   });
 }
 
-// Exécuter dans le contexte d'un tenant (active les politiques RLS)
+// Exécuter dans le contexte d'un tenant via db (familypay_app) — active les politiques RLS
 async function withTenantCtx<T>(tenantId: string, fn: (tx: typeof db) => Promise<T>): Promise<T> {
   return db.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantId);
@@ -52,11 +54,13 @@ let tenantA: { id: string };
 let tenantB: { id: string };
 
 beforeAll(async () => {
+  await dbAdmin.$connect();
   await db.$connect();
 });
 
 afterAll(async () => {
   await db.$disconnect();
+  await dbAdmin.$disconnect();
 });
 
 beforeEach(async () => {
@@ -87,7 +91,7 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
     const userB = await createUser(tenantB.id, 'BENEFICIARY');
     const walletB = await createWallet(tenantB.id, userB.id);
 
-    // Créer une enveloppe pour tenant B (hors contexte RLS — admin)
+    // Créer une enveloppe pour tenant B via dbAdmin (bypass RLS)
     const envelopeB = await dbAdmin.envelope.create({
       data: {
         tenantId: tenantB.id,
@@ -111,7 +115,7 @@ describe('CRITICAL — RLS Multi-tenant Isolation', () => {
     const wA = await createWallet(tenantA.id, payerA.id, 500);
     const wB = await createWallet(tenantB.id, payerB.id, 500);
 
-    // Transaction dans tenant B
+    // Transaction dans tenant B via dbAdmin
     const txB = await dbAdmin.transaction.create({
       data: {
         tenantId: tenantB.id,
@@ -187,7 +191,7 @@ describe('CRITICAL — Transactions Immutability', () => {
       },
     });
 
-    // Toute tentative de modification DOIT échouer
+    // Toute tentative de modification DOIT échouer (trigger IMMUTABLE_TRANSACTION)
     await expect(
       dbAdmin.transaction.update({
         where: { id: tx.id },
@@ -357,7 +361,7 @@ describe('CRITICAL — Financial Constraints', () => {
     const ben   = await createUser(tenantA.id, 'BENEFICIARY');
     const payer = await createUser(tenantA.id, 'PAYER');
     const benWallet   = await createWallet(tenantA.id, ben.id, 300);
-    const payerWallet = await createWallet(tenantA.id, payer.id, 1000);
+    await createWallet(tenantA.id, payer.id, 1000);
 
     const balanceBefore = Number(benWallet.balance);
 
@@ -433,33 +437,4 @@ describe('CRITICAL — Data Integrity', () => {
       }),
     ).rejects.toThrow(/unique.*constraint|duplicate key/i);
   });
-});
-
-// TEST DIAGNOSTIC RLS
-test('diagnostic: set_tenant_context persists in Prisma transaction', async () => {
-  const result = await db.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantA.id);
-    const ctx = await tx.$queryRaw<{tid: string}[]>`SELECT current_setting('app.tenant_id', TRUE) as tid`;
-    return ctx[0].tid;
-  });
-  console.log('Tenant context dans transaction Prisma:', result);
-  expect(result).toBe(tenantA.id);
-});
-
-test('diagnostic2: RLS wallet filter in transaction', async () => {
-  const userB = await createUser(tenantB.id, 'PAYER');
-  const walletB = await createWallet(tenantB.id, userB.id, 1000);
-
-  const result = await db.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`SELECT set_tenant_context($1)`, tenantA.id);
-    const ctx = await tx.$queryRaw<{tid: string}[]>`SELECT current_setting('app.tenant_id', TRUE) as tid`;
-    const wallets = await tx.$queryRaw<{id: string}[]>`SELECT id FROM wallets`;
-    console.log('Context:', ctx[0].tid);
-    console.log('Wallets raw:', wallets.map(w => w.id));
-    console.log('WalletB id:', walletB.id);
-    const prismaWallets = await tx.wallet.findMany();
-    console.log('Wallets prisma:', prismaWallets.map(w => w.id));
-    return { ctx: ctx[0].tid, raw: wallets, prisma: prismaWallets };
-  });
-  console.log('Result:', JSON.stringify(result, null, 2));
 });

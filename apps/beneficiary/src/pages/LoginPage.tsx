@@ -19,7 +19,7 @@ export function LoginPage() {
         toast.error('Ce compte n\'est pas un compte bénéficiaire');
         return;
       }
-      setAuth(data.token, data.user);
+      setAuth(data.accessToken, data.user);
       toast.success('Connexion réussie');
       navigate('/');
     } catch (err: any) {
