@@ -1,6 +1,6 @@
 # ALTIVAX FamilyPay — Plan Sprints V2
-## 14 Sprints — ~32 semaines | Révisé le 2026-05-05
-### Avancement : 9.5 sprints réalisés | 128 tests automatisés | 15 commits pushés sur `main`
+## 14 Sprints — ~32 semaines | Révisé le 2026-05-06
+### Avancement : 10.5 sprints réalisés | 128 tests automatisés | 17 commits pushés sur `main`
 
 > **Conventions**
 > - SP = Story Points (1 SP ≈ 1 jour-développeur)
@@ -451,6 +451,76 @@ Vercel (déploiement SPA statique)
 
 ---
 
+### Sprint 6.6 — Bugs E2E + App Bénéficiaire Beta (Web) 🆕 ✅ 🟢 RÉALISÉ
+**Objectif :** Corriger les bugs identifiés lors du test E2E complet + livrer l'App Bénéficiaire en production.
+**Durée :** 1 semaine | **SP Total : 10**
+**Commits :** `bc72954` + `f020ffd` | **URL :** `https://family-pay-beneficiary.vercel.app`
+
+#### 6.6a — Corrections bugs E2E (4 bugs critiques)
+
+| Bug | Cause | Fix | Statut |
+|---|---|---|---|
+| `QR_INVALID_OR_EXPIRED` immédiat | Controller attendait `token`, body envoyait `qrToken` | Controller accepte `token ?? qrToken` | ✅ |
+| Solde enveloppe ne se débite pas | Payment service débitait `wallet.balance` au lieu de `envelope.balance` | Débit `envelope.balance` si `envelopeId` présent | ✅ |
+| Pas de rechargement enveloppe | Endpoint `POST /api/envelopes/:id/fund` manquant | Ajout `fundEnvelope()` + route | ✅ |
+| Erreur TypeScript build | `USER_NOT_FOUND`, `LINK_ALREADY_EXISTS`, `LINK_NOT_FOUND` absents du type union | Ajout dans `errors.ts` | ✅ |
+
+#### 6.6b — Routes Beneficiary Links (CRUD)
+
+| Tâche | SP | Statut |
+|---|---|---|
+| `POST /api/beneficiary-links` — lier un bénéficiaire à un payeur | 1 | ✅ |
+| `GET /api/beneficiary-links` — liste des bénéficiaires du payeur | 1 | ✅ |
+| `DELETE /api/beneficiary-links/:id` — supprimer un lien | 1 | ✅ |
+
+#### 6.6c — App Bénéficiaire Beta (Web)
+
+| Tâche | SP | Priorité | Statut |
+|---|---|---|---|
+| Client API Axios avec intercepteur JWT (`familypay-benef-auth`) | 1 | P1 | ✅ |
+| Store auth Zustand persist (`familypay-benef-auth`) | 1 | P1 | ✅ |
+| ProtectedRoute + Layout avec bottom navigation (4 onglets) | 1 | P1 | ✅ |
+| Page Login — vérification `role === BENEFICIARY` | 1 | P1 | ✅ |
+| Page Register — tenantId `00000000-0000-0000-0000-000000000001` | 1 | P1 | ✅ |
+| Dashboard — solde wallet + liste enveloppes + CTA QR | 1 | P1 | ✅ |
+| **Page QR — génération QR Code avec countdown 60s + barre de progression** | 2 | P1 | ✅ |
+| Page Transactions — historique avec date-fns (locale FR) | 1 | P1 | ✅ |
+| Page Fund Request — envoi + liste des demandes | 1 | P1 | ✅ |
+| Déploiement Vercel + `VITE_API_URL` + CORS Railway | 1 | P1 | ✅ |
+
+**Stack technique App Bénéficiaire :**
+```
+Vite 6 + React 18 + TypeScript
+TailwindCSS + React Router v6
+Axios + Zustand persist + React Query
+qrcode.react v4 (QRCodeSVG)
+date-fns (locale FR) + react-hot-toast
+Vercel (déploiement SPA statique)
+```
+
+**Tests E2E manuels validés en production :**
+- [x] Inscription bénéficiaire → compte créé + wallet initialisé
+- [x] Connexion → Dashboard affiché (solde 0.00 MAD)
+- [x] Génération QR Code → QRCodeSVG affiché avec countdown 60s
+- [x] Barre de progression verte → orange → rouge
+- [x] Bouton "Regénérer" fonctionnel
+- [x] Bottom navigation (Accueil / Mon QR / Historique / Demande)
+
+**Bugs CORS résolus :**
+- `VITE_API_URL` pointait vers mauvaise URL Railway → corrigé en `familypaybackend-production.up.railway.app`
+- `CORS_ORIGINS` Railway avait typo `familypay-beneficiary` → corrigé en `family-pay-beneficiary`
+- `data.token` → `data.accessToken` (alignement avec le backend)
+
+**Définition of Done :**
+- [x] 4 bugs E2E corrigés et déployés sur Railway
+- [x] App Bénéficiaire accessible sur `https://family-pay-beneficiary.vercel.app`
+- [x] Inscription + connexion fonctionnelles en production
+- [x] QR Code généré avec countdown 60s ✅
+- [x] Push GitHub → redéploiement Vercel automatique
+- [x] `git tag familypay-sprint-6.6-complete`
+
+---
+
 ### Sprint 7 — Intégration Paiement Réel (CMI) ✅ (Critique)
 **Objectif :** Les recharges wallet passent par le vrai processeur de paiement marocain.
 **Durée :** 3 semaines | **SP Total : 18**
@@ -590,8 +660,8 @@ Vercel (déploiement SPA statique)
 | Phase 0 — Fondations | S0a, S0b, S0c | ~5 semaines | 2 ✅ | 🟢 S0a ✅ 🟢 S0b ✅ ⬜ S0c |
 | Phase 1 — MVP Local | S1 → S5 | ~12 semaines | 5 ✅ | 🟢 S1 ✅ 🟢 S2 ✅ 🟢 S3 ✅ 🟢 S4 ✅ 🟢 S5 ✅ |
 | Phase 1.5 — Beta Fermé | S5.5 | 2 semaines | — | ⬜ |
-| Phase 2 — Cloud & Prod | S6 → S12 | ~15 semaines | 5 ✅ | 🟢 S6 ✅ 🟢 S6.5 ✅ ⬜ S7+ |
-| **TOTAL** | **14+ sprints** | **~34 semaines** | **11 ✅** | **9.5/14 réalisés — 128 tests ✅** |
+| Phase 2 — Cloud & Prod | S6 → S12 | ~15 semaines | 5 ✅ | 🟢 S6 ✅ 🟢 S6.5 ✅ 🟢 S6.6 ✅ ⬜ S7+ |
+| **TOTAL** | **14+ sprints** | **~34 semaines** | **12 ✅** | **10.5/14 réalisés — 128 tests ✅** |
 
 ### Compteur de tests automatisés
 
@@ -640,5 +710,5 @@ t('errors.insufficient_balance')       // i18n obligatoire
 
 ---
 
-*Document généré le 2026-05-02 — Mis à jour le 2026-05-04 (Sprint 6.5 ✅ — Backend Railway + Frontend Payer Vercel) — ALTIVAX FamilyPay V2*
+*Document généré le 2026-05-02 — Mis à jour le 2026-05-06 (Sprint 6.6 ✅ — Bugs E2E corrigés + App Bénéficiaire Vercel live) — ALTIVAX FamilyPay V2*
 *Contact : contact@altivax.com | altivax.com | +212 678 742 172*
