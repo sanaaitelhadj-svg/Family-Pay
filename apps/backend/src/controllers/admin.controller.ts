@@ -146,8 +146,8 @@ export async function adminTransactions(req: AuthRequest, res: Response, next: N
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          senderWallet:   { include: { user: { select: { firstName: true, lastName: true, email: true, role: true } } } },
-          receiverWallet: { include: { user: { select: { firstName: true, lastName: true, email: true, role: true } } } },
+          fromWallet: { include: { user: { select: { firstName: true, lastName: true, email: true, role: true } } } },
+          toWallet:   { include: { user: { select: { firstName: true, lastName: true, email: true, role: true } } } },
         },
       }),
       prismaAdmin.transaction.count(),
