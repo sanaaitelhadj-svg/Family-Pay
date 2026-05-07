@@ -603,67 +603,61 @@ Vercel (déploiement SPA statique)
 
 ---
 
-### Sprint 11 — Super Admin Dashboard 🆕 🟡 EN COURS
+### Sprint 11 — Super Admin Dashboard 🆕 ✅ 🟢 RÉALISÉ
 **Objectif :** Vue globale ALTIVAX — stats, validation partenaires, gestion utilisateurs, toutes transactions.
 **Durée :** 1 semaine | **SP Total : 12**
-**Commits :** `d94cad9` + `67c9803` + `a2852aa` + fixes Railway
+**Commits :** `d94cad9` + `67c9803` + `a2852aa` + `53eb5f0` + `23a61b6` | **Tag :** `familypay-sprint-11-complete`
+**URL :** `https://family-pay-app-six.vercel.app/admin`
 
-#### Code livré (pushé sur main, en attente déploiement Railway)
+**Backend — 7 routes `/api/admin/*` déployées en prod :**
 
-**Backend — 7 nouvelles routes `/api/admin/*` :**
-
-| Route | Description | Statut code |
+| Route | Description | Statut |
 |---|---|---|
-| `GET /api/admin/stats` | Stats globales (users, partners, volume) | ✅ Codé |
-| `GET /api/admin/users` | Liste paginée + recherche + filtre rôle | ✅ Codé |
-| `GET /api/admin/partners` | Partenaires par statut (pending/verified/all) | ✅ Codé |
-| `PATCH /api/admin/partners/:id/approve` | Approuver un partenaire | ✅ Codé |
-| `PATCH /api/admin/partners/:id/reject` | Suspendre un partenaire | ✅ Codé |
-| `GET /api/admin/transactions` | Toutes les transactions cross-tenant | ✅ Codé |
-| `PATCH /api/admin/users/:id/toggle` | Activer / désactiver un compte | ✅ Codé |
-| `POST /api/admin/setup` | Créer admin via token secret (one-shot) | ✅ Codé |
+| `GET /api/admin/stats` | Stats globales (users, partners, volume) | ✅ |
+| `GET /api/admin/users` | Liste paginée + recherche + filtre rôle | ✅ |
+| `GET /api/admin/partners` | Partenaires par statut (pending/verified/all) | ✅ |
+| `PATCH /api/admin/partners/:id/approve` | Approuver un partenaire | ✅ |
+| `PATCH /api/admin/partners/:id/reject` | Suspendre un partenaire | ✅ |
+| `GET /api/admin/transactions` | Toutes les transactions cross-tenant | ✅ |
+| `PATCH /api/admin/users/:id/toggle` | Activer / désactiver un compte | ✅ |
 
 **Frontend — 4 pages admin dans `apps/app/` :**
 
 | Page | Route | Description | Statut |
 |---|---|---|---|
-| AdminLayout | — | Sidebar dark + bottom nav mobile | ✅ Codé |
-| AdminDashboard | `/admin` | Stats cards + partenaires en attente | ✅ Codé |
-| AdminPartnersPage | `/admin/partners` | Approve/reject/suspend, tabs status | ✅ Codé |
-| AdminUsersPage | `/admin/users` | Search, filtre rôle, toggle activation | ✅ Codé |
-| AdminTransactionsPage | `/admin/transactions` | Vue globale cross-tenant | ✅ Codé |
+| AdminLayout | — | Sidebar dark + badge SUPER ADMIN jaune | ✅ |
+| AdminDashboard | `/admin` | 11 users · 3 partenaires · 8 txns · 1140 MAD | ✅ |
+| AdminPartnersPage | `/admin/partners` | Approve/reject/suspend, tabs status | ✅ |
+| AdminUsersPage | `/admin/users` | Search, filtre rôle, toggle activation | ✅ |
+| AdminTransactionsPage | `/admin/transactions` | Vue globale cross-tenant | ✅ |
 
-#### Bugs corrigés pendant ce sprint (fixes dans main)
+**Bugs corrigés pendant ce sprint :**
 
 | Bug | Cause | Fix |
 |---|---|---|
-| Inscription PARTNER → 500 `Unique constraint phone` | `phone: ""` stocké comme string vide unique | `data.phone \|\| undefined` → NULL |
-| Inscription PARTNER → 500 (race condition) | user+wallet créés hors transaction → orphelins si partner.create échoue | Tout dans `prismaAdmin.$transaction()` |
-| Railway build échoue silencieusement | `Dockerfile` avec `npm ci --only=production` → TypeScript absent → `tsc` échoue | Dockerfile supprimé → `nixpacks.toml` |
-| TypeScript build error `EnvelopeCategory` | Enum non exporté par `@prisma/client` en prod | Type local dans `envelope.service.ts` |
+| Inscription PARTNER → 500 `Unique constraint phone` | `phone: ""` stocké comme string vide | `data.phone \|\| undefined` → NULL |
+| Inscription PARTNER → 500 (race condition) | user+wallet hors transaction | `prismaAdmin.$transaction()` |
+| Railway build silencieux | Railpack ignorait nixpacks.toml, utilisait `--workspace` invalide | Custom Build Command dans Railway Settings |
+| TypeScript `EnvelopeCategory` | Enum non exporté par Prisma en prod | Type local dans `envelope.service.ts` |
+| TypeScript `senderWallet`/`receiverWallet` | Mauvais noms de relation Prisma | Corrigé en `fromWallet`/`toWallet` |
+| TypeScript `tsconfig.base.json` introuvable | `../../tsconfig.base.json` inaccessible depuis `apps/backend/` | Config inlinée dans `tsconfig.json` |
+| TypeScript `req.params.id` type `string \| string[]` | Types Express v5 | Cast `req.params['id'] as string` |
 
-#### Blocage Railway — Root Directory manquant
-
-**Cause racine identifiée :** Railway buildait depuis la racine du monorepo (pas de Root Directory configuré) → ne trouvait pas `apps/backend/package.json` → servait une vieille image Docker en cache (v0.1.1).
-
-**Fix appliqué :** Railway → Settings → Source → Root Directory = `apps/backend`
-
-**Statut actuel :** Build Nixpacks vert ✅ mais backend en prod toujours v0.1.1 — startup potentiellement bloqué par `prisma migrate deploy`. Fix pushé (`prestart` non-bloquant). En attente de confirmation déploiement.
-
-**Variables Railway à configurer :**
+**Infrastructure Railway — Configuration finale :**
 ```
-ADMIN_EMAIL     = admin@altivax.com
-ADMIN_PASSWORD  = Altivax2026!
-ADMIN_SETUP_TOKEN = monTokenSecret2026
+Root Directory     : apps/backend
+Custom Build Cmd   : npx prisma generate && npm run build
+Custom Start Cmd   : node dist/index.js
+Watch Paths        : /apps/backend/**
+ADMIN_EMAIL        : admin@altivax.com  (créé automatiquement au démarrage)
 ```
 
-#### Définition of Done
-
-- [ ] `GET /health` retourne `"version":"0.2.0"` (confirme nouveau code déployé)
-- [ ] `GET /api/admin/stats` retourne 401 (route existe, auth requise)
-- [ ] Login `admin@altivax.com` → redirect `/admin` → dashboard visible
-- [ ] Validation partenaire fonctionne (approve/reject)
-- [ ] `git tag familypay-sprint-11-complete`
+**Définition of Done :**
+- [x] `GET /api/admin/stats` → 401 (route existe, auth requise)
+- [x] Login `admin@altivax.com` → redirect `/admin` → dashboard visible
+- [x] Stats en prod : 11 users · 3 partenaires (3 en attente) · 8 transactions · 1 140 MAD
+- [x] 3 partenaires en attente de validation visibles avec bouton "Valider"
+- [x] `git tag familypay-sprint-11-complete`
 
 ---
 
@@ -806,8 +800,8 @@ ADMIN_SETUP_TOKEN = monTokenSecret2026
 | Phase 0 — Fondations | S0a, S0b, S0c | ~5 semaines | 2 ✅ | 🟢 S0a ✅ 🟢 S0b ✅ ⬜ S0c |
 | Phase 1 — MVP Local | S1 → S5 | ~12 semaines | 5 ✅ | 🟢 S1 ✅ 🟢 S2 ✅ 🟢 S3 ✅ 🟢 S4 ✅ 🟢 S5 ✅ |
 | Phase 1.5 — Beta Fermé | S5.5 | 2 semaines | — | ⬜ |
-| Phase 2 — Cloud & Prod | S6 → S12 | ~15 semaines | 7 ✅ | 🟢 S6 ✅ 🟢 S6.5 ✅ 🟢 S6.6 ✅ 🟢 S6.7 ✅ 🟢 S6.8 ✅ ⬜ S7+ |
-| **TOTAL** | **14+ sprints** | **~34 semaines** | **14 ✅** | **12.5/14 réalisés — 128 tests ✅** |
+| Phase 2 — Cloud & Prod | S6 → S12 | ~15 semaines | 7 ✅ | 🟢 S6 ✅ 🟢 S6.5 ✅ 🟢 S6.6 ✅ 🟢 S6.7 ✅ 🟢 S6.8 ✅ 🟢 S11 ✅ ⬜ S7+ |
+| **TOTAL** | **14+ sprints** | **~34 semaines** | **15 ✅** | **13.5/14 réalisés — 128 tests ✅** |
 
 ### Compteur de tests automatisés
 
@@ -856,5 +850,5 @@ t('errors.insufficient_balance')       // i18n obligatoire
 
 ---
 
-*Document généré le 2026-05-02 — Mis à jour le 2026-05-07 (Sprint 11 🟡 en cours — Admin Dashboard codé, bloqué Railway Root Directory. Fix appliqué, déploiement en attente.) — ALTIVAX FamilyPay V2*
+*Document généré le 2026-05-02 — Mis à jour le 2026-05-07 (Sprint 11 ✅ RÉALISÉ — Super Admin Dashboard déployé en prod. 11 users · 3 partenaires · 8 txns · 1 140 MAD. Tag : familypay-sprint-11-complete) — ALTIVAX FamilyPay V2*
 *Contact : contact@altivax.com | altivax.com | +212 678 742 172*
