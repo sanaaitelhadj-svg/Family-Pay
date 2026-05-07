@@ -162,6 +162,28 @@ async function main() {
   });
   console.log(`✅ Partenaire : McDonald's Casablanca`);
 
+  // ── SUPER ADMIN ────────────────────────────────────────────────────────────
+  const adminUser = await db.user.upsert({
+    where: { email: 'admin@altivax.com' },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: 'admin@altivax.com',
+      phone: '+212600000099',
+      passwordHash: hash,
+      role: 'ADMIN',
+      firstName: 'Super',
+      lastName: 'Admin',
+      kycStatus: 'VERIFIED',
+    },
+  });
+  await db.wallet.upsert({
+    where: { userId: adminUser.id },
+    update: {},
+    create: { tenantId: tenant.id, userId: adminUser.id, balance: 0, currency: 'MAD' },
+  });
+  console.log(`✅ Admin : ${adminUser.email}`);
+
   // ── TRANSACTION DE DÉMO ────────────────────────────────────────────────────
   await db.transaction.create({
     data: {

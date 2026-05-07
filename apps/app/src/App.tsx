@@ -11,6 +11,7 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { PayerLayout } from './components/layouts/PayerLayout';
 import { BeneficiaryLayout } from './components/layouts/BeneficiaryLayout';
 import { PartnerLayout } from './components/layouts/PartnerLayout';
+import { AdminLayout } from './components/layouts/AdminLayout';
 
 // Guards
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -29,6 +30,12 @@ import { FundRequestPage } from './pages/beneficiary/FundRequestPage';
 import { PartnerDashboard } from './pages/partner/DashboardPage';
 import { PartnerScanPage } from './pages/partner/ScanPage';
 import { PartnerTransactions } from './pages/partner/TransactionsPage';
+
+// Admin pages
+import { AdminDashboard } from './pages/admin/DashboardPage';
+import { AdminPartnersPage } from './pages/admin/PartnersPage';
+import { AdminUsersPage } from './pages/admin/UsersPage';
+import { AdminTransactionsPage } from './pages/admin/TransactionsPage';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
@@ -66,6 +73,12 @@ export default function App() {
         <Route path="/partner" element={<ProtectedRoute roles={['PARTNER']}><PartnerLayout><PartnerDashboard /></PartnerLayout></ProtectedRoute>} />
         <Route path="/partner/scan" element={<ProtectedRoute roles={['PARTNER']}><PartnerLayout><PartnerScanPage /></PartnerLayout></ProtectedRoute>} />
         <Route path="/partner/transactions" element={<ProtectedRoute roles={['PARTNER']}><PartnerLayout><PartnerTransactions /></PartnerLayout></ProtectedRoute>} />
+
+        {/* ADMIN */}
+        <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
+        <Route path="/admin/partners" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminPartnersPage /></AdminLayout></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminUsersPage /></AdminLayout></ProtectedRoute>} />
+        <Route path="/admin/transactions" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminTransactionsPage /></AdminLayout></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
