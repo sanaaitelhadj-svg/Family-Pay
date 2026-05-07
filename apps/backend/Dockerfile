@@ -1,32 +1,20 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 WORKDIR /app
+
 RUN apk add --no-cache curl
 
-# ── DÉVELOPPEMENT ─────────────────────────────────────────────────────────────
-FROM base AS development
+# Copie package.json en premier pour profiter du cache Docker
 COPY package*.json ./
 RUN npm ci
-COPY . .
-RUN npx prisma generate
-EXPOSE 4000
-CMD ["npm", "run", "dev"]
 
-# ── BUILD ─────────────────────────────────────────────────────────────────────
-FROM base AS builder
-COPY package*.json ./
-RUN npm ci
-# installe TOUTES les dépendances (y compris TypeScript, ts-node, etc.)
+# Copie le reste des sources
 COPY . .
+
+# Génère le client Prisma et compile TypeScript
 RUN npx prisma generate && npm run build
 
-# ── PRODUCTION ────────────────────────────────────────────────────────────────
-FROM base AS production
 ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
-# prod uniquement pour l'image finale légère
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/prisma ./prisma
 EXPOSE 4000
+
+# Migrations au démarrage puis lancement du serveur
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
