@@ -1,6 +1,6 @@
 # ALTIVAX FamilyPay — Plan Sprints V2
 ## 14 Sprints — ~32 semaines | Révisé le 2026-05-06
-### Avancement : 12.5 sprints réalisés | 128 tests automatisés | 19 commits pushés sur `main`
+### Avancement : 12.5 sprints réalisés + Sprint 11 en cours | 128 tests automatisés | 30 commits pushés sur `main`
 
 > **Conventions**
 > - SP = Story Points (1 SP ≈ 1 jour-développeur)
@@ -603,6 +603,70 @@ Vercel (déploiement SPA statique)
 
 ---
 
+### Sprint 11 — Super Admin Dashboard 🆕 🟡 EN COURS
+**Objectif :** Vue globale ALTIVAX — stats, validation partenaires, gestion utilisateurs, toutes transactions.
+**Durée :** 1 semaine | **SP Total : 12**
+**Commits :** `d94cad9` + `67c9803` + `a2852aa` + fixes Railway
+
+#### Code livré (pushé sur main, en attente déploiement Railway)
+
+**Backend — 7 nouvelles routes `/api/admin/*` :**
+
+| Route | Description | Statut code |
+|---|---|---|
+| `GET /api/admin/stats` | Stats globales (users, partners, volume) | ✅ Codé |
+| `GET /api/admin/users` | Liste paginée + recherche + filtre rôle | ✅ Codé |
+| `GET /api/admin/partners` | Partenaires par statut (pending/verified/all) | ✅ Codé |
+| `PATCH /api/admin/partners/:id/approve` | Approuver un partenaire | ✅ Codé |
+| `PATCH /api/admin/partners/:id/reject` | Suspendre un partenaire | ✅ Codé |
+| `GET /api/admin/transactions` | Toutes les transactions cross-tenant | ✅ Codé |
+| `PATCH /api/admin/users/:id/toggle` | Activer / désactiver un compte | ✅ Codé |
+| `POST /api/admin/setup` | Créer admin via token secret (one-shot) | ✅ Codé |
+
+**Frontend — 4 pages admin dans `apps/app/` :**
+
+| Page | Route | Description | Statut |
+|---|---|---|---|
+| AdminLayout | — | Sidebar dark + bottom nav mobile | ✅ Codé |
+| AdminDashboard | `/admin` | Stats cards + partenaires en attente | ✅ Codé |
+| AdminPartnersPage | `/admin/partners` | Approve/reject/suspend, tabs status | ✅ Codé |
+| AdminUsersPage | `/admin/users` | Search, filtre rôle, toggle activation | ✅ Codé |
+| AdminTransactionsPage | `/admin/transactions` | Vue globale cross-tenant | ✅ Codé |
+
+#### Bugs corrigés pendant ce sprint (fixes dans main)
+
+| Bug | Cause | Fix |
+|---|---|---|
+| Inscription PARTNER → 500 `Unique constraint phone` | `phone: ""` stocké comme string vide unique | `data.phone \|\| undefined` → NULL |
+| Inscription PARTNER → 500 (race condition) | user+wallet créés hors transaction → orphelins si partner.create échoue | Tout dans `prismaAdmin.$transaction()` |
+| Railway build échoue silencieusement | `Dockerfile` avec `npm ci --only=production` → TypeScript absent → `tsc` échoue | Dockerfile supprimé → `nixpacks.toml` |
+| TypeScript build error `EnvelopeCategory` | Enum non exporté par `@prisma/client` en prod | Type local dans `envelope.service.ts` |
+
+#### Blocage Railway — Root Directory manquant
+
+**Cause racine identifiée :** Railway buildait depuis la racine du monorepo (pas de Root Directory configuré) → ne trouvait pas `apps/backend/package.json` → servait une vieille image Docker en cache (v0.1.1).
+
+**Fix appliqué :** Railway → Settings → Source → Root Directory = `apps/backend`
+
+**Statut actuel :** Build Nixpacks vert ✅ mais backend en prod toujours v0.1.1 — startup potentiellement bloqué par `prisma migrate deploy`. Fix pushé (`prestart` non-bloquant). En attente de confirmation déploiement.
+
+**Variables Railway à configurer :**
+```
+ADMIN_EMAIL     = admin@altivax.com
+ADMIN_PASSWORD  = Altivax2026!
+ADMIN_SETUP_TOKEN = monTokenSecret2026
+```
+
+#### Définition of Done
+
+- [ ] `GET /health` retourne `"version":"0.2.0"` (confirme nouveau code déployé)
+- [ ] `GET /api/admin/stats` retourne 401 (route existe, auth requise)
+- [ ] Login `admin@altivax.com` → redirect `/admin` → dashboard visible
+- [ ] Validation partenaire fonctionne (approve/reject)
+- [ ] `git tag familypay-sprint-11-complete`
+
+---
+
 ### Sprint 7 — Intégration Paiement Réel (CMI) ✅ (Critique)
 **Objectif :** Les recharges wallet passent par le vrai processeur de paiement marocain.
 **Durée :** 3 semaines | **SP Total : 18**
@@ -792,5 +856,5 @@ t('errors.insufficient_balance')       // i18n obligatoire
 
 ---
 
-*Document généré le 2026-05-02 — Mis à jour le 2026-05-06 (Sprint 6.8 ✅ — App Unifié live : `family-pay-app-six.vercel.app` — 3 rôles, 1 URL) — ALTIVAX FamilyPay V2*
+*Document généré le 2026-05-02 — Mis à jour le 2026-05-07 (Sprint 11 🟡 en cours — Admin Dashboard codé, bloqué Railway Root Directory. Fix appliqué, déploiement en attente.) — ALTIVAX FamilyPay V2*
 *Contact : contact@altivax.com | altivax.com | +212 678 742 172*
