@@ -1,4 +1,4 @@
-import { EnvelopeCategory } from '@prisma/client';
+type EnvelopeCategory = 'FOOD' | 'HEALTH' | 'CLOTHES' | 'EDUCATION' | 'LEISURE' | 'GENERAL';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma, withTenant } from '../lib/prisma.js';
 import { FamilyPayError } from '../lib/errors.js';
