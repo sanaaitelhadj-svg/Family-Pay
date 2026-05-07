@@ -107,7 +107,7 @@ export async function adminPartners(req: AuthRequest, res: Response, next: NextF
 // ── PATCH /api/admin/partners/:id/approve ───────────────────────────────────
 export async function approvePartner(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { id } = req.params;
+    const id = req.params['id'] as string;
     const partner = await prismaAdmin.partner.findUnique({ where: { id } });
     if (!partner) throw new FamilyPayError('NOT_FOUND', 404, 'Partner not found');
 
@@ -122,7 +122,7 @@ export async function approvePartner(req: AuthRequest, res: Response, next: Next
 // ── PATCH /api/admin/partners/:id/reject ────────────────────────────────────
 export async function rejectPartner(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { id } = req.params;
+    const id = req.params['id'] as string;
     const partner = await prismaAdmin.partner.findUnique({ where: { id } });
     if (!partner) throw new FamilyPayError('NOT_FOUND', 404, 'Partner not found');
 
@@ -160,7 +160,7 @@ export async function adminTransactions(req: AuthRequest, res: Response, next: N
 // ── PATCH /api/admin/users/:id/toggle ───────────────────────────────────────
 export async function toggleUser(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { id } = req.params;
+    const id = req.params['id'] as string;
     const user = await prismaAdmin.user.findUnique({ where: { id } });
     if (!user) throw new FamilyPayError('NOT_FOUND', 404, 'User not found');
 
