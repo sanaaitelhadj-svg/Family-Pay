@@ -6,6 +6,7 @@ const NAV = [
   { to: '/admin/partners',     label: 'Partenaires',    icon: '🏪' },
   { to: '/admin/users',        label: 'Utilisateurs',   icon: '👥' },
   { to: '/admin/transactions', label: 'Transactions',   icon: '💸' },
+  { to: '/admin/settings',     label: 'Paramètres',     icon: '⚙️' },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

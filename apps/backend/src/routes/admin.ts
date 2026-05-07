@@ -9,7 +9,15 @@ import {
   rejectPartner,
   adminTransactions,
   toggleUser,
+  generateContract,
+  partnerNotifications,
 } from '../controllers/admin.controller.js';
+import {
+  listConditions,
+  createCondition,
+  updateCondition,
+  deleteCondition,
+} from '../controllers/admin-settings.controller.js';
 import { prismaAdmin } from '../lib/prisma.js';
 import bcrypt from 'bcryptjs';
 
@@ -64,12 +72,20 @@ router.post('/setup', asyncHandler(async (req: Request, res: Response) => {
 // ── Routes protégées (JWT + rôle ADMIN) ──────────────────────────────────────
 router.use(authenticate, requireRole('ADMIN'));
 
-router.get('/stats',                    asyncHandler(adminStats));
-router.get('/users',                    asyncHandler(adminUsers));
-router.get('/partners',                 asyncHandler(adminPartners));
-router.patch('/partners/:id/approve',   asyncHandler(approvePartner));
-router.patch('/partners/:id/reject',    asyncHandler(rejectPartner));
-router.get('/transactions',             asyncHandler(adminTransactions));
-router.patch('/users/:id/toggle',       asyncHandler(toggleUser));
+router.get('/stats',                              asyncHandler(adminStats));
+router.get('/users',                              asyncHandler(adminUsers));
+router.patch('/users/:id/toggle',                 asyncHandler(toggleUser));
+router.get('/partners',                           asyncHandler(adminPartners));
+router.patch('/partners/:id/approve',             asyncHandler(approvePartner));
+router.patch('/partners/:id/reject',              asyncHandler(rejectPartner));
+router.get('/partners/:id/contract',              asyncHandler(generateContract));
+router.get('/partners/:id/notifications',         asyncHandler(partnerNotifications));
+router.get('/transactions',                       asyncHandler(adminTransactions));
+
+// ── Settings: Partnership Conditions ─────────────────────────────────────────
+router.get('/settings/conditions',                asyncHandler(listConditions));
+router.post('/settings/conditions',               asyncHandler(createCondition));
+router.patch('/settings/conditions/:id',          asyncHandler(updateCondition));
+router.delete('/settings/conditions/:id',         asyncHandler(deleteCondition));
 
 export default router;

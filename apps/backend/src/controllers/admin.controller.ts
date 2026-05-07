@@ -111,10 +111,24 @@ export async function approvePartner(req: AuthRequest, res: Response, next: Next
     const partner = await prismaAdmin.partner.findUnique({ where: { id } });
     if (!partner) throw new FamilyPayError('NOT_FOUND', 404, 'Partner not found');
 
-    const updated = await prismaAdmin.partner.update({
-      where: { id },
-      data: { isVerified: true, isActive: true },
-    });
+    const [updated] = await prismaAdmin.$transaction([
+      prismaAdmin.partner.update({
+        where: { id },
+        data: { isVerified: true, isActive: true, approvedAt: new Date(), rejectionReason: null },
+      }),
+      prismaAdmin.partnerNotification.create({
+        data: {
+          partnerId: id,
+          type: 'APPROVED',
+          title: 'Félicitations — Partenariat approuvé ✅',
+          message:
+            `Votre dossier partenaire "${partner.businessName}" a été validé par ALTIVAX. ` +
+            `Vous pouvez désormais accepter les paiements FamilyPay. ` +
+            `Votre contrat de partenariat est disponible dans votre espace.`,
+        },
+      }),
+    ]);
+
     res.json({ message: 'Partner approved', partner: updated });
   } catch (err) { next(err); }
 }
@@ -123,14 +137,93 @@ export async function approvePartner(req: AuthRequest, res: Response, next: Next
 export async function rejectPartner(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const id = req.params['id'] as string;
+    const { reason } = req.body as { reason?: string };
     const partner = await prismaAdmin.partner.findUnique({ where: { id } });
     if (!partner) throw new FamilyPayError('NOT_FOUND', 404, 'Partner not found');
 
-    const updated = await prismaAdmin.partner.update({
-      where: { id },
-      data: { isVerified: false, isActive: false },
-    });
+    const rejectionReason = reason?.trim() || 'Dossier incomplet ou non conforme aux critères ALTIVAX.';
+
+    const [updated] = await prismaAdmin.$transaction([
+      prismaAdmin.partner.update({
+        where: { id },
+        data: { isVerified: false, isActive: false, rejectionReason },
+      }),
+      prismaAdmin.partnerNotification.create({
+        data: {
+          partnerId: id,
+          type: 'REJECTED',
+          title: 'Dossier partenaire non validé',
+          message: `Votre demande de partenariat pour "${partner.businessName}" n'a pas été retenue. Motif : ${rejectionReason}`,
+        },
+      }),
+    ]);
+
     res.json({ message: 'Partner rejected', partner: updated });
+  } catch (err) { next(err); }
+}
+
+// ── GET /api/admin/partners/:id/contract ────────────────────────────────────
+export async function generateContract(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const id = req.params['id'] as string;
+    const partner = await prismaAdmin.partner.findUnique({
+      where: { id },
+      include: { user: { select: { email: true, firstName: true, lastName: true } } },
+    });
+    if (!partner) throw new FamilyPayError('NOT_FOUND', 404, 'Partner not found');
+    if (!partner.isVerified) throw new FamilyPayError('VALIDATION_ERROR', 400, 'Partenaire non approuvé');
+
+    const conditions = await prismaAdmin.partnershipCondition.findMany({
+      where: { isActive: true },
+      orderBy: { order: 'asc' },
+    });
+
+    // Mark contract as generated
+    await prismaAdmin.partner.update({
+      where: { id },
+      data: { contractGeneratedAt: new Date() },
+    });
+
+    // Create notification if first time
+    if (!partner.contractGeneratedAt) {
+      await prismaAdmin.partnerNotification.create({
+        data: {
+          partnerId: id,
+          type: 'CONTRACT_READY',
+          title: 'Votre contrat FamilyPay est disponible 📄',
+          message: `Le contrat de partenariat pour "${partner.businessName}" a été généré. Connectez-vous à votre espace pour le consulter.`,
+        },
+      });
+    }
+
+    const approvedDate = partner.approvedAt
+      ? new Date(partner.approvedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    res.json({
+      contract: {
+        partnerName: `${partner.user?.firstName ?? ''} ${partner.user?.lastName ?? ''}`.trim(),
+        businessName: partner.businessName,
+        email: partner.user?.email,
+        category: partner.category,
+        city: partner.city,
+        approvedDate,
+        generatedAt: new Date().toISOString(),
+        conditions,
+      },
+    });
+  } catch (err) { next(err); }
+}
+
+// ── GET /api/admin/partners/:id/notifications ────────────────────────────────
+export async function partnerNotifications(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const id = req.params['id'] as string;
+    const notifications = await prismaAdmin.partnerNotification.findMany({
+      where: { partnerId: id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ notifications });
   } catch (err) { next(err); }
 }
 

@@ -232,15 +232,52 @@ model Partner {
   isPremium    Boolean       @default(false)
   isVerified   Boolean       @default(false)
   isActive     Boolean       @default(true)
+  rejectionReason      String?  @db.Text
+  contractGeneratedAt  DateTime?
+  approvedAt           DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  wallet       Wallet?       @relation(fields: [walletId], references: [id])
-  walletId     String?
-  transactions Transaction[]
+  wallet        Wallet?              @relation(fields: [walletId], references: [id])
+  walletId      String?
+  transactions  Transaction[]
+  notifications PartnerNotification[]
 
   @@index([tenantId])
   @@map("partners")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONDITIONS DE PARTENARIAT — Clauses contractuelles configurables par ALTIVAX
+// ═══════════════════════════════════════════════════════════════════════════════
+model PartnershipCondition {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @db.Text
+  isRequired  Boolean  @default(true)
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("partnership_conditions")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS PARTENAIRES — Approbation / Refus / Contrat
+// ═══════════════════════════════════════════════════════════════════════════════
+model PartnerNotification {
+  id        String   @id @default(uuid())
+  partnerId String
+  partner   Partner  @relation(fields: [partnerId], references: [id])
+  type      String   // APPROVED | REJECTED | SUSPENDED | CONTRACT_READY
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([partnerId])
+  @@map("partner_notifications")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

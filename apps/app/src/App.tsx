@@ -36,6 +36,7 @@ import { AdminDashboard } from './pages/admin/DashboardPage';
 import { AdminPartnersPage } from './pages/admin/PartnersPage';
 import { AdminUsersPage } from './pages/admin/UsersPage';
 import { AdminTransactionsPage } from './pages/admin/TransactionsPage';
+import { AdminSettingsPage } from './pages/admin/SettingsPage';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/admin/partners" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminPartnersPage /></AdminLayout></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminUsersPage /></AdminLayout></ProtectedRoute>} />
         <Route path="/admin/transactions" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminTransactionsPage /></AdminLayout></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout><AdminSettingsPage /></AdminLayout></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
