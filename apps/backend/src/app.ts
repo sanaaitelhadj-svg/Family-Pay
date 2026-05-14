@@ -10,6 +10,8 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import { allocationRouter } from './modules/allocation/allocation.routes.js';
 import { merchantRouter } from './modules/merchant/merchant.routes.js';
 import { authorizationRouter } from './modules/authorization/authorization.routes.js';
+import { qrRouter } from './modules/qr/qr.routes.js';
+import { transactionRouter } from './modules/transaction/transaction.routes.js';
 
 export function createApp() {
   const app = express();
@@ -36,6 +38,8 @@ export function createApp() {
   app.use('/allocations', allocationRouter);
   app.use('/merchants', merchantRouter);
   app.use('/authorizations', authorizationRouter);
+  app.use('/qr', qrRouter);
+  app.use('/transactions', transactionRouter);
 
   app.use(errorHandler);
 
