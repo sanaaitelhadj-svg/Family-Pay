@@ -11,19 +11,26 @@ interface User {
 }
 
 interface AuthState {
-  token: string | null;
   user: User | null;
-  setAuth: (token: string, user: User) => void;
+  accessToken: string | null;
+  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
       user: null,
-      setAuth: (token, user) => set({ token, user }),
-      logout: () => set({ token: null, user: null }),
+      accessToken: null,
+      setAuth: (user, accessToken, refreshToken) => {
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        set({ user, accessToken });
+      },
+      logout: () => {
+        localStorage.clear();
+        set({ user: null, accessToken: null });
+      },
     }),
     { name: 'familypay-benef-auth' },
   ),

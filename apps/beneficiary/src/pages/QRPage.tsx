@@ -1,157 +1,136 @@
 import { useState, useEffect, useCallback } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import { useQuery } from '@tanstack/react-query';
+import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 
-const QR_TTL = 60; // seconds
+const CATEGORY_ICONS: Record<string, string> = {
+  FOOD: '🍕', HEALTH: '💊', CLOTHES: '👗',
+  EDUCATION: '📚', LEISURE: '🎮', GENERAL: '💰',
+};
 
-interface Envelope {
-  id: string;
-  name: string;
-  balance: string;
-}
+const QR_TTL = 60;
 
 export function QRPage() {
-  const [selectedEnvelope, setSelectedEnvelope] = useState<string>('');
+  const [selectedEnvelope, setSelectedEnvelope] = useState<any>(null);
   const [qrToken, setQrToken] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(QR_TTL);
-  const [generating, setGenerating] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const { data: envelopes } = useQuery<Envelope[]>({
-    queryKey: ['envelopes'],
-    queryFn: () => api.get('/api/envelopes').then((r) => r.data),
+  const { data: wallet } = useQuery({
+    queryKey: ['wallet'],
+    queryFn: () => api.get('/api/wallets/me').then(r => r.data),
   });
 
   // Countdown timer
   useEffect(() => {
-    if (!qrToken) return;
-    setTimeLeft(QR_TTL);
-    const interval = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(interval);
-          setQrToken(null);
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [qrToken]);
+    if (timeLeft <= 0) { setQrToken(null); return; }
+    const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft]);
 
   const generateQR = useCallback(async () => {
-    setGenerating(true);
+    if (!selectedEnvelope) { toast.error('Sélectionne une enveloppe'); return; }
+    setLoading(true);
     try {
-      const body: Record<string, string> = {};
-      if (selectedEnvelope) body.envelopeId = selectedEnvelope;
-      const { data } = await api.post('/api/qrcodes', body);
+      const { data } = await api.post('/api/qrcodes', { envelopeId: selectedEnvelope.id });
       setQrToken(data.token);
+      setTimeLeft(QR_TTL);
+      toast.success('QR Code généré — valide 60 secondes');
     } catch (err: any) {
-      toast.error(err.response?.data?.message ?? 'Impossible de générer le QR');
+      toast.error(err.response?.data?.message ?? 'Erreur génération QR');
     } finally {
-      setGenerating(false);
+      setLoading(false);
     }
   }, [selectedEnvelope]);
 
-  // Progress bar color
-  const pct = (timeLeft / QR_TTL) * 100;
-  const barColor =
-    timeLeft > 30 ? 'bg-emerald-500' : timeLeft > 10 ? 'bg-orange-400' : 'bg-red-500';
-  const borderColor =
-    timeLeft > 30
-      ? 'border-emerald-400'
-      : timeLeft > 10
-      ? 'border-orange-400'
-      : 'border-red-400';
+  const timerColor = timeLeft > 30 ? 'text-emerald-600' : timeLeft > 10 ? 'text-orange-500' : 'text-red-600';
+  const timerBg = timeLeft > 30 ? 'bg-emerald-100' : timeLeft > 10 ? 'bg-orange-100' : 'bg-red-100';
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-800">Mon QR code de paiement</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Présentez ce QR code au payeur pour recevoir un paiement
-        </p>
-      </div>
+    <div className="space-y-4 py-2">
+      <h2 className="text-xl font-bold text-gray-800">Mon QR Code de paiement</h2>
 
       {/* Envelope selector */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Débiter sur (optionnel)
-        </label>
-        <select
-          value={selectedEnvelope}
-          onChange={(e) => setSelectedEnvelope(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          <option value="">Solde général</option>
-          {envelopes?.map((env) => (
-            <option key={env.id} value={env.id}>
-              {env.name} — {parseFloat(env.balance).toFixed(2)} MAD
-            </option>
+        <p className="text-sm font-medium text-gray-600 mb-2">Choisir une enveloppe</p>
+        <div className="space-y-2">
+          {wallet?.envelopes?.map((env: any) => (
+            <button key={env.id} onClick={() => { setSelectedEnvelope(env); setQrToken(null); }}
+              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition ${
+                selectedEnvelope?.id === env.id
+                  ? 'border-emerald-500 bg-emerald-50'
+                  : 'border-gray-200 bg-white hover:border-emerald-300'
+              }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{CATEGORY_ICONS[env.category] ?? '💰'}</span>
+                <span className="font-medium text-gray-800">{env.label}</span>
+              </div>
+              <span className={`font-bold ${Number(env.balance) > 0 ? 'text-emerald-700' : 'text-red-500'}`}>
+                {Number(env.balance).toFixed(2)} MAD
+              </span>
+            </button>
           ))}
-        </select>
+          {!wallet?.envelopes?.length && (
+            <p className="text-center text-gray-400 py-4 bg-white rounded-xl">
+              Aucune enveloppe disponible
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* QR display */}
-      {qrToken ? (
-        <div className="flex flex-col items-center">
-          <div className={`p-4 bg-white rounded-2xl border-4 ${borderColor} shadow-lg transition-colors duration-300`}>
-            <QRCodeSVG
-              value={qrToken}
-              size={220}
-              level="M"
-              includeMargin={false}
+      {/* Generate button */}
+      {selectedEnvelope && !qrToken && (
+        <button onClick={generateQR} disabled={loading || Number(selectedEnvelope.balance) <= 0}
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl text-lg shadow transition disabled:opacity-50">
+          {loading ? 'Génération...' : `📱 Générer QR — ${selectedEnvelope.label}`}
+        </button>
+      )}
+
+      {/* QR Code display */}
+      {qrToken && timeLeft > 0 && (
+        <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className={`inline-block px-4 py-1 rounded-full text-sm font-bold mb-4 ${timerBg} ${timerColor}`}>
+            ⏱ {timeLeft}s restantes
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-5">
+            <div
+              className={`h-2 rounded-full transition-all ${timeLeft > 30 ? 'bg-emerald-500' : timeLeft > 10 ? 'bg-orange-500' : 'bg-red-500'}`}
+              style={{ width: `${(timeLeft / QR_TTL) * 100}%` }}
             />
           </div>
 
-          {/* Countdown */}
-          <div className="w-full mt-4">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>Expire dans</span>
-              <span className={timeLeft <= 10 ? 'text-red-500 font-semibold' : ''}>
-                {timeLeft}s
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all duration-1000 ${barColor}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+          <div className="flex justify-center mb-4 p-3 bg-gray-50 rounded-xl inline-block">
+            <QRCodeSVG value={qrToken} size={220} level="H"
+              imageSettings={{ src: '', height: 0, width: 0, excavate: false }} />
           </div>
 
-          <button
-            onClick={generateQR}
-            disabled={generating}
-            className="mt-5 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-full text-sm font-medium transition"
-          >
-            🔄 Regénérer
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center">
-          <div className="w-56 h-56 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center">
-            <div className="text-center text-gray-400">
-              <div className="text-5xl mb-2">📱</div>
-              <p className="text-sm">Appuyez pour générer</p>
-            </div>
+          <div className="bg-emerald-50 rounded-xl p-3">
+            <p className="text-emerald-700 font-semibold">{selectedEnvelope.label}</p>
+            <p className="text-2xl font-bold text-emerald-800">{Number(selectedEnvelope.balance).toFixed(2)} MAD</p>
+            <p className="text-xs text-emerald-600 mt-1">Max {Number(selectedEnvelope.maxPerTransaction).toFixed(0)} MAD par transaction</p>
           </div>
-          <button
-            onClick={generateQR}
-            disabled={generating}
-            className="mt-6 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl font-semibold text-base transition shadow-md"
-          >
-            {generating ? 'Génération...' : 'Générer mon QR'}
+
+          <button onClick={generateQR} disabled={loading}
+            className="mt-4 w-full border-2 border-emerald-500 text-emerald-700 font-semibold py-2 rounded-xl hover:bg-emerald-50 transition">
+            🔄 Nouveau QR
           </button>
         </div>
       )}
 
-      {/* Info */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-        <strong>ℹ️ Comment ça marche :</strong> Le QR code est valable 60 secondes. Le payeur le
-        scanne avec l'app Payeur pour effectuer le paiement.
-      </div>
+      {/* Expired state */}
+      {selectedEnvelope && qrToken === null && timeLeft === 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <div className="text-4xl mb-2">⏰</div>
+          <p className="font-semibold text-red-700">QR Code expiré</p>
+          <button onClick={generateQR} disabled={loading}
+            className="mt-3 bg-emerald-600 text-white font-semibold px-6 py-2 rounded-xl hover:bg-emerald-700 transition">
+            Générer un nouveau QR
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,95 +3,51 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { api } from '../lib/api';
 
-interface Transaction {
-  id: string;
-  type: string;
-  amount: string | number;
-  currency?: string;
-  status: string;
-  description?: string | null;
-  createdAt: string;
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  QR_PAYMENT: 'Paiement QR',
-  ENVELOPE_FUND: 'Recharge enveloppe',
-  FUND_REQUEST: 'Demande de fonds',
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  COMPLETED: 'text-emerald-600 bg-emerald-50',
-  PENDING: 'text-orange-600 bg-orange-50',
-  FAILED: 'text-red-600 bg-red-50',
+const TYPE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  PAYMENT:  { label: 'Paiement',   icon: '💳', color: 'text-red-600' },
+  RELOAD:   { label: 'Recharge',   icon: '⬆️', color: 'text-emerald-600' },
+  TRANSFER: { label: 'Transfert',  icon: '↔️', color: 'text-blue-600' },
 };
 
 export function TransactionsPage() {
-  const { data: txs, isLoading, isError } = useQuery<Transaction[]>({
+  const { data, isLoading } = useQuery({
     queryKey: ['transactions'],
-    queryFn: async () => {
-      const r = await api.get('/api/transactions');
-      const d = r.data;
-      return Array.isArray(d) ? d : (d.transactions ?? []);
-    },
+    queryFn: () => api.get('/api/transactions').then(r => r.data),
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
-        Chargement…
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center py-20 text-red-400">
-        Erreur lors du chargement
-      </div>
-    );
-  }
+  const transactions = data?.transactions ?? data ?? [];
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-800">Historique des transactions</h1>
+    <div className="space-y-3 py-2">
+      <h2 className="text-xl font-bold text-gray-800">Historique</h2>
 
-      {!txs || txs.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-100">
-          <div className="text-4xl mb-2">📋</div>
-          <p>Aucune transaction pour l'instant</p>
+      {isLoading ? (
+        <div className="text-center text-gray-400 py-8">Chargement...</div>
+      ) : transactions.length === 0 ? (
+        <div className="bg-white rounded-xl p-8 text-center text-gray-400 shadow">
+          Aucune transaction pour le moment
         </div>
       ) : (
-        <div className="space-y-3">
-          {txs.map((tx) => (
-            <div
-              key={tx.id}
-              className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-800 text-sm truncate">
-                  {TYPE_LABEL[tx.type] ?? tx.type}
-                </p>
-                {tx.description && (
-                  <p className="text-xs text-gray-500 truncate mt-0.5">{tx.description}</p>
-                )}
-                <p className="text-xs text-gray-400 mt-1">
-                  {tx.createdAt ? format(new Date(tx.createdAt), 'dd MMM yyyy à HH:mm', { locale: fr }) : '—'}
+        <div className="space-y-2">
+          {transactions.map((tx: any) => {
+            const meta = TYPE_LABELS[tx.type] ?? { label: tx.type, icon: '💰', color: 'text-gray-600' };
+            return (
+              <div key={tx.id} className="bg-white rounded-xl p-4 shadow flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{meta.icon}</span>
+                  <div>
+                    <p className="font-medium text-gray-800">{meta.label}</p>
+                    <p className="text-xs text-gray-400">
+                      {format(new Date(tx.createdAt), 'dd MMM yyyy HH:mm', { locale: fr })}
+                    </p>
+                  </div>
+                </div>
+                <p className={`font-bold ${meta.color}`}>
+                  {tx.type === 'PAYMENT' ? '-' : '+'}{Number(tx.amount).toFixed(2)} MAD
                 </p>
               </div>
-              <div className="ml-4 text-right flex-shrink-0">
-                <p className="font-semibold text-gray-800">
-                  {parseFloat(String(tx.amount)).toFixed(2)} {tx.currency ?? 'MAD'}
-                </p>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    STATUS_COLOR[tx.status] ?? 'text-gray-500 bg-gray-100'
-                  }`}
-                >
-                  {tx.status}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
