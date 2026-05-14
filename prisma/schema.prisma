@@ -1,0 +1,278 @@
+// FamilyPay — Schéma Prisma
+// Plateforme d'autorisation de dépenses contrôlées
+//
+// RÈGLES IMMUABLES :
+//   - Authorization, Transaction, AuditLog : INSERT ONLY (triggers DB)
+//   - allocation.remainingAmount >= 0 (contrainte CHECK dans migration)
+//   - Tout mouvement d'allocation dans prisma.$transaction()
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SPONSOR
+  BENEFICIARY
+  MERCHANT
+  ADMIN
+}
+
+enum AllocationCategory {
+  PHARMACY
+  FOOD
+  CLOTHING
+  EDUCATION
+  LEISURE
+  GENERAL
+}
+
+enum AllocationStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  EXHAUSTED
+}
+
+enum MerchantKycStatus {
+  PENDING_PSP
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum MerchantActivationStatus {
+  INACTIVE
+  ACTIVE
+  SUSPENDED
+}
+
+enum AuthorizationStatus {
+  APPROVED
+  REJECTED
+  PENDING_REVIEW
+}
+
+enum TransactionStatus {
+  PENDING_PSP
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum OtpPurpose {
+  SIGNUP
+  LOGIN
+  VERIFY_PHONE
+}
+
+model User {
+  id            String    @id @default(uuid())
+  phone         String    @unique
+  email         String?   @unique
+  passwordHash  String?
+  role          UserRole
+  firstName     String
+  lastName      String?
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  cndpConsentAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sponsor     Sponsor?
+  beneficiary Beneficiary?
+  merchant    Merchant?
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+model Sponsor {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  beneficiaries Beneficiary[]
+  allocations   Allocation[]
+  cardTokens    SponsorCardToken[]
+  transactions  Transaction[]
+
+  @@map("sponsors")
+}
+
+model Beneficiary {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sponsorId         String
+  sponsor           Sponsor   @relation(fields: [sponsorId], references: [id])
+  nickname          String?
+  avatarUrl         String?
+  isMinor           Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  parentalConsentAt DateTime?
+  createdAt         DateTime  @default(now())
+
+  allocations    Allocation[]
+  authorizations Authorization[]
+  qrCodes        QrCode[]
+
+  @@map("beneficiaries")
+}
+
+model Merchant {
+  id                   String                   @id @default(uuid())
+  userId               String                   @unique
+  user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName         String
+  category             AllocationCategory
+  address              String
+  city                 String
+  phone                String
+  pspMerchantReference String?
+  kycStatus            MerchantKycStatus        @default(PENDING_PSP)
+  activationStatus     MerchantActivationStatus @default(INACTIVE)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  authorizations Authorization[]
+  transactions   Transaction[]
+  qrCodes        QrCode[]
+
+  @@map("merchants")
+}
+
+model Allocation {
+  id              String             @id @default(uuid())
+  sponsorId       String
+  sponsor         Sponsor            @relation(fields: [sponsorId], references: [id])
+  beneficiaryId   String
+  beneficiary     Beneficiary        @relation(fields: [beneficiaryId], references: [id])
+  category        AllocationCategory
+  limitAmount     Decimal            @db.Decimal(10, 2)
+  remainingAmount Decimal            @db.Decimal(10, 2)
+  expiresAt       DateTime?
+  status          AllocationStatus   @default(ACTIVE)
+  renewalPeriod   String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  authorizations Authorization[]
+
+  @@index([sponsorId, status])
+  @@index([beneficiaryId, category, status])
+  @@map("allocations")
+}
+
+model Authorization {
+  id              String              @id @default(uuid())
+  allocationId    String
+  allocation      Allocation          @relation(fields: [allocationId], references: [id])
+  beneficiaryId   String
+  beneficiary     Beneficiary         @relation(fields: [beneficiaryId], references: [id])
+  merchantId      String
+  merchant        Merchant            @relation(fields: [merchantId], references: [id])
+  amount          Decimal             @db.Decimal(10, 2)
+  status          AuthorizationStatus
+  rejectionReason String?
+  fraudScore      Int                 @default(0)
+  createdAt       DateTime            @default(now())
+
+  transaction Transaction?
+  qrCode      QrCode?
+
+  @@index([allocationId])
+  @@index([merchantId, createdAt])
+  @@map("authorizations")
+}
+
+model Transaction {
+  id               String            @id @default(uuid())
+  authorizationId  String            @unique
+  authorization    Authorization     @relation(fields: [authorizationId], references: [id])
+  sponsorId        String
+  sponsor          Sponsor           @relation(fields: [sponsorId], references: [id])
+  merchantId       String
+  merchant         Merchant          @relation(fields: [merchantId], references: [id])
+  amount           Decimal           @db.Decimal(10, 2)
+  platformFee      Decimal           @db.Decimal(10, 2) @default(0)
+  pspTransactionId String?
+  status           TransactionStatus @default(PENDING_PSP)
+  createdAt        DateTime          @default(now())
+
+  @@index([sponsorId, createdAt])
+  @@index([merchantId, createdAt])
+  @@map("transactions")
+}
+
+model SponsorCardToken {
+  id          String   @id @default(uuid())
+  sponsorId   String
+  sponsor     Sponsor  @relation(fields: [sponsorId], references: [id])
+  pspToken    String
+  maskedPan   String
+  cardBrand   String?
+  expiryMonth Int
+  expiryYear  Int
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([sponsorId, isDefault])
+  @@map("sponsor_card_tokens")
+}
+
+model QrCode {
+  id              String             @id @default(uuid())
+  merchantId      String
+  merchant        Merchant           @relation(fields: [merchantId], references: [id])
+  beneficiaryId   String?
+  beneficiary     Beneficiary?       @relation(fields: [beneficiaryId], references: [id])
+  authorizationId String?            @unique
+  authorization   Authorization?     @relation(fields: [authorizationId], references: [id])
+  category        AllocationCategory
+  amount          Decimal?           @db.Decimal(10, 2)
+  token           String             @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime           @default(now())
+
+  @@index([token])
+  @@index([merchantId, createdAt])
+  @@map("qr_codes")
+}
+
+model OtpCode {
+  id        String     @id @default(uuid())
+  phone     String
+  codeHash  String
+  purpose   OtpPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime   @default(now())
+
+  @@index([phone, purpose])
+  @@map("otp_codes")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json     @default("{}")
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}

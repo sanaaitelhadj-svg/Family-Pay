@@ -10,10 +10,11 @@ export default defineConfig({
   server: {
     port: 3002,
     proxy: {
-      '/api': { target: 'http://localhost:4000', changeOrigin: true },
-      '/socket.io': { target: 'http://localhost:4000', ws: true },
+      '/api': { target: 'https://familypaybackend-production.up.railway.app', changeOrigin: true },
+      '/socket.io': { target: 'https://familypaybackend-production.up.railway.app', ws: true },
     },
   },
+  build: { outDir: 'dist' },
   test: {
     globals: true,
     environment: 'jsdom',
