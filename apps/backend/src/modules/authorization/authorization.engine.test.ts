@@ -105,11 +105,14 @@ describe('AuthorizationEngine.authorize', () => {
     );
   });
 
-  it('calls commitFailed PENDING_REVIEW + FRAUD_VELOCITY when velocity >= 5', async () => {
-    mockPrisma.authorization.count.mockResolvedValue(5);
+  it('calls commitFailed PENDING_REVIEW with VELOCITY_HIGH signal when velocity >= 5', async () => {
+    // velocity=5 triggers VELOCITY_HIGH (+40); amount=100 is round but repeat count=0 → no ROUND_AMOUNT_REPEAT
+    mockPrisma.authorization.count
+      .mockResolvedValueOnce(5)  // velocity check → VELOCITY_HIGH
+      .mockResolvedValueOnce(0); // round-amount repeat check → no signal
     await AuthorizationEngine.authorize(request);
     expect(mockService.commitFailed).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'PENDING_REVIEW', rejectionReason: 'FRAUD_VELOCITY', fraudScore: 40 }),
+      expect.objectContaining({ status: 'PENDING_REVIEW', rejectionReason: 'VELOCITY_HIGH', fraudScore: 40 }),
     );
   });
 
@@ -129,7 +132,9 @@ describe('AuthorizationEngine.authorize', () => {
   });
 
   it('does NOT call commitFailed when velocity is 4 (under threshold)', async () => {
-    mockPrisma.authorization.count.mockResolvedValue(4);
+    mockPrisma.authorization.count
+      .mockResolvedValueOnce(4)  // velocity check → no signal
+      .mockResolvedValueOnce(0); // round-amount check → no signal
     await AuthorizationEngine.authorize(request);
     expect(mockService.commitApproved).toHaveBeenCalledOnce();
     expect(mockService.commitFailed).not.toHaveBeenCalled();

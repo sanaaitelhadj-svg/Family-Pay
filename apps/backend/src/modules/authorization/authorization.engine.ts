@@ -2,6 +2,7 @@ import type { AllocationCategory } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { AuthorizationService } from './authorization.service.js';
 import type { AuthorizationResult } from './authorization.service.js';
+import { FraudEngine } from '../fraud/fraud.engine.js';
 
 export interface AuthorizationRequest {
   beneficiaryId: string;
@@ -41,19 +42,20 @@ export class AuthorizationEngine {
       });
     }
 
-    // 4. Velocity check (fraude basique)
-    const recentCount = await prisma.authorization.count({
-      where: {
-        beneficiaryId,
-        createdAt: { gt: new Date(Date.now() - 3_600_000) },
-      },
-    });
-    const fraudScore = recentCount >= 5 ? 40 : 0;
+    // 4. Fraud scoring
+    const { score: fraudScore, signals } = await FraudEngine.score(beneficiaryId, amount);
+    const rejectionReason = signals.join(',');
 
+    if (fraudScore > 70) {
+      return AuthorizationService.commitFailed({
+        beneficiaryId, merchantId, allocationId: allocation.id,
+        amount, status: 'REJECTED', rejectionReason, fraudScore,
+      });
+    }
     if (fraudScore >= 40) {
       return AuthorizationService.commitFailed({
         beneficiaryId, merchantId, allocationId: allocation.id,
-        amount, status: 'PENDING_REVIEW', rejectionReason: 'FRAUD_VELOCITY', fraudScore,
+        amount, status: 'PENDING_REVIEW', rejectionReason, fraudScore,
       });
     }
 
