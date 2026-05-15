@@ -62,3 +62,22 @@ adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), async (req, 
     res.json({ message: 'Marchand rejeté.' });
   } catch (err) { next(err); }
 });
+
+import { execSync } from 'child_process';
+
+adminRouter.post('/migrate', async (req, res, next) => {
+  try {
+    const { setupToken } = req.body as { setupToken?: string };
+    if (!setupToken || setupToken !== process.env.ADMIN_SETUP_TOKEN) {
+      return res.status(403).json({ error: 'FORBIDDEN' });
+    }
+    const output = execSync('npx prisma migrate deploy', {
+      cwd: process.cwd(),
+      encoding: 'utf-8',
+      env: { ...process.env },
+    });
+    res.json({ ok: true, output });
+  } catch (err: any) {
+    next(err);
+  }
+});
