@@ -90,4 +90,48 @@ export class AdminService {
       },
     });
   }
+  static async getStats() {
+    const [sponsors, beneficiaries, activeMerchants, txAgg, pendingFraudReview] = await Promise.all([
+      prisma.sponsor.count(),
+      prisma.beneficiary.count(),
+      prisma.merchant.count({ where: { kycStatus: 'APPROVED' } }),
+      prisma.transaction.aggregate({ _sum: { amount: true }, _count: true, where: { status: 'COMPLETED' } }),
+      prisma.authorization.count({ where: { status: 'PENDING_REVIEW' } }),
+    ]);
+    return {
+      sponsors,
+      beneficiaries,
+      activeMerchants,
+      totalTransactions: txAgg._count,
+      totalVolume: Number(txAgg._sum.amount ?? 0),
+      pendingFraudReview,
+    };
+  }
+
+  static async listMerchants(kycStatus?: string) {
+    return prisma.merchant.findMany({
+      where: kycStatus ? { kycStatus: kycStatus as any } : undefined,
+      include: { user: { select: { firstName: true, phone: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  static async approveMerchant(merchantId: string): Promise<void> {
+    const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
+    if (!merchant) throw new AppError('Marchand introuvable', 404, 'MERCHANT_NOT_FOUND');
+    await prisma.$transaction(async (tx) => {
+      await tx.merchant.update({ where: { id: merchantId }, data: { kycStatus: 'APPROVED', activationStatus: 'ACTIVE' } });
+      await tx.auditLog.create({ data: { action: 'MERCHANT_KYC_APPROVED', entityType: 'Merchant', entityId: merchantId, metadata: { businessName: merchant.businessName } } });
+    });
+  }
+
+  static async rejectMerchant(merchantId: string, reason: string): Promise<void> {
+    const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
+    if (!merchant) throw new AppError('Marchand introuvable', 404, 'MERCHANT_NOT_FOUND');
+    await prisma.$transaction(async (tx) => {
+      await tx.merchant.update({ where: { id: merchantId }, data: { kycStatus: 'REJECTED', activationStatus: 'INACTIVE' } });
+      await tx.auditLog.create({ data: { action: 'MERCHANT_KYC_REJECTED', entityType: 'Merchant', entityId: merchantId, metadata: { businessName: merchant.businessName, reason } } });
+    });
+  }
+
 }
