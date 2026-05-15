@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "prestart": "prisma migrate deploy || true",
+    "prestart": "echo \"migrations handled at build time\"",
     "start": "node dist/index.js",
     "lint": "eslint src --ext ts",
     "type-check": "tsc --noEmit",
