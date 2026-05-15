@@ -230,6 +230,9 @@ export class AuthService {
     if (!expected || setupToken !== expected) {
       throw new AppError('Token invalide', 403, 'FORBIDDEN');
     }
+    // Ensure password column exists (Railway migration fallback)
+    await prisma.$executeRaw`ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT`;
+
     const email = process.env.ADMIN_EMAIL;
     const password = process.env.ADMIN_PASSWORD;
     if (!email || !password) throw new AppError('ADMIN_EMAIL/ADMIN_PASSWORD manquants', 500, 'CONFIG_ERROR');
