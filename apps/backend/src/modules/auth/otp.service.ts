@@ -1,3 +1,4 @@
+import { smsProvider } from '../../lib/sms.js';
 import { randomInt } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma.js';
@@ -28,10 +29,7 @@ export class OtpService {
     await redis.incr(rateLimitKey);
     await redis.expire(rateLimitKey, OTP_RATE_WINDOW);
 
-    if (process.env.NODE_ENV === 'development') {
-      return code;
-    }
-
+    await smsProvider.send(phone, code);
     return 'SENT';
   }
 
