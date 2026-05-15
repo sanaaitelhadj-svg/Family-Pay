@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import { OtpService } from './otp.service.js';
@@ -224,4 +225,43 @@ export class AuthService {
       data: { actorId, action, entityType, entityId, metadata: {} },
     });
   }
+  static async seedAdmin(setupToken: string): Promise<void> {
+    const expected = process.env.ADMIN_SETUP_TOKEN;
+    if (!expected || setupToken !== expected) {
+      throw new AppError('Token invalide', 403, 'FORBIDDEN');
+    }
+    const email = process.env.ADMIN_EMAIL;
+    const password = process.env.ADMIN_PASSWORD;
+    if (!email || !password) throw new AppError('ADMIN_EMAIL/ADMIN_PASSWORD manquants', 500, 'CONFIG_ERROR');
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) throw new AppError('Admin déjà existant', 409, 'ALREADY_EXISTS');
+
+    const hashed = await bcrypt.hash(password, 12);
+    await prisma.user.create({
+      data: {
+        phone: 'ADMIN',
+        firstName: 'Admin',
+        email,
+        password: hashed,
+        role: 'ADMIN',
+        isVerified: true,
+        cndpConsentAt: new Date(),
+      },
+    });
+  }
+
+  static async loginAdmin(email: string, password: string): Promise<{ accessToken: string; refreshToken: string; user: object }> {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.role !== 'ADMIN' || !user.password) {
+      throw new AppError('Identifiants invalides', 401, 'INVALID_CREDENTIALS');
+    }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) throw new AppError('Identifiants invalides', 401, 'INVALID_CREDENTIALS');
+
+    const accessToken = TokenService.issueAccessToken({ userId: user.id, role: user.role, profileId: '' });
+    const refreshToken = await TokenService.issueRefreshToken(user.id);
+    return { accessToken, refreshToken, user: { id: user.id, email: user.email, role: user.role, firstName: user.firstName } };
+  }
+
 }

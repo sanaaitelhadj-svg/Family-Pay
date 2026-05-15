@@ -61,3 +61,15 @@ authRouter.post('/logout', authenticate(), wrap(async (req, res) => {
   await AuthService.logout(refreshToken, req.user!.userId);
   res.json({ message: 'Déconnexion réussie' });
 }));
+
+authRouter.post('/admin/seed', wrap(async (req, res) => {
+  const { setupToken } = req.body;
+  await AuthService.seedAdmin(setupToken);
+  res.status(201).json({ message: 'Admin créé.' });
+}));
+
+authRouter.post('/admin/login', wrap(async (req, res) => {
+  const { email, password } = req.body;
+  const result = await AuthService.loginAdmin(email, password);
+  res.json(result);
+}));
