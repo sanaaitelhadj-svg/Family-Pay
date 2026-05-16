@@ -73,3 +73,9 @@ authRouter.post('/admin/login', wrap(async (req, res) => {
   const result = await AuthService.loginAdmin(email, password);
   res.json(result);
 }));
+
+authRouter.post('/merchant/login', wrap(async (req, res) => {
+  const { phone } = RequestOtpSchema.parse({ ...req.body, purpose: 'LOGIN' });
+  const result = await AuthService.loginMerchant(phone);
+  res.json(result);
+}));

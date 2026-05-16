@@ -267,4 +267,13 @@ export class AuthService {
     return { accessToken, refreshToken, user: { id: user.id, email: user.email, role: user.role, firstName: user.firstName } };
   }
 
+  static async loginMerchant(phone: string): Promise<{ message: string }> {
+    const user = await prisma.user.findUnique({ where: { phone } });
+    if (!user || user.role !== 'MERCHANT') {
+      return { message: 'Code OTP envoyé si le compte existe' };
+    }
+    await OtpService.requestOtp(phone, 'LOGIN');
+    return { message: 'Code OTP envoyé si le compte existe' };
+  }
+
 }
