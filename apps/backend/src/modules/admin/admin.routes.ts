@@ -62,3 +62,33 @@ adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), async (req, 
     res.json({ message: 'Marchand rejeté.' });
   } catch (err) { next(err); }
 });
+
+adminRouter.get('/sponsors', authenticate(['ADMIN']), async (_req, res, next) => {
+  try { res.json(await AdminService.getSponsors()); } catch (err) { next(err); }
+});
+
+adminRouter.get('/sponsors/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try { res.json(await AdminService.getSponsor(req.params['id'] as string)); } catch (err) { next(err); }
+});
+
+adminRouter.get('/beneficiaries', authenticate(['ADMIN']), async (_req, res, next) => {
+  try { res.json(await AdminService.getBeneficiaries()); } catch (err) { next(err); }
+});
+
+adminRouter.get('/beneficiaries/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try { res.json(await AdminService.getBeneficiary(req.params['id'] as string)); } catch (err) { next(err); }
+});
+
+adminRouter.get('/transactions', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { status } = req.query as { status?: string };
+    res.json(await AdminService.getTransactions(status));
+  } catch (err) { next(err); }
+});
+
+adminRouter.get('/audit-logs', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { action } = req.query as { action?: string };
+    res.json(await AdminService.getAuditLogs(action));
+  } catch (err) { next(err); }
+});

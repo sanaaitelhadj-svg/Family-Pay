@@ -134,4 +134,92 @@ export class AdminService {
     });
   }
 
+  static async getSponsors() {
+    return prisma.sponsor.findMany({
+      include: {
+        user: { select: { firstName: true, phone: true, email: true, createdAt: true } },
+        _count: { select: { allocations: true, beneficiaries: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  static async getSponsor(sponsorId: string) {
+    const sponsor = await prisma.sponsor.findUnique({
+      where: { id: sponsorId },
+      include: {
+        user: { select: { firstName: true, phone: true, email: true, createdAt: true } },
+        allocations: {
+          include: { beneficiary: { include: { user: { select: { firstName: true, phone: true } } } } },
+          orderBy: { createdAt: 'desc' },
+        },
+        beneficiaries: {
+          include: { user: { select: { firstName: true, phone: true } } },
+        },
+      },
+    });
+    if (!sponsor) throw new AppError('Sponsor introuvable', 404, 'NOT_FOUND');
+    const volumeAgg = await prisma.transaction.aggregate({
+      where: { sponsorId, status: 'COMPLETED' },
+      _sum: { amount: true },
+      _count: true,
+    });
+    return { ...sponsor, totalVolume: Number(volumeAgg._sum.amount ?? 0), totalTransactions: volumeAgg._count };
+  }
+
+  static async getBeneficiaries() {
+    return prisma.beneficiary.findMany({
+      include: {
+        user: { select: { firstName: true, phone: true, createdAt: true } },
+        sponsor: { include: { user: { select: { firstName: true } } } },
+        _count: { select: { allocations: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  static async getBeneficiary(beneficiaryId: string) {
+    const beneficiary = await prisma.beneficiary.findUnique({
+      where: { id: beneficiaryId },
+      include: {
+        user: { select: { firstName: true, phone: true, createdAt: true } },
+        sponsor: { include: { user: { select: { firstName: true, phone: true } } } },
+        allocations: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+    if (!beneficiary) throw new AppError('Bénéficiaire introuvable', 404, 'NOT_FOUND');
+    const transactions = await prisma.transaction.findMany({
+      where: { authorization: { beneficiaryId } },
+      include: { merchant: { select: { businessName: true, category: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    return { ...beneficiary, transactions };
+  }
+
+  static async getTransactions(status?: string) {
+    return prisma.transaction.findMany({
+      where: status ? { status: status as any } : undefined,
+      include: {
+        merchant: { select: { businessName: true, category: true, city: true } },
+        authorization: {
+          select: {
+            amount: true, fraudScore: true,
+            beneficiary: { include: { user: { select: { firstName: true, phone: true } } } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  static async getAuditLogs(action?: string) {
+    return prisma.auditLog.findMany({
+      where: action ? { action: { contains: action } } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
 }
