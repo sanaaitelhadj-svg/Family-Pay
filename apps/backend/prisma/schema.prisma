@@ -100,7 +100,9 @@ model Sponsor {
   id        String   @id @default(uuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  pspCustomerReference String?
+  maskedCardReference  String?
+  createdAt            DateTime @default(now())
 
   beneficiaries Beneficiary[]
   allocations   Allocation[]
@@ -121,6 +123,8 @@ model Beneficiary {
   sponsor           Sponsor   @relation(fields: [sponsorId], references: [id])
   isMinor           Boolean   @default(false)
   parentalConsentAt DateTime?
+  relationship      String?
+  profilePhoto      String?
   isActive          Boolean   @default(true)
   createdAt         DateTime  @default(now())
 

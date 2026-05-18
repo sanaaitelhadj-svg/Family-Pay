@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 
 interface Beneficiary {
-  id: string; isActive: boolean; createdAt: string;
+  id: string; isActive: boolean; isMinor: boolean; createdAt: string;
+  relationship: string | null;
   user: { firstName: string; phone: string; createdAt: string };
   sponsor: { user: { firstName: string } };
   _count: { allocations: number };
@@ -32,9 +33,15 @@ export default function Beneficiaries() {
               className={`w-full bg-white rounded-2xl p-5 shadow-sm text-left hover:shadow-md transition-shadow border-2 ${detail?.id === b.id ? 'border-indigo-500' : 'border-transparent'}`}>
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-semibold text-gray-900">{b.user.firstName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{b.user.firstName}</p>
+                    {b.isMinor && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Mineur</span>}
+                  </div>
                   <p className="text-sm text-gray-500">{b.user.phone}</p>
-                  <p className="text-xs text-gray-400">Sponsor : {b.sponsor.user.firstName}</p>
+                  <p className="text-xs text-gray-400">
+                    Sponsor : {b.sponsor.user.firstName}
+                    {b.relationship && <span className="ml-1">· {b.relationship}</span>}
+                  </p>
                 </div>
                 <div className="text-right">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${b.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
@@ -52,10 +59,43 @@ export default function Beneficiaries() {
       {detail && (
         <div className="w-96 bg-white rounded-2xl p-6 shadow-sm h-fit sticky top-0 max-h-screen overflow-y-auto">
           <div className="flex justify-between mb-4">
-            <h2 className="text-lg font-bold">{detail.user.firstName}</h2>
+            <div className="flex items-center gap-3">
+              {detail.profilePhoto ? (
+                <img src={detail.profilePhoto} alt="" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">
+                  {detail.user.firstName?.[0] ?? '?'}
+                </div>
+              )}
+              <div>
+                <h2 className="text-lg font-bold">{detail.user.firstName}</h2>
+                {detail.isMinor && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Mineur</span>}
+              </div>
+            </div>
             <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
           </div>
-          <p className="text-sm text-gray-500 mb-4">{detail.user.phone}</p>
+
+          <p className="text-sm text-gray-500 mb-1">{detail.user.phone}</p>
+
+          <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-2">
+            <div>
+              <p className="text-xs text-gray-400">Sponsor</p>
+              <p className="text-sm font-medium text-gray-900">{detail.sponsor?.user?.firstName}</p>
+            </div>
+            {detail.relationship && (
+              <div>
+                <p className="text-xs text-gray-400">Lien avec le sponsor</p>
+                <p className="text-sm font-medium text-gray-900">{detail.relationship}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-gray-400">Statut</p>
+              <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${detail.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                {detail.isActive ? 'Actif' : 'Inactif'}
+              </span>
+            </div>
+          </div>
+
           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Allocations</p>
           <div className="space-y-2 mb-6">
             {detail.allocations?.map((a: any) => (
@@ -68,6 +108,7 @@ export default function Beneficiaries() {
               </div>
             ))}
           </div>
+
           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Dernières transactions</p>
           <div className="space-y-2">
             {detail.transactions?.slice(0, 10).map((t: any) => (

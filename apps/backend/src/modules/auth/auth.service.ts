@@ -75,6 +75,8 @@ export class AuthService {
             sponsorId,
             isMinor: input.isMinor,
             parentalConsentAt: input.isMinor ? new Date() : null,
+            relationship: input.relationship,
+            profilePhoto: input.profilePhoto,
           },
         },
       },
