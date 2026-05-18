@@ -164,9 +164,15 @@ model Merchant {
   contactAdmin         Json?
   contactFinance       Json?
   contactOps           Json?
+  contactLegal         Json?
+  // Business
+  riskLevel            String?
+  allowedProducts      Json?
+  businessHours        Json?
   // Contractuel
   cguSignedAt          DateTime?
   cguVersion           String?
+  cguClauses           Json?
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
 

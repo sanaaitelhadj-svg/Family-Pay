@@ -26,9 +26,15 @@ export const RegisterSponsorSchema = z.object({
   contactAdmin: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
   contactFinance: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
   contactOps: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactLegal: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  // Business
+  riskLevel: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  allowedProducts: z.array(z.string()).optional(),
+  businessHours: z.record(z.string(), z.object({ open: z.string(), close: z.string(), closed: z.boolean().optional() })).optional(),
   // Contractuel
   cguSignedAt: z.string().datetime().optional(),
   cguVersion: z.string().optional(),
+  cguClauses: z.array(z.string()).optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),
@@ -58,9 +64,15 @@ export const RegisterBeneficiarySchema = z.object({
   contactAdmin: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
   contactFinance: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
   contactOps: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactLegal: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  // Business
+  riskLevel: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  allowedProducts: z.array(z.string()).optional(),
+  businessHours: z.record(z.string(), z.object({ open: z.string(), close: z.string(), closed: z.boolean().optional() })).optional(),
   // Contractuel
   cguSignedAt: z.string().datetime().optional(),
   cguVersion: z.string().optional(),
+  cguClauses: z.array(z.string()).optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),
@@ -92,9 +104,15 @@ export const RegisterMerchantSchema = z.object({
   contactAdmin: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
   contactFinance: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
   contactOps: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactLegal: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  // Business
+  riskLevel: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  allowedProducts: z.array(z.string()).optional(),
+  businessHours: z.record(z.string(), z.object({ open: z.string(), close: z.string(), closed: z.boolean().optional() })).optional(),
   // Contractuel
   cguSignedAt: z.string().datetime().optional(),
   cguVersion: z.string().optional(),
+  cguClauses: z.array(z.string()).optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),

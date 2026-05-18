@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 
 interface Contact { nom: string; phone: string; email?: string }
+interface DayHours { open: string; close: string; closed?: boolean }
 
 interface Merchant {
   id: string;
@@ -23,8 +24,13 @@ interface Merchant {
   contactAdmin: Contact | null;
   contactFinance: Contact | null;
   contactOps: Contact | null;
+  contactLegal: Contact | null;
+  riskLevel: string | null;
+  allowedProducts: string[] | null;
+  businessHours: Record<string, DayHours> | null;
   cguSignedAt: string | null;
   cguVersion: string | null;
+  cguClauses: string[] | null;
   user: { firstName: string; phone: string; email: string | null };
 }
 
@@ -32,6 +38,26 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING_PSP: 'bg-yellow-100 text-yellow-800',
   APPROVED: 'bg-green-100 text-green-800',
   REJECTED: 'bg-red-100 text-red-800',
+};
+
+const RISK_COLORS: Record<string, string> = {
+  LOW: 'bg-green-100 text-green-800',
+  MEDIUM: 'bg-yellow-100 text-yellow-800',
+  HIGH: 'bg-red-100 text-red-800',
+};
+
+const DAYS_FR: Record<string, string> = {
+  monday: 'Lun', tuesday: 'Mar', wednesday: 'Mer', thursday: 'Jeu',
+  friday: 'Ven', saturday: 'Sam', sunday: 'Dim',
+};
+
+const CGU_LABELS: Record<string, string> = {
+  no_fake_transactions: 'Pas de fausses transactions',
+  no_cash_exchange: 'Pas d\'échange en espèces',
+  no_fake_refunds: 'Pas de remboursements abusifs',
+  no_allocation_to_cash: 'Pas de conversion allocation→cash',
+  audit_rights: 'Droits d\'audit acceptés',
+  suspension_rights: 'Droits de suspension acceptés',
 };
 
 function Field({ label, value, required }: { label: string; value: string | null | undefined; required?: boolean }) {
@@ -111,9 +137,16 @@ export default function Merchants() {
                   <p className="font-semibold text-gray-900">{m.businessName}</p>
                   <p className="text-sm text-gray-500">{m.city} · {m.category}</p>
                   <p className="text-sm text-gray-400">{m.user.phone}</p>
-                  <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[m.kycStatus] ?? ''}`}>
-                    {m.kycStatus}
-                  </span>
+                  <div className="flex gap-2 flex-wrap">
+                    <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[m.kycStatus] ?? ''}`}>
+                      {m.kycStatus}
+                    </span>
+                    {m.riskLevel && (
+                      <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${RISK_COLORS[m.riskLevel] ?? ''}`}>
+                        Risque {m.riskLevel}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setExpanded(expanded === m.id ? null : m.id)}
@@ -134,8 +167,9 @@ export default function Merchants() {
                   )}
                 </div>
               </div>
+
               {expanded === m.id && (
-                <div className="border-t border-gray-100 px-6 py-5 bg-gray-50 space-y-5">
+                <div className="border-t border-gray-100 px-6 py-5 bg-gray-50 space-y-6">
 
                   <section>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Légal</p>
@@ -178,13 +212,52 @@ export default function Merchants() {
                         ) : <p className="text-sm text-gray-400">—</p>}
                       </div>
                     </div>
+                    {m.businessHours && (
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-400 mb-2">Horaires d'ouverture</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(m.businessHours).map(([day, h]) => (
+                            <div key={day} className={`text-xs px-3 py-1 rounded-lg ${h.closed ? 'bg-gray-100 text-gray-400' : 'bg-indigo-50 text-indigo-700'}`}>
+                              <span className="font-medium">{DAYS_FR[day] ?? day}</span>
+                              {!h.closed && <span className="ml-1">{h.open}–{h.close}</span>}
+                              {h.closed && <span className="ml-1">Fermé</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Business</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400">Niveau de risque</p>
+                        {m.riskLevel ? (
+                          <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium mt-1 ${RISK_COLORS[m.riskLevel]}`}>
+                            {m.riskLevel}
+                          </span>
+                        ) : <p className="text-sm text-gray-400">—</p>}
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-400">Produits/services autorisés</p>
+                        {m.allowedProducts && m.allowedProducts.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {m.allowedProducts.map((p, i) => (
+                              <span key={i} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-lg">{p}</span>
+                            ))}
+                          </div>
+                        ) : <p className="text-sm text-gray-400">—</p>}
+                      </div>
+                    </div>
                   </section>
 
                   <section>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contacts</p>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-4 gap-4">
                       <ContactBlock label="Responsable Admin" contact={m.contactAdmin} />
                       <ContactBlock label="Responsable Financier" contact={m.contactFinance} />
+                      <ContactBlock label="Responsable Juridique" contact={m.contactLegal} />
                       <ContactBlock label="Responsable Opérationnel" contact={m.contactOps} />
                     </div>
                   </section>
@@ -199,6 +272,19 @@ export default function Merchants() {
                         </span>
                       </div>
                       <Field label="Version CGU" value={m.cguVersion} />
+                      <div>
+                        <p className="text-xs text-gray-400 mb-2">Clauses acceptées</p>
+                        {m.cguClauses && m.cguClauses.length > 0 ? (
+                          <div className="space-y-1">
+                            {m.cguClauses.map((c, i) => (
+                              <div key={i} className="flex items-center gap-1">
+                                <span className="text-green-500 text-xs">✓</span>
+                                <span className="text-xs text-gray-700">{CGU_LABELS[c] ?? c}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : <p className="text-sm text-gray-400">—</p>}
+                      </div>
                     </div>
                   </section>
 
