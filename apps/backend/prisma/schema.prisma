@@ -147,9 +147,26 @@ model Merchant {
   kycStatus            MerchantKycStatus        @default(PENDING_PSP)
   activationStatus     MerchantActivationStatus @default(INACTIVE)
   pspMerchantReference String?
+  // Légal
   registrationNumber   String?
   iceNumber            String?
   taxId                String?
+  fiscalId             String?
+  cinRepresentant      String?
+  // Bancaire
+  rib                  String?
+  attestationBancaire  Boolean   @default(false)
+  // Physique
+  gpsLat               Float?
+  gpsLng               Float?
+  photos               Json?
+  // Contacts
+  contactAdmin         Json?
+  contactFinance       Json?
+  contactOps           Json?
+  // Contractuel
+  cguSignedAt          DateTime?
+  cguVersion           String?
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
 

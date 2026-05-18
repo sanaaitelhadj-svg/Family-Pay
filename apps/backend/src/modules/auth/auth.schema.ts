@@ -9,9 +9,26 @@ export const RegisterSponsorSchema = z.object({
   firstName: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50).optional(),
   email: z.string().email().optional(),
+  // Légal
   registrationNumber: z.string().min(2).max(50).optional(),
   iceNumber: z.string().min(5).max(20).optional(),
   taxId: z.string().min(5).max(20).optional(),
+  fiscalId: z.string().min(2).max(50).optional(),
+  cinRepresentant: z.string().min(5).max(20).optional(),
+  // Bancaire
+  rib: z.string().min(10).max(30).optional(),
+  attestationBancaire: z.boolean().optional(),
+  // Physique
+  gpsLat: z.number().min(-90).max(90).optional(),
+  gpsLng: z.number().min(-180).max(180).optional(),
+  photos: z.array(z.string().url()).max(10).optional(),
+  // Contacts
+  contactAdmin: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactFinance: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactOps: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  // Contractuel
+  cguSignedAt: z.string().datetime().optional(),
+  cguVersion: z.string().optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),
@@ -24,9 +41,26 @@ export const RegisterBeneficiarySchema = z.object({
   lastName: z.string().min(2).max(50).optional(),
   isMinor: z.boolean().default(false),
   parentalConsent: z.boolean().optional(),
+  // Légal
   registrationNumber: z.string().min(2).max(50).optional(),
   iceNumber: z.string().min(5).max(20).optional(),
   taxId: z.string().min(5).max(20).optional(),
+  fiscalId: z.string().min(2).max(50).optional(),
+  cinRepresentant: z.string().min(5).max(20).optional(),
+  // Bancaire
+  rib: z.string().min(10).max(30).optional(),
+  attestationBancaire: z.boolean().optional(),
+  // Physique
+  gpsLat: z.number().min(-90).max(90).optional(),
+  gpsLng: z.number().min(-180).max(180).optional(),
+  photos: z.array(z.string().url()).max(10).optional(),
+  // Contacts
+  contactAdmin: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactFinance: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactOps: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  // Contractuel
+  cguSignedAt: z.string().datetime().optional(),
+  cguVersion: z.string().optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),
@@ -41,9 +75,26 @@ export const RegisterMerchantSchema = z.object({
   address: z.string().min(5).max(200),
   city: z.string().min(2).max(50),
   phone: moroccanPhone,
+  // Légal
   registrationNumber: z.string().min(2).max(50).optional(),
   iceNumber: z.string().min(5).max(20).optional(),
   taxId: z.string().min(5).max(20).optional(),
+  fiscalId: z.string().min(2).max(50).optional(),
+  cinRepresentant: z.string().min(5).max(20).optional(),
+  // Bancaire
+  rib: z.string().min(10).max(30).optional(),
+  attestationBancaire: z.boolean().optional(),
+  // Physique
+  gpsLat: z.number().min(-90).max(90).optional(),
+  gpsLng: z.number().min(-180).max(180).optional(),
+  photos: z.array(z.string().url()).max(10).optional(),
+  // Contacts
+  contactAdmin: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactFinance: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactOps: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  // Contractuel
+  cguSignedAt: z.string().datetime().optional(),
+  cguVersion: z.string().optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),

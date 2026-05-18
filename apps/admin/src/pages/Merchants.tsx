@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 
+interface Contact { nom: string; phone: string; email?: string }
+
 interface Merchant {
   id: string;
   businessName: string;
@@ -11,6 +13,18 @@ interface Merchant {
   registrationNumber: string | null;
   iceNumber: string | null;
   taxId: string | null;
+  fiscalId: string | null;
+  cinRepresentant: string | null;
+  rib: string | null;
+  attestationBancaire: boolean;
+  gpsLat: number | null;
+  gpsLng: number | null;
+  photos: string[] | null;
+  contactAdmin: Contact | null;
+  contactFinance: Contact | null;
+  contactOps: Contact | null;
+  cguSignedAt: string | null;
+  cguVersion: string | null;
   user: { firstName: string; phone: string; email: string | null };
 }
 
@@ -19,6 +33,34 @@ const STATUS_COLORS: Record<string, string> = {
   APPROVED: 'bg-green-100 text-green-800',
   REJECTED: 'bg-red-100 text-red-800',
 };
+
+function Field({ label, value, required }: { label: string; value: string | null | undefined; required?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-400">{label}</p>
+      <p className={`text-sm font-medium ${value ? 'text-gray-900' : required ? 'text-red-400' : 'text-gray-400'}`}>
+        {value || (required ? 'Non fourni' : '—')}
+      </p>
+    </div>
+  );
+}
+
+function ContactBlock({ label, contact }: { label: string; contact: Contact | null }) {
+  return (
+    <div className="bg-white rounded-xl p-3 border border-gray-100">
+      <p className="text-xs font-semibold text-gray-500 mb-2">{label}</p>
+      {contact ? (
+        <div className="space-y-1">
+          <p className="text-sm text-gray-900">{contact.nom}</p>
+          <p className="text-sm text-gray-500">{contact.phone}</p>
+          {contact.email && <p className="text-sm text-gray-500">{contact.email}</p>}
+        </div>
+      ) : (
+        <p className="text-sm text-red-400">Non fourni</p>
+      )}
+    </div>
+  );
+}
 
 export default function Merchants() {
   const [list, setList] = useState<Merchant[]>([]);
@@ -93,32 +135,73 @@ export default function Merchants() {
                 </div>
               </div>
               {expanded === m.id && (
-                <div className="border-t border-gray-100 px-6 py-4 bg-gray-50">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Dossier KYC</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-400">Adresse</p>
-                      <p className="text-sm text-gray-700">{m.address || '—'}</p>
+                <div className="border-t border-gray-100 px-6 py-5 bg-gray-50 space-y-5">
+
+                  <section>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Légal</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <Field label="Registre de Commerce (RC)" value={m.registrationNumber} required />
+                      <Field label="ICE" value={m.iceNumber} required />
+                      <Field label="Patente (Tax ID)" value={m.taxId} required />
+                      <Field label="Identifiant Fiscal (IF)" value={m.fiscalId} required />
+                      <Field label="CIN Représentant" value={m.cinRepresentant} required />
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Registre de Commerce (RC)</p>
-                      <p className={`text-sm font-medium ${m.registrationNumber ? 'text-gray-900' : 'text-red-400'}`}>
-                        {m.registrationNumber || 'Non fourni'}
-                      </p>
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Bancaire</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <Field label="RIB" value={m.rib} required />
+                      <div>
+                        <p className="text-xs text-gray-400">Attestation bancaire</p>
+                        <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium mt-1 ${m.attestationBancaire ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {m.attestationBancaire ? 'Fournie' : 'Non fournie'}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400">ICE</p>
-                      <p className={`text-sm font-medium ${m.iceNumber ? 'text-gray-900' : 'text-red-400'}`}>
-                        {m.iceNumber || 'Non fourni'}
-                      </p>
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Physique</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <Field label="Adresse réelle" value={m.address} />
+                      <Field label="GPS" value={m.gpsLat && m.gpsLng ? `${m.gpsLat}, ${m.gpsLng}` : null} />
+                      <div>
+                        <p className="text-xs text-gray-400">Photos</p>
+                        {m.photos && m.photos.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {m.photos.map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noreferrer"
+                                className="text-xs text-indigo-600 underline">Photo {i + 1}</a>
+                            ))}
+                          </div>
+                        ) : <p className="text-sm text-gray-400">—</p>}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Patente (Tax ID)</p>
-                      <p className={`text-sm font-medium ${m.taxId ? 'text-gray-900' : 'text-red-400'}`}>
-                        {m.taxId || 'Non fourni'}
-                      </p>
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contacts</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <ContactBlock label="Responsable Admin" contact={m.contactAdmin} />
+                      <ContactBlock label="Responsable Financier" contact={m.contactFinance} />
+                      <ContactBlock label="Responsable Opérationnel" contact={m.contactOps} />
                     </div>
-                  </div>
+                  </section>
+
+                  <section>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contractuel</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400">Signature CGU partenaire</p>
+                        <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium mt-1 ${m.cguSignedAt ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {m.cguSignedAt ? `Signé le ${new Date(m.cguSignedAt).toLocaleDateString('fr-FR')}` : 'Non signé'}
+                        </span>
+                      </div>
+                      <Field label="Version CGU" value={m.cguVersion} />
+                    </div>
+                  </section>
+
                 </div>
               )}
             </div>
