@@ -220,6 +220,31 @@ export default function Merchants() {
               <span className="text-gray-500">Inscrit le {new Date(selected.createdAt).toLocaleDateString('fr-FR')}</span>
             </div>
 
+            {selected.activationStatus === 'ACTIVE' && (
+              <section className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-3">Contrat & Facturation</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white p-3 rounded">
+                    <p className="text-xs text-gray-500 mb-1">Contrat</p>
+                    {selected.contractUrl
+                      ? <a href={selected.contractUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline break-all">Voir le contrat ↗</a>
+                      : <p className="text-sm text-gray-400">Non défini</p>}
+                  </div>
+                  <div className="bg-white p-3 rounded">
+                    <p className="text-xs text-gray-500 mb-1">Facturation</p>
+                    {selected.subscriptions?.length ? (<>
+                      <p className="text-sm font-medium">Abonnement — {selected.subscriptions[0].subscriptionPlan?.name ?? '—'}</p>
+                      {selected.subscriptions[0].subscriptionPlan && <p className="text-xs text-gray-600">{selected.subscriptions[0].subscriptionPlan.price} MAD / {selected.subscriptions[0].subscriptionPlan.durationMonths} mois</p>}
+                      {selected.subscriptions[0].endDate && <p className="text-xs text-gray-500">Expire le {new Date(selected.subscriptions[0].endDate).toLocaleDateString('fr-FR')}</p>}
+                    </>) : selected.commissionRate && selected.commissionType !== 'NONE' ? (<>
+                      <p className="text-sm font-medium">{selected.commissionType === 'TRANSACTION_PERCENTAGE' ? '% / transaction' : 'Frais fixe'}</p>
+                      <p className="text-xs text-gray-600">{selected.commissionType === 'TRANSACTION_PERCENTAGE' ? `${(parseFloat(selected.commissionRate) * 100).toFixed(2)}%` : `${selected.commissionRate} MAD`}</p>
+                    </>) : <p className="text-sm text-gray-400">Non défini</p>}
+                  </div>
+                </div>
+              </section>
+            )}
+
             <section>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Informations légales</h3>
               <div className="grid grid-cols-2 gap-2">
@@ -268,34 +293,7 @@ export default function Merchants() {
               </section>
             )}
 
-            {selected.activationStatus === 'ACTIVE' && (
-              <section className="border-t border-gray-200 pt-5">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Contrat & Facturation</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-green-50 p-3 rounded">
-                    <p className="text-xs text-gray-500 mb-1">Contrat</p>
-                    {selected.contractUrl
-                      ? <a href={selected.contractUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline break-all">Voir le contrat ↗</a>
-                      : <p className="text-sm text-gray-400">Non défini</p>}
-                  </div>
-                  <div className="bg-green-50 p-3 rounded">
-                    <p className="text-xs text-gray-500 mb-1">Facturation</p>
-                    {selected.commissionType ? (<>
-                      <p className="text-sm font-medium">{selected.commissionType === 'TRANSACTION_PERCENTAGE' ? '% / transaction' : 'Frais fixe'}</p>
-                      {selected.commissionRate && <p className="text-xs text-gray-600">
-                        {selected.commissionType === 'TRANSACTION_PERCENTAGE'
-                          ? `${(parseFloat(selected.commissionRate) * 100).toFixed(2)}%`
-                          : `${selected.commissionRate} MAD`}
-                      </p>}
-                    </>) : selected.subscriptions?.length ? (<>
-                      <p className="text-sm font-medium">Abonnement — {selected.subscriptions[0].subscriptionPlan?.name ?? '—'}</p>
-                      {selected.subscriptions[0].subscriptionPlan && <p className="text-xs text-gray-600">{selected.subscriptions[0].subscriptionPlan.price} MAD / {selected.subscriptions[0].subscriptionPlan.durationMonths} mois</p>}
-                      {selected.subscriptions[0].endDate && <p className="text-xs text-gray-500">Expire le {new Date(selected.subscriptions[0].endDate).toLocaleDateString('fr-FR')}</p>}
-                    </>) : <p className="text-sm text-gray-400">Non défini</p>}
-                  </div>
-                </div>
-              </section>
-            )}
+            
           </div>
         )}
       </div>

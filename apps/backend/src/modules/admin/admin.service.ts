@@ -109,11 +109,16 @@ export class AdminService {
   }
 
   static async listMerchants(kycStatus?: string) {
-    return prisma.merchant.findMany({
-      where: kycStatus ? { kycStatus: kycStatus as any } : undefined,
-      include: { user: { select: { firstName: true, phone: true, email: true } } },
+    const merchants = await prisma.merchant.findMany({
       orderBy: { createdAt: 'desc' },
     });
+    const merchantIds = merchants.map(m => m.id);
+    const subscriptions = await prisma.subscription.findMany({
+      where: { entityType: 'MERCHANT', entityId: { in: merchantIds }, status: 'ACTIVE' },
+      include: { subscriptionPlan: true },
+    });
+    const subsByMerchantId = Object.fromEntries(subscriptions.map(s => [s.entityId, s]));
+    return merchants.map(m => ({ ...m, subscriptions: subsByMerchantId[m.id] ? [subsByMerchantId[m.id]] : [] }));
   }
 
   static async approveMerchant(merchantId: string): Promise<void> {
@@ -311,7 +316,10 @@ export class AdminService {
           ...(data.billingType === 'commission' ? {
             commissionType: data.commissionType ?? 'TRANSACTION_PERCENTAGE',
             commissionRate: data.commissionRate ?? null,
-          } : {}),
+          } : {
+            commissionType: 'NONE',
+            commissionRate: undefined,
+          }),
         },
       });
 
