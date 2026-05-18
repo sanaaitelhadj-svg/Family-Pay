@@ -1,15 +1,15 @@
 import { prisma } from '../../lib/prisma.js';
 
 export class CommissionService {
-  static async calculate(transactionId: string): Promise<void> {
+  static async calculate(authorizationId: string): Promise<void> {
     const tx = await prisma.transaction.findUnique({
-      where: { id: transactionId },
+      where: { authorizationId },
       include: { merchant: true },
     });
 
     if (!tx || tx.status !== 'COMPLETED') return;
 
-    const existing = await prisma.commission.findUnique({ where: { transactionId } });
+    const existing = await prisma.commission.findUnique({ where: { transactionId: tx.id } });
     if (existing) return;
 
     const rate = tx.merchant.commissionRate ?? 0;
@@ -17,7 +17,7 @@ export class CommissionService {
 
     await prisma.commission.create({
       data: {
-        transactionId,
+        transactionId: tx.id,
         merchantId: tx.merchantId,
         sponsorId: tx.sponsorId,
         amount,
