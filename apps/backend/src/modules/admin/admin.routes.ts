@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { AdminService } from './admin.service.js';
 import { authenticate } from '../../middleware/authenticate.js';
+import { prisma } from '../../lib/prisma.js';
 
 export const adminRouter = Router();
 
@@ -128,5 +129,15 @@ adminRouter.post('/subscriptions', authenticate(['ADMIN']), async (req, res, nex
 adminRouter.patch('/subscriptions/:id', authenticate(['ADMIN']), async (req, res, next) => {
   try {
     res.json(await AdminService.updateSubscription(req.params['id'] as string, req.body.status));
+  } catch (err) { next(err); }
+});
+adminRouter.patch('/merchants/:id/contract', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { contractUrl } = req.body;
+    const merchant = await prisma.merchant.update({
+      where: { id: req.params['id'] as string },
+      data: { contractUrl },
+    });
+    res.json(merchant);
   } catch (err) { next(err); }
 });

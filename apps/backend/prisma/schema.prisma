@@ -175,6 +175,7 @@ model Merchant {
   allowedProducts      Json?
   businessHours        Json?
   // Commission
+  contractUrl          String?
   commissionType       String    @default("TRANSACTION_PERCENTAGE")
   commissionRate       Decimal?  @db.Decimal(6, 4)
   // Contractuel
