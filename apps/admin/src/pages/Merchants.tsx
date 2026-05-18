@@ -59,13 +59,17 @@ export default function Merchants() {
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
-  const [approvalModal, setApprovalModal] = useState<{ id: string; name: string } | null>(null);
+  const [approvalModal, setApprovalModal] = useState<{ id: string; name: string; isEdit?: boolean } | null>(null);
   const [approvalForm, setApprovalForm] = useState<ApprovalForm>({
     contractUrl: '', billingType: 'commission', commissionType: 'TRANSACTION_PERCENTAGE',
     commissionRate: '', planId: '', startDate: new Date().toISOString().slice(0, 10), endDate: '',
   });
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [saving, setSaving] = useState(false);
+  const [infoModal, setInfoModal] = useState<boolean>(false);
+  const [infoForm, setInfoForm] = useState({ businessName: '', city: '', address: '', pspMerchantReference: '', riskLevel: '' });
+  const [infoSaving, setInfoSaving] = useState(false);
+
   const [rejectModal, setRejectModal] = useState<{ id: string; name: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -94,6 +98,34 @@ export default function Merchants() {
     setApprovalModal({ id: m.id, name: m.businessName });
   };
 
+
+  const openInfoEdit = (m: Merchant) => {
+    setInfoForm({
+      businessName: m.businessName,
+      city: m.city ?? '',
+      address: m.address ?? '',
+      pspMerchantReference: m.pspMerchantReference ?? '',
+      riskLevel: m.riskLevel ?? '',
+    });
+    setInfoModal(true);
+  };
+
+  const openBillingEdit = (m: Merchant) => {
+    loadPlans();
+    const sub = m.subscriptions?.[0];
+    setApprovalForm({
+      contractUrl: m.contractUrl ?? '',
+      billingType: sub ? 'subscription' : 'commission',
+      commissionType: m.commissionType && m.commissionType !== 'NONE' ? m.commissionType : 'TRANSACTION_PERCENTAGE',
+      commissionRate: m.commissionRate && m.commissionType === 'TRANSACTION_PERCENTAGE'
+        ? (parseFloat(m.commissionRate) * 100).toFixed(2) : m.commissionRate ?? '',
+      planId: sub?.planId ?? '',
+      startDate: sub?.startDate ? sub.startDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      endDate: sub?.endDate ? sub.endDate.slice(0, 10) : '',
+    });
+    setApprovalModal({ id: m.id, name: m.businessName, isEdit: true });
+  };
+
   const handlePlanChange = (planId: string) => {
     const plan = plans.find(p => p.id === planId);
     if (plan) {
@@ -112,11 +144,31 @@ export default function Merchants() {
     } else { setApprovalForm(f => ({ ...f, startDate })); }
   };
 
+  const submitInfo = async () => {
+    if (!selected) return;
+    setInfoSaving(true);
+    try {
+      await api.patch(`/admin/merchants/${selected.id}/info`, {
+        businessName: infoForm.businessName || undefined,
+        city: infoForm.city || undefined,
+        address: infoForm.address || undefined,
+        pspMerchantReference: infoForm.pspMerchantReference || undefined,
+        riskLevel: infoForm.riskLevel || undefined,
+      });
+      setInfoModal(false);
+      await load();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      alert(e.response?.data?.message ?? 'Erreur');
+    } finally { setInfoSaving(false); }
+  };
+
   const submitApproval = async () => {
     if (!approvalModal) return;
     setSaving(true);
     try {
-      await api.patch(`/admin/merchants/${approvalModal.id}/activate`, {
+      const endpoint = approvalModal.isEdit ? `/admin/merchants/${approvalModal.id}/billing` : `/admin/merchants/${approvalModal.id}/activate`;
+      await api.patch(endpoint, {
         contractUrl: approvalForm.contractUrl || undefined,
         billingType: approvalForm.billingType,
         ...(approvalForm.billingType === 'commission' ? {
@@ -200,6 +252,10 @@ export default function Merchants() {
                 <p className="text-sm text-gray-500">{selected.category}{selected.city ? ` · ${selected.city}` : ''}</p>
               </div>
               <div className="flex gap-2 shrink-0">
+                <button onClick={() => openInfoEdit(selected)}
+                  className="px-3 py-1.5 border border-gray-300 bg-white text-gray-700 rounded text-sm hover:bg-gray-50">
+                  ✏️ Infos
+                </button>
                 {(selected.activationStatus === 'PENDING' || selected.activationStatus === 'INACTIVE') && (<>
                   <button onClick={() => openApprovalModal(selected)}
                     className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700">Approuver</button>
@@ -222,7 +278,13 @@ export default function Merchants() {
 
             {selected.activationStatus === 'ACTIVE' && (
               <section className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-3">Contrat & Facturation</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wider">Contrat & Facturation</h3>
+                  <button onClick={() => openBillingEdit(selected)}
+                    className="text-xs px-2 py-1 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50">
+                    ✏️ Modifier
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-white p-3 rounded">
                     <p className="text-xs text-gray-500 mb-1">Contrat</p>
@@ -302,7 +364,7 @@ export default function Merchants() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-5 overflow-y-auto max-h-[90vh]">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Activer le marchand</h2>
+              <h2 className="text-lg font-bold text-gray-900">{approvalModal.isEdit ? 'Modifier la facturation' : 'Activer le marchand'}</h2>
               <p className="text-sm text-gray-500 mt-0.5">{approvalModal.name}</p>
             </div>
             <div>
@@ -386,7 +448,7 @@ export default function Merchants() {
               <button onClick={submitApproval}
                 disabled={saving || (approvalForm.billingType === 'subscription' && !approvalForm.planId)}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
-                {saving ? 'Activation...' : 'Confirmer & Activer'}
+                {saving ? 'Enregistrement...' : approvalModal.isEdit ? 'Enregistrer' : 'Confirmer & Activer'}
               </button>
             </div>
           </div>

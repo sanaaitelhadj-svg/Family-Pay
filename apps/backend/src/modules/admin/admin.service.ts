@@ -366,4 +366,75 @@ export class AdminService {
     return prisma.subscriptionPlan.update({ where: { id: planId }, data: { ...data, features: data.features as any } });
   }
 
+
+  static async updateMerchantBilling(merchantId: string, data: {
+    contractUrl?: string;
+    billingType: 'commission' | 'subscription';
+    commissionType?: string;
+    commissionRate?: number;
+    planId?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      await tx.merchant.update({
+        where: { id: merchantId },
+        data: {
+          ...(data.contractUrl !== undefined ? { contractUrl: data.contractUrl } : {}),
+          ...(data.billingType === 'commission' ? {
+            commissionType: data.commissionType ?? 'TRANSACTION_PERCENTAGE',
+            commissionRate: data.commissionRate ?? null,
+          } : {
+            commissionType: 'NONE',
+            commissionRate: undefined,
+          }),
+        },
+      });
+
+      if (data.billingType === 'subscription') {
+        await tx.subscription.updateMany({
+          where: { entityType: 'MERCHANT', entityId: merchantId, status: 'ACTIVE' },
+          data: { status: 'CANCELLED' },
+        });
+        await tx.subscription.create({
+          data: {
+            entityType: 'MERCHANT',
+            entityId: merchantId,
+            planId: data.planId ?? null,
+            plan: 'CUSTOM',
+            amount: 0,
+            startDate: data.startDate ? new Date(data.startDate) : new Date(),
+            endDate: data.endDate ? new Date(data.endDate)
+              : new Date(new Date(data.startDate ?? Date.now()).setFullYear(new Date(data.startDate ?? Date.now()).getFullYear() + 1)),
+            status: 'ACTIVE',
+          },
+        });
+      } else {
+        await tx.subscription.updateMany({
+          where: { entityType: 'MERCHANT', entityId: merchantId, status: 'ACTIVE' },
+          data: { status: 'CANCELLED' },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          action: 'MERCHANT_BILLING_UPDATED',
+          entityType: 'Merchant',
+          entityId: merchantId,
+          metadata: { billingType: data.billingType },
+        },
+      });
+    });
+  }
+
+  static async updateMerchantInfo(merchantId: string, data: {
+    businessName?: string;
+    city?: string;
+    address?: string;
+    pspMerchantReference?: string;
+    riskLevel?: string;
+  }): Promise<void> {
+    await prisma.merchant.update({ where: { id: merchantId }, data });
+  }
+
 }

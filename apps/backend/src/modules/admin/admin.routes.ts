@@ -223,3 +223,33 @@ adminRouter.delete('/subscription-plans/:id', authenticate(['ADMIN']), async (re
   } catch (err) { next(err); }
 });
 
+adminRouter.patch('/merchants/:id/billing', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      contractUrl:    z.string().url().optional(),
+      billingType:    z.enum(['commission', 'subscription']),
+      commissionType: z.string().optional(),
+      commissionRate: z.number().positive().max(1).optional(),
+      planId:         z.string().optional(),
+      startDate:      z.string().optional(),
+      endDate:        z.string().optional(),
+    });
+    await AdminService.updateMerchantBilling(req.params['id'] as string, schema.parse(req.body));
+    res.json({ message: 'Facturation mise à jour.' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/merchants/:id/info', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      businessName:       z.string().min(2).optional(),
+      city:               z.string().optional(),
+      address:            z.string().optional(),
+      pspMerchantReference: z.string().optional(),
+      riskLevel:          z.string().optional(),
+    });
+    await AdminService.updateMerchantInfo(req.params['id'] as string, schema.parse(req.body));
+    res.json({ message: 'Informations mises à jour.' });
+  } catch (err) { next(err); }
+});
+
