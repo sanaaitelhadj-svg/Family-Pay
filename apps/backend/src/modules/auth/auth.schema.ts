@@ -9,6 +9,9 @@ export const RegisterSponsorSchema = z.object({
   firstName: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50).optional(),
   email: z.string().email().optional(),
+  registrationNumber: z.string().min(2).max(50).optional(),
+  iceNumber: z.string().min(5).max(20).optional(),
+  taxId: z.string().min(5).max(20).optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),
@@ -21,6 +24,9 @@ export const RegisterBeneficiarySchema = z.object({
   lastName: z.string().min(2).max(50).optional(),
   isMinor: z.boolean().default(false),
   parentalConsent: z.boolean().optional(),
+  registrationNumber: z.string().min(2).max(50).optional(),
+  iceNumber: z.string().min(5).max(20).optional(),
+  taxId: z.string().min(5).max(20).optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),
@@ -35,6 +41,9 @@ export const RegisterMerchantSchema = z.object({
   address: z.string().min(5).max(200),
   city: z.string().min(2).max(50),
   phone: moroccanPhone,
+  registrationNumber: z.string().min(2).max(50).optional(),
+  iceNumber: z.string().min(5).max(20).optional(),
+  taxId: z.string().min(5).max(20).optional(),
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
   }),

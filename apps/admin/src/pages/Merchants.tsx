@@ -5,8 +5,12 @@ interface Merchant {
   id: string;
   businessName: string;
   city: string;
+  address: string;
   category: string;
   kycStatus: string;
+  registrationNumber: string | null;
+  iceNumber: string | null;
+  taxId: string | null;
   user: { firstName: string; phone: string; email: string | null };
 }
 
@@ -20,6 +24,7 @@ export default function Merchants() {
   const [list, setList] = useState<Merchant[]>([]);
   const [filter, setFilter] = useState('PENDING_PSP');
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -58,25 +63,62 @@ export default function Merchants() {
       ) : (
         <div className="space-y-4">
           {list.map(m => (
-            <div key={m.id} className="bg-white rounded-2xl p-6 shadow-sm flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="font-semibold text-gray-900">{m.businessName}</p>
-                <p className="text-sm text-gray-500">{m.city} · {m.category}</p>
-                <p className="text-sm text-gray-400">{m.user.phone}</p>
-                <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[m.kycStatus] ?? ''}`}>
-                  {m.kycStatus}
-                </span>
+            <div key={m.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-6 flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-semibold text-gray-900">{m.businessName}</p>
+                  <p className="text-sm text-gray-500">{m.city} · {m.category}</p>
+                  <p className="text-sm text-gray-400">{m.user.phone}</p>
+                  <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[m.kycStatus] ?? ''}`}>
+                    {m.kycStatus}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setExpanded(expanded === m.id ? null : m.id)}
+                    className="px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50">
+                    {expanded === m.id ? 'Masquer' : 'Voir dossier'}
+                  </button>
+                  {m.kycStatus === 'PENDING_PSP' && (
+                    <>
+                      <button onClick={() => approve(m.id)}
+                        className="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600">
+                        Approuver
+                      </button>
+                      <button onClick={() => reject(m.id)}
+                        className="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-xl hover:bg-red-600">
+                        Rejeter
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              {m.kycStatus === 'PENDING_PSP' && (
-                <div className="flex gap-2">
-                  <button onClick={() => approve(m.id)}
-                    className="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600">
-                    Approuver
-                  </button>
-                  <button onClick={() => reject(m.id)}
-                    className="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-xl hover:bg-red-600">
-                    Rejeter
-                  </button>
+              {expanded === m.id && (
+                <div className="border-t border-gray-100 px-6 py-4 bg-gray-50">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Dossier KYC</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-400">Adresse</p>
+                      <p className="text-sm text-gray-700">{m.address || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Registre de Commerce (RC)</p>
+                      <p className={`text-sm font-medium ${m.registrationNumber ? 'text-gray-900' : 'text-red-400'}`}>
+                        {m.registrationNumber || 'Non fourni'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">ICE</p>
+                      <p className={`text-sm font-medium ${m.iceNumber ? 'text-gray-900' : 'text-red-400'}`}>
+                        {m.iceNumber || 'Non fourni'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Patente (Tax ID)</p>
+                      <p className={`text-sm font-medium ${m.taxId ? 'text-gray-900' : 'text-red-400'}`}>
+                        {m.taxId || 'Non fourni'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

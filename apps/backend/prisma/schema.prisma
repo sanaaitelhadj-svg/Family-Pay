@@ -147,6 +147,9 @@ model Merchant {
   kycStatus            MerchantKycStatus        @default(PENDING_PSP)
   activationStatus     MerchantActivationStatus @default(INACTIVE)
   pspMerchantReference String?
+  registrationNumber   String?
+  iceNumber            String?
+  taxId                String?
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
 
