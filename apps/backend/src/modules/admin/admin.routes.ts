@@ -92,3 +92,41 @@ adminRouter.get('/audit-logs', authenticate(['ADMIN']), async (req, res, next) =
     res.json(await AdminService.getAuditLogs(action));
   } catch (err) { next(err); }
 });
+adminRouter.get('/commissions', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { merchantId, status } = req.query as Record<string, string>;
+    res.json(await AdminService.getCommissions(merchantId, status));
+  } catch (err) { next(err); }
+});
+
+adminRouter.get('/commissions/stats', authenticate(['ADMIN']), async (_req, res, next) => {
+  try {
+    res.json(await AdminService.getCommissionStats());
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/merchants/:id/commission', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { commissionType, commissionRate } = req.body;
+    res.json(await AdminService.updateMerchantCommission(req.params['id'] as string, commissionType, Number(commissionRate)));
+  } catch (err) { next(err); }
+});
+
+adminRouter.get('/subscriptions', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { entityType, status } = req.query as Record<string, string>;
+    res.json(await AdminService.getSubscriptions(entityType, status));
+  } catch (err) { next(err); }
+});
+
+adminRouter.post('/subscriptions', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    res.json(await AdminService.createSubscription(req.body));
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/subscriptions/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    res.json(await AdminService.updateSubscription(req.params['id'] as string, req.body.status));
+  } catch (err) { next(err); }
+});

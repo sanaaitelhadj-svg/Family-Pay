@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js';
 import { QrService } from '../qr/qr.service.js';
 import { AuthorizationEngine } from '../authorization/authorization.engine.js';
 import { MockPspConnector } from '../psp/psp.mock.js';
+import { CommissionService } from '../commission/commission.service.js';
 
 export interface PaymentResult {
   success: boolean;
@@ -97,6 +98,10 @@ export class TransactionService {
         },
       });
     });
+
+    if (pspResult.success) {
+      await CommissionService.calculate(authResult.authorizationId!);
+    }
 
     return {
       success: pspResult.success,

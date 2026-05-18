@@ -8,6 +8,8 @@ const NAV = [
   { to: '/transactions', label: 'Transactions' },
   { to: '/fraud', label: 'Revue fraude' },
   { to: '/audit-logs', label: 'Audit Logs' },
+  { to: '/commissions', label: 'Commissions' },
+  { to: '/subscriptions', label: 'Abonnements' },
 ];
 
 export default function Layout() {

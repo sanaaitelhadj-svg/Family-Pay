@@ -222,4 +222,70 @@ export class AdminService {
     });
   }
 
+  static async getCommissions(merchantId?: string, status?: string) {
+    return prisma.commission.findMany({
+      where: {
+        ...(merchantId ? { merchantId } : {}),
+        ...(status ? { status } : {}),
+      },
+      include: {
+        merchant: { select: { businessName: true, city: true, category: true } },
+        transaction: { select: { amount: true, createdAt: true, pspTransactionId: true } },
+        sponsor: { include: { user: { select: { firstName: true, phone: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  static async getCommissionStats() {
+    const [total, byMerchant, byStatus] = await Promise.all([
+      prisma.commission.aggregate({ _sum: { amount: true }, _count: true }),
+      prisma.commission.groupBy({
+        by: ['merchantId'],
+        _sum: { amount: true },
+        _count: true,
+        orderBy: { _sum: { amount: 'desc' } },
+        take: 10,
+      }),
+      prisma.commission.groupBy({ by: ['status'], _sum: { amount: true }, _count: true }),
+    ]);
+    return { total, byMerchant, byStatus };
+  }
+
+  static async updateMerchantCommission(merchantId: string, commissionType: string, commissionRate: number) {
+    return prisma.merchant.update({
+      where: { id: merchantId },
+      data: { commissionType, commissionRate },
+    });
+  }
+
+  static async getSubscriptions(entityType?: string, status?: string) {
+    return prisma.subscription.findMany({
+      where: {
+        ...(entityType ? { entityType } : {}),
+        ...(status ? { status } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  static async createSubscription(data: {
+    entityType: string; entityId: string; plan: string;
+    amount: number; startDate: string; endDate: string; notes?: string;
+  }) {
+    return prisma.subscription.create({
+      data: {
+        ...data,
+        amount: data.amount,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+      },
+    });
+  }
+
+  static async updateSubscription(id: string, status: string) {
+    return prisma.subscription.update({ where: { id }, data: { status } });
+  }
+
 }

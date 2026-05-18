@@ -7,6 +7,8 @@ import Sponsors from './pages/Sponsors';
 import Beneficiaries from './pages/Beneficiaries';
 import Transactions from './pages/Transactions';
 import AuditLogs from './pages/AuditLogs';
+import Commissions from './pages/Commissions';
+import Subscriptions from './pages/Subscriptions';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -28,6 +30,8 @@ export default function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="fraud" element={<FraudReview />} />
           <Route path="audit-logs" element={<AuditLogs />} />
+          <Route path="commissions" element={<Commissions />} />
+          <Route path="subscriptions" element={<Subscriptions />} />
         </Route>
       </Routes>
     </BrowserRouter>
