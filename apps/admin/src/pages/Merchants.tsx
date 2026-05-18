@@ -160,7 +160,7 @@ export default function Merchants() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Marchands</h1>
         <div className="flex gap-2 flex-wrap">
-          {['ALL','PENDING','ACTIVE','SUSPENDED','REJECTED'].map(s => (
+          {['ALL','INACTIVE','PENDING','ACTIVE','SUSPENDED','REJECTED'].map(s => (
             <button key={s} onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded text-sm font-medium ${filter === s ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
               {s === 'ALL' ? 'Tous' : s}
@@ -200,7 +200,7 @@ export default function Merchants() {
                 <p className="text-sm text-gray-500">{selected.category}{selected.city ? ` · ${selected.city}` : ''}</p>
               </div>
               <div className="flex gap-2 shrink-0">
-                {selected.activationStatus === 'PENDING' && (<>
+                {(selected.activationStatus === 'PENDING' || selected.activationStatus === 'INACTIVE') && (<>
                   <button onClick={() => openApprovalModal(selected)}
                     className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700">Approuver</button>
                   <button onClick={() => setRejectModal({ id: selected.id, name: selected.businessName })}
