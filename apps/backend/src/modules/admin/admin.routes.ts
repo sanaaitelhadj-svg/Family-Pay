@@ -141,3 +141,85 @@ adminRouter.patch('/merchants/:id/contract', authenticate(['ADMIN']), async (req
     res.json(merchant);
   } catch (err) { next(err); }
 });
+
+adminRouter.get('/merchants', authenticate(['ADMIN']), async (_req, res, next) => {
+  try {
+    const list = await AdminService.listMerchants();
+    res.json(list);
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/merchants/:id/activate', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      contractUrl:    z.string().url().optional(),
+      billingType:    z.enum(['commission', 'subscription']),
+      commissionType: z.string().optional(),
+      commissionRate: z.number().positive().max(1).optional(),
+      planId:         z.string().optional(),
+      startDate:      z.string().optional(),
+      endDate:        z.string().optional(),
+    });
+    const body = schema.parse(req.body);
+    await AdminService.activateMerchant(req.params['id'] as string, body);
+    res.json({ message: 'Marchand activé.' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { reason } = z.object({ reason: z.string().min(5) }).parse(req.body);
+    await AdminService.rejectMerchant(req.params['id'] as string, reason);
+    res.json({ message: 'Marchand rejeté.' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/merchants/:id/status', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { status } = z.object({ status: z.enum(['ACTIVE', 'SUSPENDED']) }).parse(req.body);
+    await AdminService.setMerchantStatus(req.params['id'] as string, status);
+    res.json({ message: 'Statut mis à jour.' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.get('/subscription-plans', authenticate(['ADMIN']), async (_req, res, next) => {
+  try { res.json(await AdminService.listSubscriptionPlans()); }
+  catch (err) { next(err); }
+});
+
+adminRouter.post('/subscription-plans', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      name:           z.string().min(2),
+      description:    z.string().optional(),
+      price:          z.number().positive(),
+      durationMonths: z.number().int().positive(),
+      features:       z.any().optional(),
+    });
+    const plan = await AdminService.createSubscriptionPlan(schema.parse(req.body));
+    res.status(201).json(plan);
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/subscription-plans/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      name:           z.string().min(2).optional(),
+      description:    z.string().optional(),
+      price:          z.number().positive().optional(),
+      durationMonths: z.number().int().positive().optional(),
+      features:       z.any().optional(),
+      isActive:       z.boolean().optional(),
+    });
+    const plan = await AdminService.updateSubscriptionPlan(req.params['id'] as string, schema.parse(req.body));
+    res.json(plan);
+  } catch (err) { next(err); }
+});
+
+adminRouter.delete('/subscription-plans/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    await AdminService.updateSubscriptionPlan(req.params['id'] as string, { isActive: false });
+    res.json({ message: 'Offre désactivée.' });
+  } catch (err) { next(err); }
+});
+

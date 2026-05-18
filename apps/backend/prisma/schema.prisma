@@ -366,5 +366,24 @@ model Subscription {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  planId         String?
+  subscriptionPlan SubscriptionPlan? @relation(fields: [planId], references: [id])
+
   @@map("subscriptions")
+}
+
+model SubscriptionPlan {
+  id             String         @id @default(cuid())
+  name           String
+  description    String?
+  price          Decimal        @db.Decimal(10, 2)
+  durationMonths Int
+  features       Json?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  subscriptions  Subscription[]
+
+  @@map("subscription_plans")
 }

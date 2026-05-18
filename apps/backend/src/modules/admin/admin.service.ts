@@ -288,4 +288,74 @@ export class AdminService {
     return prisma.subscription.update({ where: { id }, data: { status } });
   }
 
+
+
+  static async activateMerchant(merchantId: string, data: {
+    contractUrl?: string;
+    billingType: 'commission' | 'subscription';
+    commissionType?: string;
+    commissionRate?: number;
+    planId?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<void> {
+    const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
+    if (!merchant) throw new AppError('Marchand introuvable', 404, 'MERCHANT_NOT_FOUND');
+
+    await prisma.$transaction(async (tx) => {
+      await tx.merchant.update({
+        where: { id: merchantId },
+        data: {
+          activationStatus: 'ACTIVE',
+          ...(data.contractUrl ? { contractUrl: data.contractUrl } : {}),
+          ...(data.billingType === 'commission' ? {
+            commissionType: data.commissionType ?? 'TRANSACTION_PERCENTAGE',
+            commissionRate: data.commissionRate ?? null,
+          } : {}),
+        },
+      });
+
+      if (data.billingType === 'subscription') {
+        await tx.subscription.create({
+          data: {
+            entityType: 'MERCHANT',
+            entityId: merchantId,
+            planId: data.planId ?? null,
+            plan: 'CUSTOM',
+            amount: 0,
+            startDate: data.startDate ? new Date(data.startDate) : new Date(),
+            endDate: data.endDate ? new Date(data.endDate) : new Date(new Date(data.startDate ?? Date.now()).setFullYear(new Date(data.startDate ?? Date.now()).getFullYear() + 1)),
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          action: 'MERCHANT_ACTIVATED',
+          entityType: 'Merchant',
+          entityId: merchantId,
+          metadata: { billingType: data.billingType, contractUrl: data.contractUrl ?? null },
+        },
+      });
+    });
+  }
+
+
+  static async setMerchantStatus(merchantId: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<void> {
+    await prisma.merchant.update({ where: { id: merchantId }, data: { activationStatus: status } });
+  }
+
+  static async listSubscriptionPlans() {
+    return prisma.subscriptionPlan.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  static async createSubscriptionPlan(data: { name: string; description?: string; price: number; durationMonths: number; features?: unknown }) {
+    return prisma.subscriptionPlan.create({ data: { ...data, features: data.features as any } });
+  }
+
+  static async updateSubscriptionPlan(planId: string, data: { name?: string; description?: string; price?: number; durationMonths?: number; features?: unknown; isActive?: boolean }) {
+    return prisma.subscriptionPlan.update({ where: { id: planId }, data: { ...data, features: data.features as any } });
+  }
+
 }
