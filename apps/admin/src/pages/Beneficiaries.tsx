@@ -82,12 +82,12 @@ export default function Beneficiaries() {
               <p className="text-xs text-gray-400">Sponsor</p>
               <p className="text-sm font-medium text-gray-900">{detail.sponsor?.user?.firstName}</p>
             </div>
-            {detail.relationship && (
-              <div>
+            <div>
                 <p className="text-xs text-gray-400">Lien avec le sponsor</p>
-                <p className="text-sm font-medium text-gray-900">{detail.relationship}</p>
+                <p className={`text-sm font-medium ${detail.relationship ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {detail.relationship || 'Non renseigné'}
+                </p>
               </div>
-            )}
             <div>
               <p className="text-xs text-gray-400">Statut</p>
               <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${detail.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
