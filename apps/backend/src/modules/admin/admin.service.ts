@@ -518,13 +518,13 @@ export class AdminService {
   static async listAdmins() {
     return prisma.user.findMany({
       where: { role: 'ADMIN' },
-      select: { id: true, phone: true, email: true, firstName: true, lastName: true, isVerified: true, createdAt: true },
+      select: { id: true, phone: true, email: true, firstName: true, lastName: true, isVerified: true, createdAt: true, adminRoleId: true, adminRole: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   static async createAdmin(data: {
-    firstName: string; lastName?: string; phone: string; email?: string; password: string;
+    firstName: string; lastName?: string; phone: string; email?: string; password: string; roleId?: string;
   }) {
     const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
     if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
@@ -534,6 +534,7 @@ export class AdminService {
         phone: data.phone, email: data.email,
         firstName: data.firstName, lastName: data.lastName,
         password: hashed, role: 'ADMIN', isVerified: true, cndpConsentAt: new Date(),
+        ...(data.roleId ? { adminRoleId: data.roleId } : {}),
       },
     });
     await prisma.auditLog.create({
