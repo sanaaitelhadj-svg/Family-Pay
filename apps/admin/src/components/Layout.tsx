@@ -10,6 +10,7 @@ const NAV = [
   { to: '/audit-logs', label: 'Audit Logs' },
   { to: '/commissions', label: 'Commissions' },
   { to: '/subscriptions', label: 'Abonnements' },
+  { to: '/admins', label: 'Administrateurs' },
 ];
 
 export default function Layout() {
