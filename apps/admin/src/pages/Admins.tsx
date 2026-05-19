@@ -1,122 +1,371 @@
-import { useState, useEffect } from 'react';
-import { api } from '../api';
+import { useEffect, useState } from 'react';
+import { api } from '../lib/api';
+
+interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  permissions: Record<string, { read: boolean; write: boolean; actions: string[] }>;
+  isActive: boolean;
+}
 
 interface Admin {
-  id: string; firstName: string; lastName: string | null;
-  phone: string; email: string | null; isVerified: boolean; createdAt: string;
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  isActive: boolean;
+  adminRole?: { id: string; name: string } | null;
 }
-interface AdminForm { firstName: string; lastName: string; phone: string; email: string; password: string; }
-const EMPTY: AdminForm = { firstName: '', lastName: '', phone: '', email: '', password: '' };
+
+const PAGES = ['dashboard','merchants','subscriptions','sponsors','beneficiaries','admins'];
+const ACTIONS = ['approve','add','reject','delete','suspend'];
+
+function PermMatrix({
+  perms, onChange,
+}: {
+  perms: Record<string, { read: boolean; write: boolean; actions: string[] }>;
+  onChange: (p: typeof perms) => void;
+}) {
+  const toggle = (page: string, field: 'read' | 'write') => {
+    const cur = perms[page] ?? { read: false, write: false, actions: [] };
+    onChange({ ...perms, [page]: { ...cur, [field]: !cur[field] } });
+  };
+  const toggleAction = (page: string, action: string) => {
+    const cur = perms[page] ?? { read: false, write: false, actions: [] };
+    const actions = cur.actions.includes(action)
+      ? cur.actions.filter((a) => a !== action)
+      : [...cur.actions, action];
+    onChange({ ...perms, [page]: { ...cur, actions } });
+  };
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="text-left p-2 border border-gray-200">Page</th>
+            <th className="p-2 border border-gray-200">Lecture</th>
+            <th className="p-2 border border-gray-200">Ecriture</th>
+            {ACTIONS.map((a) => (
+              <th key={a} className="p-2 border border-gray-200 capitalize">{a}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {PAGES.map((page) => {
+            const cur = perms[page] ?? { read: false, write: false, actions: [] };
+            return (
+              <tr key={page} className="hover:bg-gray-50">
+                <td className="p-2 border border-gray-200 font-medium capitalize">{page}</td>
+                <td className="p-2 border border-gray-200 text-center">
+                  <input type="checkbox" checked={cur.read} onChange={() => toggle(page, 'read')} />
+                </td>
+                <td className="p-2 border border-gray-200 text-center">
+                  <input type="checkbox" checked={cur.write} onChange={() => toggle(page, 'write')} />
+                </td>
+                {ACTIONS.map((action) => (
+                  <td key={action} className="p-2 border border-gray-200 text-center">
+                    <input
+                      type="checkbox"
+                      checked={cur.actions.includes(action)}
+                      onChange={() => toggleAction(page, action)}
+                    />
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function Admins() {
+  const [tab, setTab] = useState<'admins' | 'roles'>('admins');
   const [admins, setAdmins] = useState<Admin[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState<AdminForm>(EMPTY);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', password: '', roleId: '' });
   const [saving, setSaving] = useState(false);
+  const [showCreateRole, setShowCreateRole] = useState(false);
+  const [editRole, setEditRole] = useState<Role | null>(null);
+  const [roleForm, setRoleForm] = useState<{ name: string; description: string; permissions: Record<string, { read: boolean; write: boolean; actions: string[] }> }>({
+    name: '', description: '', permissions: {},
+  });
+  const [savingRole, setSavingRole] = useState(false);
 
   const load = async () => {
-    setLoading(true);
-    try { const res = await api.get('/admin/admins'); setAdmins(res.data); }
-    finally { setLoading(false); }
+    const [a, r] = await Promise.all([
+      api.get('/admin/admins').then((d) => d.data).catch(() => []),
+      api.get('/admin/roles').then((d) => d.data).catch(() => []),
+    ]);
+    setAdmins(a);
+    setRoles(r);
   };
+
   useEffect(() => { load(); }, []);
 
-  const submit = async () => {
-    if (!form.firstName || !form.phone || !form.password) return;
+  const createAdmin = async () => {
+    if (!form.firstName || !form.email || !form.password) return;
     setSaving(true);
     try {
       await api.post('/admin/admins', {
-        firstName: form.firstName, lastName: form.lastName || undefined,
-        phone: form.phone, email: form.email || undefined, password: form.password,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        phone: form.phone,
+        email: form.email,
+        password: form.password,
+        ...(form.roleId ? { roleId: form.roleId } : {}),
       });
-      setModal(false); setForm(EMPTY); await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur');
+      setShowCreate(false);
+      setForm({ firstName: '', lastName: '', phone: '', email: '', password: '', roleId: '' });
+      load();
     } finally { setSaving(false); }
   };
 
   const toggleStatus = async (id: string, current: boolean) => {
     await api.patch(`/admin/admins/${id}/status`, { isActive: !current });
-    await load();
+    load();
+  };
+
+  const assignRole = async (adminId: string, roleId: string) => {
+    await api.patch(`/admin/admins/${adminId}/role`, { roleId: roleId || null });
+    load();
+  };
+
+  const openCreateRole = () => {
+    setEditRole(null);
+    setRoleForm({ name: '', description: '', permissions: {} });
+    setShowCreateRole(true);
+  };
+
+  const openEditRole = (r: Role) => {
+    setEditRole(r);
+    setRoleForm({ name: r.name, description: r.description ?? '', permissions: r.permissions });
+    setShowCreateRole(true);
+  };
+
+  const saveRole = async () => {
+    if (!roleForm.name) return;
+    setSavingRole(true);
+    try {
+      if (editRole) {
+        await api.patch(`/admin/roles/${editRole.id}`, roleForm);
+      } else {
+        await api.post('/admin/roles', roleForm);
+      }
+      setShowCreateRole(false);
+      load();
+    } finally { setSavingRole(false); }
+  };
+
+  const deactivateRole = async (id: string) => {
+    if (!confirm('Desactiver ce role ?')) return;
+    await api.delete(`/admin/roles/${id}`);
+    load();
   };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Administrateurs</h1>
-          <p className="text-sm text-gray-500">{admins.length} compte{admins.length !== 1 ? 's' : ''}</p>
-        </div>
-        <button onClick={() => { setForm(EMPTY); setModal(true); }}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
-          + Nouvel administrateur
+        <h1 className="text-2xl font-bold text-gray-900">
+          {tab === 'admins' ? `Administrateurs (${admins.length})` : `Roles (${roles.length})`}
+        </h1>
+        <button
+          onClick={tab === 'admins' ? () => setShowCreate(true) : openCreateRole}
+          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600"
+        >
+          {tab === 'admins' ? '+ Nouvel admin' : '+ Nouveau role'}
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        {loading ? <div className="p-8 text-center text-gray-400">Chargement...</div>
-          : admins.length === 0 ? <div className="p-8 text-center text-gray-400">Aucun administrateur</div>
-          : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>{['Nom', 'Téléphone', 'Email', 'Statut', 'Créé le', 'Actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {admins.map(a => (
-                  <tr key={a.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{a.firstName}{a.lastName ? ` ${a.lastName}` : ''}</td>
-                    <td className="px-4 py-3 text-gray-600">{a.phone}</td>
-                    <td className="px-4 py-3 text-gray-600">{a.email ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.isVerified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {a.isVerified ? 'Actif' : 'Désactivé'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{new Date(a.createdAt).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => toggleStatus(a.id, a.isVerified)}
-                        className={`text-xs px-3 py-1 rounded font-medium ${a.isVerified ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                        {a.isVerified ? 'Désactiver' : 'Réactiver'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+        {(['admins', 'roles'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t === 'admins' ? 'Administrateurs' : 'Roles & Permissions'}
+          </button>
+        ))}
       </div>
 
-      {modal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Nouvel administrateur</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[['Prénom *', 'firstName'], ['Nom', 'lastName'], ['Téléphone *', 'phone'], ['Email', 'email']].map(([label, key]) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <input type={key === 'email' ? 'email' : 'text'}
-                    value={form[key as keyof AdminForm]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-                </div>
+      {tab === 'admins' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left p-4 font-medium text-gray-600">Nom</th>
+                <th className="text-left p-4 font-medium text-gray-600">Email</th>
+                <th className="text-left p-4 font-medium text-gray-600">Telephone</th>
+                <th className="text-left p-4 font-medium text-gray-600">Role</th>
+                <th className="text-left p-4 font-medium text-gray-600">Statut</th>
+                <th className="text-left p-4 font-medium text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {admins.length === 0 && (
+                <tr><td colSpan={6} className="p-8 text-center text-gray-400">Aucun administrateur</td></tr>
+              )}
+              {admins.map((a) => (
+                <tr key={a.id} className="hover:bg-gray-50">
+                  <td className="p-4 font-medium text-gray-900">{a.firstName} {a.lastName}</td>
+                  <td className="p-4 text-gray-600">{a.email}</td>
+                  <td className="p-4 text-gray-600">{a.phone}</td>
+                  <td className="p-4">
+                    <select
+                      value={a.adminRole?.id ?? ''}
+                      onChange={(e) => assignRole(a.id, e.target.value)}
+                      className="border border-gray-200 rounded px-2 py-1 text-sm"
+                    >
+                      <option value="">- Aucun role -</option>
+                      {roles.filter((r) => r.isActive).map((r) => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      a.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {a.isActive ? 'Actif' : 'Inactif'}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => toggleStatus(a.id, a.isActive)}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      {a.isActive ? 'Desactiver' : 'Activer'}
+                    </button>
+                  </td>
+                </tr>
               ))}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
-                <input type="password" value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === 'roles' && (
+        <div className="space-y-4">
+          {roles.length === 0 && (
+            <p className="text-gray-400 text-center py-8">Aucun role cree</p>
+          )}
+          {roles.map((r) => (
+            <div key={r.id} className={`bg-white rounded-xl border p-4 ${!r.isActive ? 'opacity-50' : ''}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900">{r.name}</h3>
+                  {r.description && <p className="text-sm text-gray-500">{r.description}</p>}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => openEditRole(r)} className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded hover:bg-blue-100">
+                    Editer
+                  </button>
+                  {r.isActive && (
+                    <button onClick={() => deactivateRole(r.id)} className="text-sm bg-red-50 text-red-700 px-3 py-1 rounded hover:bg-red-100">
+                      Desactiver
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {PAGES.map((page) => {
+                  const p = r.permissions[page];
+                  if (!p) return null;
+                  return (
+                    <span key={page} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
+                      {page}: {p.read ? 'R' : ''}{p.write ? 'W' : ''}{p.actions?.length ? ` +${p.actions.join(',')}` : ''}
+                    </span>
+                  );
+                })}
               </div>
             </div>
-            <div className="flex justify-end gap-3 pt-1">
-              <button onClick={() => setModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={submit} disabled={saving || !form.firstName || !form.phone || !form.password}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-                {saving ? 'Création...' : 'Créer'}
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl space-y-4">
+            <h2 className="text-lg font-bold">Nouvel administrateur</h2>
+            {[
+              { label: 'Prenom *', key: 'firstName', type: 'text' },
+              { label: 'Nom', key: 'lastName', type: 'text' },
+              { label: 'Telephone', key: 'phone', type: 'text' },
+              { label: 'Email *', key: 'email', type: 'email' },
+              { label: 'Mot de passe *', key: 'password', type: 'password' },
+            ].map(({ label, key, type }) => (
+              <div key={key}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                <input
+                  type={type}
+                  value={(form as any)[key]}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <select
+                value={form.roleId}
+                onChange={(e) => setForm({ ...form, roleId: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">- Aucun role -</option>
+                {roles.filter((r) => r.isActive).map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Annuler</button>
+              <button onClick={createAdmin} disabled={saving} className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
+                {saving ? 'Creation...' : 'Creer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateRole && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold">{editRole ? 'Modifier le role' : 'Nouveau role'}</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+                <input
+                  type="text"
+                  value={roleForm.name}
+                  onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={roleForm.description}
+                  onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Permissions par page</label>
+              <PermMatrix perms={roleForm.permissions} onChange={(p) => setRoleForm({ ...roleForm, permissions: p })} />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setShowCreateRole(false)} className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Annuler</button>
+              <button onClick={saveRole} disabled={savingRole} className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
+                {savingRole ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>
           </div>

@@ -345,3 +345,62 @@ adminRouter.patch('/admins/:id/status', authenticate(['ADMIN']), async (req, res
   } catch (err) { next(err); }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// RBAC — Admin Roles
+// ──────────────────────────────────────────────────────────────────────────────
+adminRouter.get('/roles', authenticate(['ADMIN']), async (_req, res, next) => {
+  try {
+    const roles = await AdminService.listRoles();
+    res.json(roles);
+  } catch (err) { next(err); }
+});
+
+adminRouter.post('/roles', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      name:        z.string().min(2),
+      description: z.string().optional(),
+      permissions: z.record(z.any()),
+    });
+    const body = schema.parse(req.body);
+    const role = await AdminService.createRole(body);
+    res.status(201).json(role);
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/roles/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      name:        z.string().min(2).optional(),
+      description: z.string().optional(),
+      permissions: z.record(z.any()).optional(),
+      isActive:    z.boolean().optional(),
+    });
+    const body = schema.parse(req.body);
+    const role = await AdminService.updateRole(req.params['id'] as string, body);
+    res.json(role);
+  } catch (err) { next(err); }
+});
+
+adminRouter.delete('/roles/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    await AdminService.updateRole(req.params['id'] as string, { isActive: false });
+    res.json({ message: 'Rôle désactivé.' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/admins/:id/role', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { roleId } = z.object({ roleId: z.string().nullable() }).parse(req.body);
+    await AdminService.assignRole(req.params['id'] as string, roleId);
+    res.json({ message: 'Rôle assigné.' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.get('/me', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const admin = await AdminService.getAdminMe((req as any).user.id);
+    res.json(admin);
+  } catch (err) { next(err); }
+});
+

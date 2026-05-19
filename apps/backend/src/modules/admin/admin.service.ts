@@ -546,4 +546,46 @@ export class AdminService {
     await prisma.user.update({ where: { id: userId }, data: { isVerified: isActive } });
   }
 
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // RBAC — Roles
+  // ────────────────────────────────────────────────────────────────────────────
+
+  static async listRoles() {
+    return prisma.adminRole.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  static async createRole(data: { name: string; description?: string; permissions: Record<string, unknown> }) {
+    return prisma.adminRole.create({ data: { ...data, permissions: data.permissions as any } });
+  }
+
+  static async updateRole(roleId: string, data: {
+    name?: string;
+    description?: string;
+    permissions?: Record<string, unknown>;
+    isActive?: boolean;
+  }) {
+    return prisma.adminRole.update({
+      where: { id: roleId },
+      data: { ...data, ...(data.permissions ? { permissions: data.permissions as any } : {}) },
+    });
+  }
+
+  static async assignRole(adminId: string, roleId: string | null): Promise<void> {
+    await prisma.user.update({
+      where: { id: adminId },
+      data: { adminRoleId: roleId },
+    });
+  }
+
+  static async getAdminMe(userId: string) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, firstName: true, lastName: true, email: true, phone: true,
+        adminRole: { select: { id: true, name: true, permissions: true } },
+      },
+    });
+  }
+
 }
