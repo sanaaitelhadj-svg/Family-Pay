@@ -89,6 +89,9 @@ model User {
   merchant    Merchant?
 
   @@index([phone])
+  adminRoleId    String?   @db.VarChar(30)
+  adminRole      AdminRole? @relation(fields: [adminRoleId], references: [id])
+
   @@map("users")
 }
 
@@ -400,6 +403,8 @@ model AdminRole {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+
+  users          User[]
 
   @@map("admin_roles")
 }
