@@ -89,6 +89,9 @@ export default function Admins() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', password: '', roleId: '' });
   const [saving, setSaving] = useState(false);
+  const [editAdmin, setEditAdmin] = useState<Admin | null>(null);
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', roleId: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
   const [showCreateRole, setShowCreateRole] = useState(false);
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [roleForm, setRoleForm] = useState<{ name: string; description: string; permissions: Record<string, { read: boolean; write: boolean; actions: string[] }> }>({
@@ -132,6 +135,39 @@ export default function Admins() {
 
   const assignRole = async (adminId: string, roleId: string) => {
     await api.patch(`/admin/admins/${adminId}/role`, { roleId: roleId || null });
+    load();
+  };
+
+  const openEditAdmin = (a: Admin) => {
+    setEditAdmin(a);
+    setEditForm({
+      firstName: a.firstName,
+      lastName: a.lastName,
+      phone: a.phone,
+      email: a.email,
+      roleId: a.adminRole?.id ?? '',
+    });
+  };
+
+  const saveEditAdmin = async () => {
+    if (!editAdmin) return;
+    setSavingEdit(true);
+    try {
+      await api.patch(`/admin/admins/${editAdmin.id}`, {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        phone: editForm.phone,
+        email: editForm.email,
+        roleId: editForm.roleId || null,
+      });
+      setEditAdmin(null);
+      load();
+    } finally { setSavingEdit(false); }
+  };
+
+  const deleteAdmin = async (id: string, name: string) => {
+    if (!confirm(`Supprimer l'admin ${name} ? Cette action est irréversible.`)) return;
+    await api.delete(`/admin/admins/${id}`);
     load();
   };
 
@@ -236,12 +272,24 @@ export default function Admins() {
                       {a.isActive ? 'Actif' : 'Inactif'}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 flex gap-2">
+                    <button
+                      onClick={() => openEditAdmin(a)}
+                      className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100"
+                    >
+                      Editer
+                    </button>
                     <button
                       onClick={() => toggleStatus(a.id, a.isActive)}
-                      className="text-sm text-blue-600 hover:underline"
+                      className={`text-sm px-2 py-1 rounded ${a.isActive ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
                     >
-                      {a.isActive ? 'Desactiver' : 'Activer'}
+                      {a.isActive ? 'Suspendre' : 'Activer'}
+                    </button>
+                    <button
+                      onClick={() => deleteAdmin(a.id, a.firstName)}
+                      className="text-sm bg-red-50 text-red-700 px-2 py-1 rounded hover:bg-red-100"
+                    >
+                      Supprimer
                     </button>
                   </td>
                 </tr>
@@ -328,6 +376,49 @@ export default function Admins() {
               <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Annuler</button>
               <button onClick={createAdmin} disabled={saving} className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
                 {saving ? 'Creation...' : 'Creer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editAdmin && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl space-y-4">
+            <h2 className="text-lg font-bold">Modifier l'administrateur</h2>
+            {[
+              { label: 'Prenom', key: 'firstName', type: 'text' },
+              { label: 'Nom', key: 'lastName', type: 'text' },
+              { label: 'Telephone', key: 'phone', type: 'text' },
+              { label: 'Email', key: 'email', type: 'email' },
+            ].map(({ label, key, type }) => (
+              <div key={key}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                <input
+                  type={type}
+                  value={(editForm as any)[key]}
+                  onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <select
+                value={editForm.roleId}
+                onChange={(e) => setEditForm({ ...editForm, roleId: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">- Aucun role -</option>
+                {roles.filter((r) => r.isActive).map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setEditAdmin(null)} className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Annuler</button>
+              <button onClick={saveEditAdmin} disabled={savingEdit} className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
+                {savingEdit ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>
           </div>

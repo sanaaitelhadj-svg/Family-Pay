@@ -589,4 +589,24 @@ export class AdminService {
     });
   }
 
+
+  static async updateAdmin(adminId: string, data: {
+    firstName?: string; lastName?: string; phone?: string; email?: string; roleId?: string | null;
+  }): Promise<void> {
+    await prisma.user.update({
+      where: { id: adminId },
+      data: {
+        ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
+        ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
+        ...(data.phone !== undefined ? { phone: data.phone } : {}),
+        ...(data.email !== undefined ? { email: data.email } : {}),
+        ...(data.roleId !== undefined ? { adminRoleId: data.roleId } : {}),
+      },
+    });
+  }
+
+  static async deleteAdmin(adminId: string): Promise<void> {
+    await prisma.user.delete({ where: { id: adminId } });
+  }
+
 }

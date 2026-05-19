@@ -404,3 +404,25 @@ adminRouter.get('/me', authenticate(['ADMIN']), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+adminRouter.patch('/admins/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      firstName: z.string().min(1).optional(),
+      lastName:  z.string().optional(),
+      phone:     z.string().optional(),
+      email:     z.string().email().optional(),
+      roleId:    z.string().nullable().optional(),
+    });
+    const body = schema.parse(req.body);
+    await AdminService.updateAdmin(req.params['id'] as string, body);
+    res.json({ message: 'Admin mis à jour.' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.delete('/admins/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    await AdminService.deleteAdmin(req.params['id'] as string);
+    res.json({ message: 'Admin supprimé.' });
+  } catch (err) { next(err); }
+});
+
