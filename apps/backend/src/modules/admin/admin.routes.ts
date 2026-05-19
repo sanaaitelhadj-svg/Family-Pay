@@ -242,11 +242,25 @@ adminRouter.patch('/merchants/:id/billing', authenticate(['ADMIN']), async (req,
 adminRouter.patch('/merchants/:id/info', authenticate(['ADMIN']), async (req, res, next) => {
   try {
     const schema = z.object({
-      businessName:       z.string().min(2).optional(),
-      city:               z.string().optional(),
-      address:            z.string().optional(),
-      pspMerchantReference: z.string().optional(),
-      riskLevel:          z.string().optional(),
+      businessName:          z.string().min(2).optional(),
+      city:                  z.string().optional(),
+      address:               z.string().optional(),
+      gpsLat:                z.string().optional(),
+      gpsLng:                z.string().optional(),
+      pspMerchantReference:  z.string().optional(),
+      riskLevel:             z.string().optional(),
+      registrationNumber:    z.string().optional(),
+      iceNumber:             z.string().optional(),
+      taxId:                 z.string().optional(),
+      fiscalId:              z.string().optional(),
+      cinRepresentant:       z.string().optional(),
+      rib:                   z.string().optional(),
+      attestationBancaire:   z.string().optional(),
+      contactAdmin:          z.any().optional(),
+      contactFinance:        z.any().optional(),
+      contactOps:            z.any().optional(),
+      contactLegal:          z.any().optional(),
+      contractUrl:           z.string().url().optional(),
     });
     await AdminService.updateMerchantInfo(req.params['id'] as string, schema.parse(req.body));
     res.json({ message: 'Informations mises à jour.' });

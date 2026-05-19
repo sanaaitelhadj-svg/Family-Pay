@@ -427,14 +427,8 @@ export class AdminService {
     });
   }
 
-  static async updateMerchantInfo(merchantId: string, data: {
-    businessName?: string;
-    city?: string;
-    address?: string;
-    pspMerchantReference?: string;
-    riskLevel?: string;
-  }): Promise<void> {
-    await prisma.merchant.update({ where: { id: merchantId }, data });
+  static async updateMerchantInfo(merchantId: string, data: Record<string, unknown>): Promise<void> {
+    await prisma.merchant.update({ where: { id: merchantId }, data: data as any });
   }
 
 }

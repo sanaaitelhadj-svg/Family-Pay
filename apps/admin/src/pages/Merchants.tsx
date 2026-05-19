@@ -14,11 +14,10 @@ interface Merchant {
   registrationNumber: string | null; iceNumber: string | null; taxId: string | null;
   fiscalId: string | null; cinRepresentant: string | null;
   rib: string | null; attestationBancaire: string | null;
-  address: string | null; gpsLat: string | null; gpsLng: string | null; photos: unknown;
+  address: string | null; gpsLat: string | null; gpsLng: string | null;
   contactAdmin: ContactInfo | null; contactFinance: ContactInfo | null;
   contactOps: ContactInfo | null; contactLegal: ContactInfo | null;
-  riskLevel: string | null; allowedProducts: unknown; businessHours: unknown;
-  cguSignedAt: string | null; cguVersion: string | null;
+  riskLevel: string | null; cguSignedAt: string | null; cguVersion: string | null;
   subscriptions?: SubscriptionInfo[]; createdAt: string;
 }
 interface SubscriptionPlan {
@@ -30,10 +29,43 @@ interface ApprovalForm {
   commissionType: string; commissionRate: string;
   planId: string; startDate: string; endDate: string;
 }
+
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800', ACTIVE: 'bg-green-100 text-green-800',
   SUSPENDED: 'bg-red-100 text-red-800', REJECTED: 'bg-gray-100 text-gray-700',
+  INACTIVE: 'bg-gray-100 text-gray-700',
 };
+
+// ── Section wrapper with edit toggle ─────────────────────────────────────────
+function Section({ title, editing, onEdit, onSave, onCancel, saving, children }: {
+  title: string; editing: boolean; onEdit: () => void;
+  onSave: () => void; onCancel: () => void; saving: boolean; children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</h3>
+        {editing ? (
+          <div className="flex gap-2">
+            <button onClick={onCancel}
+              className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">Annuler</button>
+            <button onClick={onSave} disabled={saving}
+              className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50">
+              {saving ? '...' : 'Enregistrer'}
+            </button>
+          </div>
+        ) : (
+          <button onClick={onEdit}
+            className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">
+            ✏️ Éditer
+          </button>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="bg-gray-50 p-3 rounded">
@@ -42,6 +74,20 @@ function Field({ label, value }: { label: string; value: string | null | undefin
     </div>
   );
 }
+
+function EditField({ label, name, value, onChange, placeholder }: {
+  label: string; name: string; value: string; onChange: (k: string, v: string) => void; placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <input type="text" value={value} placeholder={placeholder ?? ''}
+        onChange={e => onChange(name, e.target.value)}
+        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-indigo-500" />
+    </div>
+  );
+}
+
 function ContactCard({ label, contact }: { label: string; contact: ContactInfo | null | undefined }) {
   return (
     <div className="bg-gray-50 p-3 rounded">
@@ -54,11 +100,38 @@ function ContactCard({ label, contact }: { label: string; contact: ContactInfo |
     </div>
   );
 }
+
+function ContactEditFields({ label, prefix, draft, onChange }: {
+  label: string; prefix: string; draft: Record<string, string>; onChange: (k: string, v: string) => void;
+}) {
+  return (
+    <div className="bg-gray-50 p-3 rounded space-y-2">
+      <p className="text-xs font-medium text-gray-600">{label}</p>
+      <input type="text" placeholder="Nom" value={draft[`${prefix}_nom`] ?? ''}
+        onChange={e => onChange(`${prefix}_nom`, e.target.value)}
+        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+      <input type="text" placeholder="Téléphone" value={draft[`${prefix}_phone`] ?? ''}
+        onChange={e => onChange(`${prefix}_phone`, e.target.value)}
+        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+      <input type="email" placeholder="Email" value={draft[`${prefix}_email`] ?? ''}
+        onChange={e => onChange(`${prefix}_email`, e.target.value)}
+        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+    </div>
+  );
+}
+
 export default function Merchants() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
+
+  // Section inline editing
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [sectionSaving, setSectionSaving] = useState(false);
+
+  // Billing modal
   const [approvalModal, setApprovalModal] = useState<{ id: string; name: string; isEdit?: boolean } | null>(null);
   const [approvalForm, setApprovalForm] = useState<ApprovalForm>({
     contractUrl: '', billingType: 'commission', commissionType: 'TRANSACTION_PERCENTAGE',
@@ -66,17 +139,21 @@ export default function Merchants() {
   });
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [saving, setSaving] = useState(false);
-  const [infoModal, setInfoModal] = useState<boolean>(false);
-  const [infoForm, setInfoForm] = useState({ businessName: '', city: '', address: '', pspMerchantReference: '', riskLevel: '' });
-  const [infoSaving, setInfoSaving] = useState(false);
 
+  // Reject modal
   const [rejectModal, setRejectModal] = useState<{ id: string; name: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   const load = async () => {
     setLoading(true);
-    try { const res = await api.get('/admin/merchants'); setMerchants(res.data); }
-    finally { setLoading(false); }
+    try {
+      const res = await api.get('/admin/merchants');
+      setMerchants(res.data);
+      if (selected) {
+        const updated = res.data.find((m: Merchant) => m.id === selected.id);
+        if (updated) setSelected(updated);
+      }
+    } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
@@ -85,29 +162,61 @@ export default function Merchants() {
     catch { setPlans([]); }
   };
 
+  // ── Section editing helpers ──────────────────────────────────────────────
+  const startEdit = (section: string, values: Record<string, string>) => {
+    setEditingSection(section);
+    setDraft(values);
+  };
+  const cancelEdit = () => { setEditingSection(null); setDraft({}); };
+  const updateDraft = (key: string, value: string) => setDraft(d => ({ ...d, [key]: value }));
+
+  const saveSection = async (section: string) => {
+    if (!selected) return;
+    setSectionSaving(true);
+    try {
+      let body: Record<string, unknown> = {};
+
+      if (section === 'general') {
+        body = { businessName: draft.businessName, city: draft.city, pspMerchantReference: draft.pspMerchantReference };
+      } else if (section === 'legal') {
+        body = { registrationNumber: draft.registrationNumber, iceNumber: draft.iceNumber, taxId: draft.taxId, fiscalId: draft.fiscalId, cinRepresentant: draft.cinRepresentant };
+      } else if (section === 'banking') {
+        body = { rib: draft.rib, attestationBancaire: draft.attestationBancaire };
+      } else if (section === 'location') {
+        body = { address: draft.address, gpsLat: draft.gpsLat, gpsLng: draft.gpsLng };
+      } else if (section === 'contacts') {
+        body = {
+          contactAdmin:   { nom: draft.admin_nom,    phone: draft.admin_phone,    email: draft.admin_email },
+          contactFinance: { nom: draft.finance_nom,  phone: draft.finance_phone,  email: draft.finance_email },
+          contactOps:     { nom: draft.ops_nom,      phone: draft.ops_phone,      email: draft.ops_email },
+          contactLegal:   { nom: draft.legal_nom,    phone: draft.legal_phone,    email: draft.legal_email },
+        };
+      }
+
+      // Remove empty values
+      Object.keys(body).forEach(k => { if (body[k] === '' || body[k] === undefined) delete body[k]; });
+
+      await api.patch(`/admin/merchants/${selected.id}/info`, body);
+      setEditingSection(null);
+      await load();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      alert(e.response?.data?.message ?? 'Erreur');
+    } finally { setSectionSaving(false); }
+  };
+
+  // ── Billing modal helpers ────────────────────────────────────────────────
   const openApprovalModal = (m: Merchant) => {
     loadPlans();
     setApprovalForm({
       contractUrl: m.contractUrl ?? '',
       billingType: m.subscriptions?.length ? 'subscription' : 'commission',
-      commissionType: m.commissionType ?? 'TRANSACTION_PERCENTAGE',
+      commissionType: m.commissionType && m.commissionType !== 'NONE' ? m.commissionType : 'TRANSACTION_PERCENTAGE',
       commissionRate: m.commissionRate && m.commissionType === 'TRANSACTION_PERCENTAGE'
         ? (parseFloat(m.commissionRate) * 100).toFixed(2) : m.commissionRate ?? '',
       planId: '', startDate: new Date().toISOString().slice(0, 10), endDate: '',
     });
-    setApprovalModal({ id: m.id, name: m.businessName });
-  };
-
-
-  const openInfoEdit = (m: Merchant) => {
-    setInfoForm({
-      businessName: m.businessName,
-      city: m.city ?? '',
-      address: m.address ?? '',
-      pspMerchantReference: m.pspMerchantReference ?? '',
-      riskLevel: m.riskLevel ?? '',
-    });
-    setInfoModal(true);
+    setApprovalModal({ id: m.id, name: m.businessName, isEdit: false });
   };
 
   const openBillingEdit = (m: Merchant) => {
@@ -144,30 +253,13 @@ export default function Merchants() {
     } else { setApprovalForm(f => ({ ...f, startDate })); }
   };
 
-  const submitInfo = async () => {
-    if (!selected) return;
-    setInfoSaving(true);
-    try {
-      await api.patch(`/admin/merchants/${selected.id}/info`, {
-        businessName: infoForm.businessName || undefined,
-        city: infoForm.city || undefined,
-        address: infoForm.address || undefined,
-        pspMerchantReference: infoForm.pspMerchantReference || undefined,
-        riskLevel: infoForm.riskLevel || undefined,
-      });
-      setInfoModal(false);
-      await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur');
-    } finally { setInfoSaving(false); }
-  };
-
   const submitApproval = async () => {
     if (!approvalModal) return;
     setSaving(true);
     try {
-      const endpoint = approvalModal.isEdit ? `/admin/merchants/${approvalModal.id}/billing` : `/admin/merchants/${approvalModal.id}/activate`;
+      const endpoint = approvalModal.isEdit
+        ? `/admin/merchants/${approvalModal.id}/billing`
+        : `/admin/merchants/${approvalModal.id}/activate`;
       await api.patch(endpoint, {
         contractUrl: approvalForm.contractUrl || undefined,
         billingType: approvalForm.billingType,
@@ -180,10 +272,11 @@ export default function Merchants() {
           endDate: approvalForm.endDate || undefined,
         }),
       });
-      setApprovalModal(null); await load();
+      setApprovalModal(null);
+      await load();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur activation');
+      alert(e.response?.data?.message ?? 'Erreur');
     } finally { setSaving(false); }
   };
 
@@ -209,6 +302,7 @@ export default function Merchants() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Marchands</h1>
         <div className="flex gap-2 flex-wrap">
@@ -223,12 +317,13 @@ export default function Merchants() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* List */}
         <div className="lg:col-span-1 bg-white rounded-xl shadow overflow-hidden">
           {loading ? <div className="p-8 text-center text-gray-400">Chargement...</div>
             : filtered.length === 0 ? <div className="p-8 text-center text-gray-400">Aucun marchand</div>
             : <ul className="divide-y divide-gray-100">
                 {filtered.map(m => (
-                  <li key={m.id} onClick={() => setSelected(m)}
+                  <li key={m.id} onClick={() => { setSelected(m); setEditingSection(null); }}
                     className={`p-4 cursor-pointer hover:bg-gray-50 ${selected?.id === m.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -244,18 +339,17 @@ export default function Merchants() {
               </ul>}
         </div>
 
+        {/* Detail Panel */}
         {selected && (
-          <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 space-y-6 overflow-y-auto" style={{ maxHeight: '80vh' }}>
+          <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 space-y-6 overflow-y-auto" style={{ maxHeight: '82vh' }}>
+
+            {/* Header actions */}
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{selected.businessName}</h2>
                 <p className="text-sm text-gray-500">{selected.category}{selected.city ? ` · ${selected.city}` : ''}</p>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button onClick={() => openInfoEdit(selected)}
-                  className="px-3 py-1.5 border border-gray-300 bg-white text-gray-700 rounded text-sm hover:bg-gray-50">
-                  ✏️ Infos
-                </button>
+              <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                 {(selected.activationStatus === 'PENDING' || selected.activationStatus === 'INACTIVE') && (<>
                   <button onClick={() => openApprovalModal(selected)}
                     className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700">Approuver</button>
@@ -271,19 +365,19 @@ export default function Merchants() {
               </div>
             </div>
 
+            {/* Status */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[selected.activationStatus] ?? ''}`}>{selected.activationStatus}</span>
               <span className="text-gray-500">Inscrit le {new Date(selected.createdAt).toLocaleDateString('fr-FR')}</span>
             </div>
 
+            {/* Contrat & Facturation — top, active only */}
             {selected.activationStatus === 'ACTIVE' && (
-              <section className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wider">Contrat & Facturation</h3>
                   <button onClick={() => openBillingEdit(selected)}
-                    className="text-xs px-2 py-1 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50">
-                    ✏️ Modifier
-                  </button>
+                    className="text-xs px-2 py-1 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50">✏️ Modifier</button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-white p-3 rounded">
@@ -304,47 +398,118 @@ export default function Merchants() {
                     </>) : <p className="text-sm text-gray-400">Non défini</p>}
                   </div>
                 </div>
-              </section>
+              </div>
             )}
 
-            <section>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Informations légales</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="RC / Reg. Number" value={selected.registrationNumber} />
-                <Field label="ICE" value={selected.iceNumber} />
-                <Field label="Tax ID" value={selected.taxId} />
-                <Field label="Fiscal ID" value={selected.fiscalId} />
-                <Field label="CIN Représentant" value={selected.cinRepresentant} />
-              </div>
-            </section>
+            {/* Général */}
+            <Section title="Général" editing={editingSection === 'general'}
+              onEdit={() => startEdit('general', { businessName: selected.businessName, city: selected.city ?? '', pspMerchantReference: selected.pspMerchantReference ?? '' })}
+              onSave={() => saveSection('general')} onCancel={cancelEdit} saving={sectionSaving}>
+              {editingSection === 'general' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <EditField label="Nom du commerce" name="businessName" value={draft.businessName ?? ''} onChange={updateDraft} />
+                  <EditField label="Ville" name="city" value={draft.city ?? ''} onChange={updateDraft} />
+                  <div className="col-span-2">
+                    <EditField label="Référence PSP" name="pspMerchantReference" value={draft.pspMerchantReference ?? ''} onChange={updateDraft} />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Nom du commerce" value={selected.businessName} />
+                  <Field label="Ville" value={selected.city} />
+                  <Field label="Référence PSP" value={selected.pspMerchantReference} />
+                </div>
+              )}
+            </Section>
 
-            <section>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Informations bancaires</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="RIB" value={selected.rib} />
-                <Field label="Attestation bancaire" value={selected.attestationBancaire} />
-              </div>
-            </section>
+            {/* Légal */}
+            <Section title="Informations légales" editing={editingSection === 'legal'}
+              onEdit={() => startEdit('legal', { registrationNumber: selected.registrationNumber ?? '', iceNumber: selected.iceNumber ?? '', taxId: selected.taxId ?? '', fiscalId: selected.fiscalId ?? '', cinRepresentant: selected.cinRepresentant ?? '' })}
+              onSave={() => saveSection('legal')} onCancel={cancelEdit} saving={sectionSaving}>
+              {editingSection === 'legal' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <EditField label="RC / Reg. Number" name="registrationNumber" value={draft.registrationNumber ?? ''} onChange={updateDraft} />
+                  <EditField label="ICE" name="iceNumber" value={draft.iceNumber ?? ''} onChange={updateDraft} />
+                  <EditField label="Tax ID" name="taxId" value={draft.taxId ?? ''} onChange={updateDraft} />
+                  <EditField label="Fiscal ID" name="fiscalId" value={draft.fiscalId ?? ''} onChange={updateDraft} />
+                  <div className="col-span-2">
+                    <EditField label="CIN Représentant" name="cinRepresentant" value={draft.cinRepresentant ?? ''} onChange={updateDraft} />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="RC / Reg. Number" value={selected.registrationNumber} />
+                  <Field label="ICE" value={selected.iceNumber} />
+                  <Field label="Tax ID" value={selected.taxId} />
+                  <Field label="Fiscal ID" value={selected.fiscalId} />
+                  <Field label="CIN Représentant" value={selected.cinRepresentant} />
+                </div>
+              )}
+            </Section>
 
-            <section>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Localisation</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-3"><Field label="Adresse" value={selected.address} /></div>
-                <Field label="Latitude" value={selected.gpsLat} />
-                <Field label="Longitude" value={selected.gpsLng} />
-              </div>
-            </section>
+            {/* Bancaire */}
+            <Section title="Informations bancaires" editing={editingSection === 'banking'}
+              onEdit={() => startEdit('banking', { rib: selected.rib ?? '', attestationBancaire: selected.attestationBancaire ?? '' })}
+              onSave={() => saveSection('banking')} onCancel={cancelEdit} saving={sectionSaving}>
+              {editingSection === 'banking' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <EditField label="RIB" name="rib" value={draft.rib ?? ''} onChange={updateDraft} />
+                  <EditField label="Attestation bancaire" name="attestationBancaire" value={draft.attestationBancaire ?? ''} onChange={updateDraft} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="RIB" value={selected.rib} />
+                  <Field label="Attestation bancaire" value={selected.attestationBancaire} />
+                </div>
+              )}
+            </Section>
 
-            <section>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Contacts</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <ContactCard label="Administratif" contact={selected.contactAdmin} />
-                <ContactCard label="Finance" contact={selected.contactFinance} />
-                <ContactCard label="Opérations" contact={selected.contactOps} />
-                <ContactCard label="Juridique" contact={selected.contactLegal} />
-              </div>
-            </section>
+            {/* Localisation */}
+            <Section title="Localisation" editing={editingSection === 'location'}
+              onEdit={() => startEdit('location', { address: selected.address ?? '', gpsLat: selected.gpsLat ?? '', gpsLng: selected.gpsLng ?? '' })}
+              onSave={() => saveSection('location')} onCancel={cancelEdit} saving={sectionSaving}>
+              {editingSection === 'location' ? (
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-3"><EditField label="Adresse" name="address" value={draft.address ?? ''} onChange={updateDraft} /></div>
+                  <EditField label="Latitude" name="gpsLat" value={draft.gpsLat ?? ''} onChange={updateDraft} />
+                  <EditField label="Longitude" name="gpsLng" value={draft.gpsLng ?? ''} onChange={updateDraft} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-3"><Field label="Adresse" value={selected.address} /></div>
+                  <Field label="Latitude" value={selected.gpsLat} />
+                  <Field label="Longitude" value={selected.gpsLng} />
+                </div>
+              )}
+            </Section>
 
+            {/* Contacts */}
+            <Section title="Contacts" editing={editingSection === 'contacts'}
+              onEdit={() => startEdit('contacts', {
+                admin_nom: selected.contactAdmin?.nom ?? '', admin_phone: selected.contactAdmin?.phone ?? '', admin_email: selected.contactAdmin?.email ?? '',
+                finance_nom: selected.contactFinance?.nom ?? '', finance_phone: selected.contactFinance?.phone ?? '', finance_email: selected.contactFinance?.email ?? '',
+                ops_nom: selected.contactOps?.nom ?? '', ops_phone: selected.contactOps?.phone ?? '', ops_email: selected.contactOps?.email ?? '',
+                legal_nom: selected.contactLegal?.nom ?? '', legal_phone: selected.contactLegal?.phone ?? '', legal_email: selected.contactLegal?.email ?? '',
+              })}
+              onSave={() => saveSection('contacts')} onCancel={cancelEdit} saving={sectionSaving}>
+              {editingSection === 'contacts' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <ContactEditFields label="Administratif" prefix="admin" draft={draft} onChange={updateDraft} />
+                  <ContactEditFields label="Finance" prefix="finance" draft={draft} onChange={updateDraft} />
+                  <ContactEditFields label="Opérations" prefix="ops" draft={draft} onChange={updateDraft} />
+                  <ContactEditFields label="Juridique" prefix="legal" draft={draft} onChange={updateDraft} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <ContactCard label="Administratif" contact={selected.contactAdmin} />
+                  <ContactCard label="Finance" contact={selected.contactFinance} />
+                  <ContactCard label="Opérations" contact={selected.contactOps} />
+                  <ContactCard label="Juridique" contact={selected.contactLegal} />
+                </div>
+              )}
+            </Section>
+
+            {/* CGU */}
             {selected.cguSignedAt && (
               <section>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">CGU</h3>
@@ -354,12 +519,11 @@ export default function Merchants() {
                 </div>
               </section>
             )}
-
-            
           </div>
         )}
       </div>
 
+      {/* Billing Modal */}
       {approvalModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-5 overflow-y-auto max-h-[90vh]">
@@ -455,6 +619,7 @@ export default function Merchants() {
         </div>
       )}
 
+      {/* Reject Modal */}
       {rejectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
