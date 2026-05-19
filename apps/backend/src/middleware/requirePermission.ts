@@ -24,7 +24,8 @@ export function requirePermission(page: string, action: 'read' | 'write' | strin
       const perms = admin.adminRole.permissions as Record<string, { read: boolean; write: boolean; actions: string[] }>;
       const pagePerm = perms[page];
 
-      if (!pagePerm) return next(new AppError('Accès refusé à cette page', 403, 'FORBIDDEN'));
+      // Page not in role permissions = unrestricted (only block if explicitly configured)
+      if (!pagePerm) return next();
 
       if (action === 'read' && !pagePerm.read) {
         return next(new AppError('Lecture non autorisée', 403, 'FORBIDDEN'));
