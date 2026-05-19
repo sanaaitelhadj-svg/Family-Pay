@@ -56,7 +56,13 @@ export default function Beneficiaries() {
   return (
     <div className="flex gap-6">
       <div className="flex-1">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Bénéficiaires ({list.length})</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Bénéficiaires ({list.length})</h1>
+          <button onClick={() => { loadSponsors(); setCreateModal(true); }}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+            + Nouveau bénéficiaire
+          </button>
+        </div>
         <div className="space-y-3">
           {list.map(b => (
             <button key={b.id} onClick={() => openDetail(b.id)}

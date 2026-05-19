@@ -57,7 +57,13 @@ export default function Sponsors() {
   return (
     <div className="flex gap-6">
       <div className="flex-1">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Sponsors ({list.length})</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Sponsors ({list.length})</h1>
+          <button onClick={() => setCreateModal(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+            + Nouveau sponsor
+          </button>
+        </div>
         <div className="space-y-3">
           {list.map(s => (
             <button key={s.id} onClick={() => openDetail(s.id)}
