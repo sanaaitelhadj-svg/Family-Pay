@@ -33,6 +33,7 @@ export default function App() {
           <Route path="audit-logs" element={<AuditLogs />} />
           <Route path="commissions" element={<Commissions />} />
           <Route path="subscriptions" element={<Subscriptions />} />
+          <Route path="admins" element={<Admins />} />
         </Route>
       </Routes>
     </BrowserRouter>
