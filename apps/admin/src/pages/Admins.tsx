@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { api } from '../api';
 
 interface Role {
   id: string;
@@ -98,8 +98,8 @@ export default function Admins() {
 
   const load = async () => {
     const [a, r] = await Promise.all([
-      api.get('/admin/admins').then((d) => d.data).catch(() => []),
-      api.get('/admin/roles').then((d) => d.data).catch(() => []),
+      api.get('/admin/admins').then((d: any) => d.data).catch(() => []),
+      api.get('/admin/roles').then((d: any) => d.data).catch(() => []),
     ]);
     setAdmins(a);
     setRoles(r);
