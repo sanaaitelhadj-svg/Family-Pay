@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { requirePermission } from '../../middleware/requirePermission.js';
 import { AdminService } from './admin.service.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { prisma } from '../../lib/prisma.js';
@@ -56,7 +57,7 @@ adminRouter.patch('/merchants/:id/approve', authenticate(['ADMIN']), async (req,
   } catch (err) { next(err); }
 });
 
-adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), requirePermission('merchants', 'reject'), async (req, res, next) => {
   try {
     const { reason } = z.object({ reason: z.string().min(5) }).parse(req.body);
     await AdminService.rejectMerchant(req.params['id'] as string, reason);
@@ -64,7 +65,7 @@ adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), async (req, 
   } catch (err) { next(err); }
 });
 
-adminRouter.get('/sponsors', authenticate(['ADMIN']), async (_req, res, next) => {
+adminRouter.get('/sponsors', authenticate(['ADMIN']), requirePermission('sponsors', 'read'), async (_req, res, next) => {
   try { res.json(await AdminService.getSponsors()); } catch (err) { next(err); }
 });
 
@@ -72,7 +73,7 @@ adminRouter.get('/sponsors/:id', authenticate(['ADMIN']), async (req, res, next)
   try { res.json(await AdminService.getSponsor(req.params['id'] as string)); } catch (err) { next(err); }
 });
 
-adminRouter.get('/beneficiaries', authenticate(['ADMIN']), async (_req, res, next) => {
+adminRouter.get('/beneficiaries', authenticate(['ADMIN']), requirePermission('beneficiaries', 'read'), async (_req, res, next) => {
   try { res.json(await AdminService.getBeneficiaries()); } catch (err) { next(err); }
 });
 
@@ -142,14 +143,14 @@ adminRouter.patch('/merchants/:id/contract', authenticate(['ADMIN']), async (req
   } catch (err) { next(err); }
 });
 
-adminRouter.get('/merchants', authenticate(['ADMIN']), async (_req, res, next) => {
+adminRouter.get('/merchants', authenticate(['ADMIN']), requirePermission('merchants', 'read'), async (_req, res, next) => {
   try {
     const list = await AdminService.listMerchants();
     res.json(list);
   } catch (err) { next(err); }
 });
 
-adminRouter.patch('/merchants/:id/activate', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.patch('/merchants/:id/activate', authenticate(['ADMIN']), requirePermission('merchants', 'approve'), async (req, res, next) => {
   try {
     const schema = z.object({
       contractUrl:    z.string().url().optional(),
@@ -166,7 +167,7 @@ adminRouter.patch('/merchants/:id/activate', authenticate(['ADMIN']), async (req
   } catch (err) { next(err); }
 });
 
-adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), requirePermission('merchants', 'reject'), async (req, res, next) => {
   try {
     const { reason } = z.object({ reason: z.string().min(5) }).parse(req.body);
     await AdminService.rejectMerchant(req.params['id'] as string, reason);
@@ -174,7 +175,7 @@ adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), async (req, 
   } catch (err) { next(err); }
 });
 
-adminRouter.patch('/merchants/:id/status', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.patch('/merchants/:id/status', authenticate(['ADMIN']), requirePermission('merchants', 'suspend'), async (req, res, next) => {
   try {
     const { status } = z.object({ status: z.enum(['ACTIVE', 'SUSPENDED']) }).parse(req.body);
     await AdminService.setMerchantStatus(req.params['id'] as string, status);
@@ -182,12 +183,12 @@ adminRouter.patch('/merchants/:id/status', authenticate(['ADMIN']), async (req, 
   } catch (err) { next(err); }
 });
 
-adminRouter.get('/subscription-plans', authenticate(['ADMIN']), async (_req, res, next) => {
+adminRouter.get('/subscription-plans', authenticate(['ADMIN']), requirePermission('subscriptions', 'read'), async (_req, res, next) => {
   try { res.json(await AdminService.listSubscriptionPlans()); }
   catch (err) { next(err); }
 });
 
-adminRouter.post('/subscription-plans', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.post('/subscription-plans', authenticate(['ADMIN']), requirePermission('subscriptions', 'add'), async (req, res, next) => {
   try {
     const schema = z.object({
       name:           z.string().min(2),
@@ -269,7 +270,7 @@ adminRouter.patch('/merchants/:id/info', authenticate(['ADMIN']), async (req, re
 
 // ── Manual creation by admin ────────────────────────────────────────────────
 
-adminRouter.post('/sponsors', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.post('/sponsors', authenticate(['ADMIN']), requirePermission('sponsors', 'add'), async (req, res, next) => {
   try {
     const schema = z.object({
       firstName:   z.string().min(2),
@@ -283,7 +284,7 @@ adminRouter.post('/sponsors', authenticate(['ADMIN']), async (req, res, next) =>
   } catch (err) { next(err); }
 });
 
-adminRouter.post('/merchants/create', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.post('/merchants/create', authenticate(['ADMIN']), requirePermission('merchants', 'add'), async (req, res, next) => {
   try {
     const schema = z.object({
       businessName:       z.string().min(2),
@@ -301,7 +302,7 @@ adminRouter.post('/merchants/create', authenticate(['ADMIN']), async (req, res, 
   } catch (err) { next(err); }
 });
 
-adminRouter.post('/beneficiaries', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.post('/beneficiaries', authenticate(['ADMIN']), requirePermission('beneficiaries', 'add'), async (req, res, next) => {
   try {
     const schema = z.object({
       firstName:    z.string().min(2),
@@ -318,12 +319,12 @@ adminRouter.post('/beneficiaries', authenticate(['ADMIN']), async (req, res, nex
 
 // ── Admins management ───────────────────────────────────────────────────────
 
-adminRouter.get('/admins', authenticate(['ADMIN']), async (_req, res, next) => {
+adminRouter.get('/admins', authenticate(['ADMIN']), requirePermission('admins', 'read'), async (_req, res, next) => {
   try { res.json(await AdminService.listAdmins()); }
   catch (err) { next(err); }
 });
 
-adminRouter.post('/admins', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.post('/admins', authenticate(['ADMIN']), requirePermission('admins', 'add'), async (req, res, next) => {
   try {
     const schema = z.object({
       firstName: z.string().min(2),
@@ -419,7 +420,7 @@ adminRouter.patch('/admins/:id', authenticate(['ADMIN']), async (req, res, next)
   } catch (err) { next(err); }
 });
 
-adminRouter.delete('/admins/:id', authenticate(['ADMIN']), async (req, res, next) => {
+adminRouter.delete('/admins/:id', authenticate(['ADMIN']), requirePermission('admins', 'delete'), async (req, res, next) => {
   try {
     await AdminService.deleteAdmin(req.params['id'] as string);
     res.json({ message: 'Admin supprimé.' });

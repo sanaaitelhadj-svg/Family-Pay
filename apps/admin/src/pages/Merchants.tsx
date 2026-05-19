@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 interface ContactInfo { nom?: string; phone?: string; email?: string }
 interface SubscriptionInfo {
@@ -121,6 +122,7 @@ function ContactEditFields({ label, prefix, draft, onChange }: {
 }
 
 export default function Merchants() {
+  const { can } = usePermissions();
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
