@@ -516,11 +516,12 @@ export class AdminService {
   // ── Admin management ───────────────────────────────────────────────────────
 
   static async listAdmins() {
-    return prisma.user.findMany({
+    const users = await prisma.user.findMany({
       where: { role: 'ADMIN' },
       select: { id: true, phone: true, email: true, firstName: true, lastName: true, isVerified: true, createdAt: true, adminRoleId: true, adminRole: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
     });
+    return users.map((u) => ({ ...u, isActive: u.isVerified }));
   }
 
   static async createAdmin(data: {
