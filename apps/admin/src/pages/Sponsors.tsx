@@ -21,6 +21,10 @@ export default function Sponsors() {
   const [detail, setDetail] = useState<SponsorDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [createModal, setCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', phone: '', email: '', password: '' });
+  const [createSaving, setCreateSaving] = useState(false);
+
   useEffect(() => { api.get('/admin/sponsors').then(r => setList(r.data)).finally(() => setLoading(false)); }, []);
 
   async function openDetail(id: string) {
@@ -29,6 +33,26 @@ export default function Sponsors() {
   }
 
   if (loading) return <p className="text-gray-500">Chargement...</p>;
+
+
+  const load = () => { setLoading(true); api.get('/admin/sponsors').then(r => setList(r.data)).finally(() => setLoading(false)); };
+
+  const submitCreate = async () => {
+    if (!createForm.firstName || !createForm.phone || !createForm.password) return;
+    setCreateSaving(true);
+    try {
+      await api.post('/admin/sponsors', {
+        firstName: createForm.firstName, lastName: createForm.lastName || undefined,
+        phone: createForm.phone, email: createForm.email || undefined, password: createForm.password,
+      });
+      setCreateModal(false);
+      setCreateForm({ firstName: '', lastName: '', phone: '', email: '', password: '' });
+      await load();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      alert(e.response?.data?.message ?? 'Erreur');
+    } finally { setCreateSaving(false); }
+  };
 
   return (
     <div className="flex gap-6">
@@ -121,6 +145,40 @@ export default function Sponsors() {
           </div>
         </div>
       )}
+      {createModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Nouveau sponsor</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {([['Prénom *', 'firstName'], ['Nom', 'lastName'], ['Téléphone *', 'phone'], ['Email', 'email']] as const).map(([label, key]) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                  <input type={key === 'email' ? 'email' : 'text'}
+                    value={createForm[key]}
+                    onChange={e => setCreateForm(f => ({ ...f, [key]: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                </div>
+              ))}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
+                <input type="password" value={createForm.password}
+                  onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setCreateModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+              <button onClick={submitCreate}
+                disabled={createSaving || !createForm.firstName || !createForm.phone || !createForm.password}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {createSaving ? 'Création...' : 'Créer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

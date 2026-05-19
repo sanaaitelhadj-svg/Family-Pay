@@ -8,7 +8,8 @@ import Beneficiaries from './pages/Beneficiaries';
 import Transactions from './pages/Transactions';
 import AuditLogs from './pages/AuditLogs';
 import Commissions from './pages/Commissions';
-import Subscriptions from './pages/Subscriptions';
+import Subscriptions from './pages/Subscriptions'
+import Admins from './pages/Admins';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {

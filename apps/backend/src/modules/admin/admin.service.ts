@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import { MockPspConnector } from '../psp/psp.mock.js';
@@ -429,6 +430,120 @@ export class AdminService {
 
   static async updateMerchantInfo(merchantId: string, data: Record<string, unknown>): Promise<void> {
     await prisma.merchant.update({ where: { id: merchantId }, data: data as any });
+  }
+
+
+  // ── Manual creation ────────────────────────────────────────────────────────
+
+  static async createSponsor(data: {
+    firstName: string; lastName?: string; phone: string; email?: string; password: string;
+  }) {
+    const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
+    if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
+    const hashed = await bcrypt.hash(data.password, 12);
+    return prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          phone: data.phone, email: data.email,
+          firstName: data.firstName, lastName: data.lastName,
+          password: hashed, role: 'SPONSOR', isVerified: true, cndpConsentAt: new Date(),
+        },
+      });
+      const sponsor = await tx.sponsor.create({ data: { userId: user.id } });
+      await tx.auditLog.create({
+        data: { action: 'ADMIN_CREATED_SPONSOR', entityType: 'User', entityId: user.id, metadata: { phone: data.phone } },
+      });
+      return { userId: user.id, sponsorId: sponsor.id };
+    });
+  }
+
+  static async createMerchantManual(data: {
+    businessName: string; category: string; city: string; phone: string; password: string;
+    address?: string; registrationNumber?: string; iceNumber?: string;
+    activationStatus: 'ACTIVE' | 'INACTIVE';
+  }) {
+    const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
+    if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
+    const hashed = await bcrypt.hash(data.password, 12);
+    return prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          phone: data.phone, firstName: data.businessName,
+          password: hashed, role: 'MERCHANT', isVerified: true, cndpConsentAt: new Date(),
+        },
+      });
+      const merchant = await tx.merchant.create({
+        data: {
+          userId: user.id, businessName: data.businessName, phone: data.phone,
+          category: data.category as any, city: data.city,
+          address: data.address ?? '', registrationNumber: data.registrationNumber,
+          iceNumber: data.iceNumber, activationStatus: data.activationStatus,
+        },
+      });
+      await tx.auditLog.create({
+        data: { action: 'ADMIN_CREATED_MERCHANT', entityType: 'Merchant', entityId: merchant.id, metadata: { businessName: data.businessName } },
+      });
+      return { userId: user.id, merchantId: merchant.id };
+    });
+  }
+
+  static async createBeneficiary(data: {
+    firstName: string; lastName?: string; phone: string; password: string;
+    sponsorId: string; relationship?: string;
+  }) {
+    const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
+    if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
+    const sponsor = await prisma.sponsor.findUnique({ where: { id: data.sponsorId } });
+    if (!sponsor) throw new AppError('Sponsor introuvable', 404, 'SPONSOR_NOT_FOUND');
+    const hashed = await bcrypt.hash(data.password, 12);
+    return prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          phone: data.phone, firstName: data.firstName, lastName: data.lastName,
+          password: hashed, role: 'BENEFICIARY', isVerified: true, cndpConsentAt: new Date(),
+        },
+      });
+      const bene = await tx.beneficiary.create({
+        data: { userId: user.id, sponsorId: data.sponsorId, relationship: data.relationship, isActive: true },
+      });
+      await tx.auditLog.create({
+        data: { action: 'ADMIN_CREATED_BENEFICIARY', entityType: 'Beneficiary', entityId: bene.id, metadata: { phone: data.phone, sponsorId: data.sponsorId } },
+      });
+      return { userId: user.id, beneficiaryId: bene.id };
+    });
+  }
+
+  // ── Admin management ───────────────────────────────────────────────────────
+
+  static async listAdmins() {
+    return prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true, phone: true, email: true, firstName: true, lastName: true, isVerified: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  static async createAdmin(data: {
+    firstName: string; lastName?: string; phone: string; email?: string; password: string;
+  }) {
+    const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
+    if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
+    const hashed = await bcrypt.hash(data.password, 12);
+    const user = await prisma.user.create({
+      data: {
+        phone: data.phone, email: data.email,
+        firstName: data.firstName, lastName: data.lastName,
+        password: hashed, role: 'ADMIN', isVerified: true, cndpConsentAt: new Date(),
+      },
+    });
+    await prisma.auditLog.create({
+      data: { action: 'ADMIN_CREATED', entityType: 'User', entityId: user.id, metadata: { phone: data.phone } },
+    });
+    return { userId: user.id };
+  }
+
+  static async setAdminStatus(userId: string, isActive: boolean): Promise<void> {
+    await prisma.user.update({ where: { id: userId }, data: { isVerified: isActive } });
   }
 
 }

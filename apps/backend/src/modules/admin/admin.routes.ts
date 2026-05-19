@@ -267,3 +267,81 @@ adminRouter.patch('/merchants/:id/info', authenticate(['ADMIN']), async (req, re
   } catch (err) { next(err); }
 });
 
+// ── Manual creation by admin ────────────────────────────────────────────────
+
+adminRouter.post('/sponsors', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      firstName:   z.string().min(2),
+      lastName:    z.string().optional(),
+      phone:       z.string().min(8),
+      email:       z.string().email().optional(),
+      password:    z.string().min(8),
+    });
+    const sponsor = await AdminService.createSponsor(schema.parse(req.body));
+    res.status(201).json(sponsor);
+  } catch (err) { next(err); }
+});
+
+adminRouter.post('/merchants/create', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      businessName:       z.string().min(2),
+      category:          z.string(),
+      city:              z.string(),
+      phone:             z.string().min(8),
+      password:          z.string().min(8),
+      address:           z.string().optional(),
+      registrationNumber: z.string().optional(),
+      iceNumber:         z.string().optional(),
+      activationStatus:  z.enum(['ACTIVE','INACTIVE']).default('INACTIVE'),
+    });
+    const merchant = await AdminService.createMerchantManual(schema.parse(req.body));
+    res.status(201).json(merchant);
+  } catch (err) { next(err); }
+});
+
+adminRouter.post('/beneficiaries', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      firstName:    z.string().min(2),
+      lastName:     z.string().optional(),
+      phone:        z.string().min(8),
+      password:     z.string().min(8),
+      sponsorId:    z.string(),
+      relationship: z.string().optional(),
+    });
+    const bene = await AdminService.createBeneficiary(schema.parse(req.body));
+    res.status(201).json(bene);
+  } catch (err) { next(err); }
+});
+
+// ── Admins management ───────────────────────────────────────────────────────
+
+adminRouter.get('/admins', authenticate(['ADMIN']), async (_req, res, next) => {
+  try { res.json(await AdminService.listAdmins()); }
+  catch (err) { next(err); }
+});
+
+adminRouter.post('/admins', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      firstName: z.string().min(2),
+      lastName:  z.string().optional(),
+      phone:     z.string().min(8),
+      email:     z.string().email().optional(),
+      password:  z.string().min(8),
+    });
+    const admin = await AdminService.createAdmin(schema.parse(req.body));
+    res.status(201).json(admin);
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/admins/:id/status', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const { isActive } = z.object({ isActive: z.boolean() }).parse(req.body);
+    await AdminService.setAdminStatus(req.params['id'] as string, isActive);
+    res.json({ message: 'Statut admin mis à jour.' });
+  } catch (err) { next(err); }
+});
+

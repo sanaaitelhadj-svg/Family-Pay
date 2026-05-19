@@ -144,6 +144,10 @@ export default function Merchants() {
   const [rejectModal, setRejectModal] = useState<{ id: string; name: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
+  const [createModal, setCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ businessName: '', category: 'PHARMACY', city: '', phone: '', password: '', address: '', registrationNumber: '', iceNumber: '' });
+  const [createSaving, setCreateSaving] = useState(false);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -300,11 +304,37 @@ export default function Merchants() {
 
   const filtered = filter === 'ALL' ? merchants : merchants.filter(m => m.activationStatus === filter);
 
+
+  const submitCreate = async () => {
+    if (!createForm.businessName || !createForm.phone || !createForm.password || !createForm.city) return;
+    setCreateSaving(true);
+    try {
+      await api.post('/admin/merchants/create', {
+        businessName: createForm.businessName, category: createForm.category,
+        city: createForm.city, phone: createForm.phone, password: createForm.password,
+        address: createForm.address || undefined,
+        registrationNumber: createForm.registrationNumber || undefined,
+        iceNumber: createForm.iceNumber || undefined,
+        activationStatus: 'INACTIVE',
+      });
+      setCreateModal(false);
+      setCreateForm({ businessName: '', category: 'PHARMACY', city: '', phone: '', password: '', address: '', registrationNumber: '', iceNumber: '' });
+      await load();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      alert(e.response?.data?.message ?? 'Erreur');
+    } finally { setCreateSaving(false); }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Marchands</h1>
+        <button onClick={() => setCreateModal(true)}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+          + Nouveau marchand
+        </button>
         <div className="flex gap-2 flex-wrap">
           {['ALL','INACTIVE','PENDING','ACTIVE','SUSPENDED','REJECTED'].map(s => (
             <button key={s} onClick={() => setFilter(s)}
@@ -637,6 +667,77 @@ export default function Merchants() {
           </div>
         </div>
       )}
+      {createModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Nouveau marchand</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom du commerce *</label>
+                <input type="text" value={createForm.businessName}
+                  onChange={e => setCreateForm(f => ({ ...f, businessName: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie *</label>
+                <select value={createForm.category}
+                  onChange={e => setCreateForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  {['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER'].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
+                <input type="text" value={createForm.city}
+                  onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
+                <input type="text" value={createForm.phone}
+                  onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">RC</label>
+                <input type="text" value={createForm.registrationNumber}
+                  onChange={e => setCreateForm(f => ({ ...f, registrationNumber: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ICE</label>
+                <input type="text" value={createForm.iceNumber}
+                  onChange={e => setCreateForm(f => ({ ...f, iceNumber: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                <input type="text" value={createForm.address}
+                  onChange={e => setCreateForm(f => ({ ...f, address: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
+                <input type="password" value={createForm.password}
+                  onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setCreateModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+              <button onClick={submitCreate}
+                disabled={createSaving || !createForm.businessName || !createForm.phone || !createForm.password || !createForm.city}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {createSaving ? 'Création...' : 'Créer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

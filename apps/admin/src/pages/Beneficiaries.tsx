@@ -14,6 +14,11 @@ export default function Beneficiaries() {
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [createModal, setCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', phone: '', password: '', sponsorId: '', relationship: '' });
+  const [sponsors, setSponsors] = useState<{ id: string; user: { firstName: string; phone: string } }[]>([]);
+  const [createSaving, setCreateSaving] = useState(false);
+
   useEffect(() => { api.get('/admin/beneficiaries').then(r => setList(r.data)).finally(() => setLoading(false)); }, []);
 
   async function openDetail(id: string) {
@@ -22,6 +27,31 @@ export default function Beneficiaries() {
   }
 
   if (loading) return <p className="text-gray-500">Chargement...</p>;
+
+
+  const load = () => { setLoading(true); api.get('/admin/beneficiaries').then(r => setList(r.data)).finally(() => setLoading(false)); };
+
+  const loadSponsors = async () => {
+    try { const res = await api.get('/admin/sponsors'); setSponsors(res.data); } catch { setSponsors([]); }
+  };
+
+  const submitCreate = async () => {
+    if (!createForm.firstName || !createForm.phone || !createForm.password || !createForm.sponsorId) return;
+    setCreateSaving(true);
+    try {
+      await api.post('/admin/beneficiaries', {
+        firstName: createForm.firstName, lastName: createForm.lastName || undefined,
+        phone: createForm.phone, password: createForm.password,
+        sponsorId: createForm.sponsorId, relationship: createForm.relationship || undefined,
+      });
+      setCreateModal(false);
+      setCreateForm({ firstName: '', lastName: '', phone: '', password: '', sponsorId: '', relationship: '' });
+      await load();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      alert(e.response?.data?.message ?? 'Erreur');
+    } finally { setCreateSaving(false); }
+  };
 
   return (
     <div className="flex gap-6">
@@ -126,6 +156,50 @@ export default function Beneficiaries() {
           </div>
         </div>
       )}
+      {createModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Nouveau bénéficiaire</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {([['Prénom *', 'firstName', 'text'], ['Nom', 'lastName', 'text'], ['Téléphone *', 'phone', 'text'], ['Relation', 'relationship', 'text']] as const).map(([label, key, type]) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                  <input type={type} value={createForm[key]}
+                    onChange={e => setCreateForm(f => ({ ...f, [key]: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                </div>
+              ))}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sponsor *</label>
+                <select value={createForm.sponsorId}
+                  onChange={e => setCreateForm(f => ({ ...f, sponsorId: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  <option value="">— Sélectionner un sponsor —</option>
+                  {sponsors.map(s => (
+                    <option key={s.id} value={s.id}>{s.user.firstName} ({s.user.phone})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
+                <input type="password" value={createForm.password}
+                  onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setCreateModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+              <button onClick={submitCreate}
+                disabled={createSaving || !createForm.firstName || !createForm.phone || !createForm.password || !createForm.sponsorId}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {createSaving ? 'Création...' : 'Créer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
