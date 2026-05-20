@@ -325,10 +325,9 @@ model AuditLog {
   action     String
   entityType String
   entityId   String
-  metadata   Json     @default("{
-  adminId        String?
-  admin          User?    @relation("AuditLogAdmin", fields: [adminId], references: [id])
-}")
+  metadata   Json?
+  adminId    String?
+  admin      User?    @relation("AuditLogAdmin", fields: [adminId], references: [id])
   createdAt  DateTime @default(now())
 
   @@index([entityId])
