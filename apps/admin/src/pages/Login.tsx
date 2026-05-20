@@ -14,7 +14,7 @@ export default function Login() {
     try {
       const res = await api.post('/auth/admin/login', { email, password });
       localStorage.setItem('admin_token', res.data.accessToken);
-      navigate('/');
+      window.location.href = '/';
     } catch {
       setError('Identifiants invalides');
     } finally { setLoading(false); }
