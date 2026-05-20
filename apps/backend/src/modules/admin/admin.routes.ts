@@ -400,7 +400,9 @@ adminRouter.patch('/admins/:id/role', authenticate(['ADMIN']), async (req, res, 
 
 adminRouter.get('/me', authenticate(['ADMIN']), async (req, res, next) => {
   try {
-    const admin = await AdminService.getAdminMe((req as any).user.userId);
+    const u = (req as any).user;
+    const uid = u?.userId ?? u?.id ?? u?.sub;
+    const admin = await AdminService.getAdminMe(uid);
     res.json(admin);
   } catch (err) { next(err); }
 });
