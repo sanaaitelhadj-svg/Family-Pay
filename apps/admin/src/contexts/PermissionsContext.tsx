@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useState, ReactNode } from 'react';
 import { api } from '../api';
 
 interface PagePermission {
@@ -7,51 +7,72 @@ interface PagePermission {
   actions: string[];
 }
 
+interface CurrentAdmin {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  adminRole?: { id: string; name: string; permissions: Record<string, PagePermission> } | null;
+}
+
 interface PermissionsContextType {
-  permissions: Record<string, PagePermission> | null;
+  currentAdmin: CurrentAdmin | null;
+  permissions: Record<string, PagePermission> | null | undefined;
   loading: boolean;
-  can: (page: string, action: 'read' | 'write' | string) => boolean;
+  can: (page: string, action: string) => boolean;
+  refreshPermissions: () => Promise<void>;
 }
 
 const PermissionsContext = createContext<PermissionsContextType>({
+  currentAdmin: null,
   permissions: null,
-  loading: true,
+  loading: false,
   can: () => true,
+  refreshPermissions: async () => {},
 });
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-  const [permissions, setPermissions] = useState<Record<string, PagePermission> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [currentAdmin, setCurrentAdmin] = useState<CurrentAdmin | null>(null);
+  const [permissions, setPermissions] = useState<Record<string, PagePermission> | null | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const refreshPermissions = useCallback(async () => {
     const token = localStorage.getItem('admin_token');
     if (!token) {
       setPermissions(null);
-      setLoading(false);
+      setCurrentAdmin(null);
       return;
     }
-    api.get('/admin/me')
-      .then((res: any) => {
-        const role = res.data?.adminRole;
-        // No role = super admin = full access (null means unrestricted)
-        setPermissions(role?.permissions ?? null);
-      })
-      .catch(() => setPermissions(null))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/me');
+      const data = res.data as CurrentAdmin | null;
+      if (data) {
+        setCurrentAdmin(data);
+        setPermissions(data.adminRole?.permissions ?? null);
+      } else {
+        setPermissions(null);
+      }
+    } catch {
+      setPermissions(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const can = (page: string, action: string): boolean => {
-    // null = no role = full access
-    if (permissions === null) return true;
+  const can = useCallback((page: string, action: string): boolean => {
+    // undefined = not yet loaded = optimistically allow (will update after load)
+    if (permissions === undefined || permissions === null) return true;
     const p = permissions[page];
-    if (!p) return false;
+    if (!p) return true; // page not configured = unrestricted
     if (action === 'read') return p.read;
     if (action === 'write') return p.write;
     return p.actions?.includes(action) ?? false;
-  };
+  }, [permissions]);
 
   return (
-    <PermissionsContext.Provider value={{ permissions, loading, can }}>
+    <PermissionsContext.Provider value={{ currentAdmin, permissions, loading, can, refreshPermissions }}>
       {children}
     </PermissionsContext.Provider>
   );
