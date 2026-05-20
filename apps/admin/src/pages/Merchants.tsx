@@ -384,9 +384,11 @@ export default function Merchants() {
               <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                 {(selected.activationStatus === 'PENDING' || selected.activationStatus === 'INACTIVE') && (<>
                   <button onClick={() => openApprovalModal(selected)}
-                    className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700">Approuver</button>
-                  <button onClick={() => setRejectModal({ id: selected.id, name: selected.businessName })}
-                    className="px-3 py-1.5 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700">Rejeter</button>
+                    disabled={!can('merchants', 'approve')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants', 'approve') ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Approuver</button>
+                  <button onClick={() => can('merchants', 'reject') && setRejectModal({ id: selected.id, name: selected.businessName })}
+                    disabled={!can('merchants', 'reject')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants', 'reject') ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Rejeter</button>
                 </>)}
                 {(selected.activationStatus === 'ACTIVE' || selected.activationStatus === 'SUSPENDED') && (
                   <button onClick={() => suspend(selected.id, selected.activationStatus)}
