@@ -122,7 +122,7 @@ function ContactEditFields({ label, prefix, draft, onChange }: {
 }
 
 export default function Merchants() {
-  const { can } = usePermissions();
+  const { can, loading: permsLoading } = usePermissions();
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -384,10 +384,10 @@ export default function Merchants() {
               <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                 {(selected.activationStatus === 'PENDING' || selected.activationStatus === 'INACTIVE') && (<>
                   <button onClick={() => openApprovalModal(selected)}
-                    disabled={!can('merchants', 'approve')}
+                    disabled={permsLoading || !can('merchants', 'approve')}
                     className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants', 'approve') ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Approuver</button>
                   <button onClick={() => can('merchants', 'reject') && setRejectModal({ id: selected.id, name: selected.businessName })}
-                    disabled={!can('merchants', 'reject')}
+                    disabled={permsLoading || !can('merchants', 'reject')}
                     className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants', 'reject') ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Rejeter</button>
                 </>)}
                 {(selected.activationStatus === 'ACTIVE' || selected.activationStatus === 'SUSPENDED') && (

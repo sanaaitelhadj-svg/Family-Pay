@@ -92,6 +92,8 @@ model User {
   adminRoleId    String?   @db.VarChar(30)
   adminRole      AdminRole? @relation(fields: [adminRoleId], references: [id])
 
+  auditLogs      AuditLog[] @relation("AuditLogAdmin")
+
   @@map("users")
 }
 
@@ -323,7 +325,10 @@ model AuditLog {
   action     String
   entityType String
   entityId   String
-  metadata   Json     @default("{}")
+  metadata   Json     @default("{
+  adminId        String?
+  admin          User?    @relation("AuditLogAdmin", fields: [adminId], references: [id])
+}")
   createdAt  DateTime @default(now())
 
   @@index([entityId])
