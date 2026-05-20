@@ -24,6 +24,12 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      setPermissions(null);
+      setLoading(false);
+      return;
+    }
     api.get('/admin/me')
       .then((res: any) => {
         const role = res.data?.adminRole;
