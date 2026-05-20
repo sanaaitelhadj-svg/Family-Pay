@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Role {
   id: string;
@@ -23,16 +24,19 @@ const PAGES = ['dashboard','merchants','subscriptions','sponsors','beneficiaries
 const ACTIONS = ['approve','add','reject','delete','suspend'];
 
 function PermMatrix({
-  perms, onChange,
+  perms, onChange, disabled,
 }: {
   perms: Record<string, { read: boolean; write: boolean; actions: string[] }>;
   onChange: (p: typeof perms) => void;
+  disabled?: boolean;
 }) {
   const toggle = (page: string, field: 'read' | 'write') => {
+    if (disabled) return;
     const cur = perms[page] ?? { read: false, write: false, actions: [] };
     onChange({ ...perms, [page]: { ...cur, [field]: !cur[field] } });
   };
   const toggleAction = (page: string, action: string) => {
+    if (disabled) return;
     const cur = perms[page] ?? { read: false, write: false, actions: [] };
     const actions = cur.actions.includes(action)
       ? cur.actions.filter((a) => a !== action)
@@ -59,10 +63,10 @@ function PermMatrix({
               <tr key={page} className="hover:bg-gray-50">
                 <td className="p-2 border border-gray-200 font-medium capitalize">{page}</td>
                 <td className="p-2 border border-gray-200 text-center">
-                  <input type="checkbox" checked={cur.read} onChange={() => toggle(page, 'read')} />
+                  <input type="checkbox" checked={cur.read} onChange={() => toggle(page, 'read')} disabled={disabled} />
                 </td>
                 <td className="p-2 border border-gray-200 text-center">
-                  <input type="checkbox" checked={cur.write} onChange={() => toggle(page, 'write')} />
+                  <input type="checkbox" checked={cur.write} onChange={() => toggle(page, 'write')} disabled={disabled} />
                 </td>
                 {ACTIONS.map((action) => (
                   <td key={action} className="p-2 border border-gray-200 text-center">
@@ -70,6 +74,7 @@ function PermMatrix({
                       type="checkbox"
                       checked={cur.actions.includes(action)}
                       onChange={() => toggleAction(page, action)}
+                      disabled={disabled}
                     />
                   </td>
                 ))}
@@ -83,21 +88,22 @@ function PermMatrix({
 }
 
 export default function Admins() {
+  const { can } = usePermissions();
   const [tab, setTab] = useState<'admins' | 'roles'>('admins');
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', password: '', roleId: '' });
   const [saving, setSaving] = useState(false);
-  const [editAdmin, setEditAdmin] = useState<Admin | null>(null);
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', roleId: '' });
-  const [savingEdit, setSavingEdit] = useState(false);
   const [showCreateRole, setShowCreateRole] = useState(false);
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [roleForm, setRoleForm] = useState<{ name: string; description: string; permissions: Record<string, { read: boolean; write: boolean; actions: string[] }> }>({
     name: '', description: '', permissions: {},
   });
   const [savingRole, setSavingRole] = useState(false);
+  const [editAdmin, setEditAdmin] = useState<Admin | null>(null);
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', roleId: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     const [a, r] = await Promise.all([
@@ -115,11 +121,8 @@ export default function Admins() {
     setSaving(true);
     try {
       await api.post('/admin/admins', {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        phone: form.phone,
-        email: form.email,
-        password: form.password,
+        firstName: form.firstName, lastName: form.lastName,
+        phone: form.phone, email: form.email, password: form.password,
         ...(form.roleId ? { roleId: form.roleId } : {}),
       });
       setShowCreate(false);
@@ -140,33 +143,21 @@ export default function Admins() {
 
   const openEditAdmin = (a: Admin) => {
     setEditAdmin(a);
-    setEditForm({
-      firstName: a.firstName,
-      lastName: a.lastName,
-      phone: a.phone,
-      email: a.email,
-      roleId: a.adminRole?.id ?? '',
-    });
+    setEditForm({ firstName: a.firstName, lastName: a.lastName, phone: a.phone, email: a.email, roleId: a.adminRole?.id ?? '' });
   };
 
   const saveEditAdmin = async () => {
     if (!editAdmin) return;
     setSavingEdit(true);
     try {
-      await api.patch(`/admin/admins/${editAdmin.id}`, {
-        firstName: editForm.firstName,
-        lastName: editForm.lastName,
-        phone: editForm.phone,
-        email: editForm.email,
-        roleId: editForm.roleId || null,
-      });
+      await api.patch(`/admin/admins/${editAdmin.id}`, { ...editForm, roleId: editForm.roleId || null });
       setEditAdmin(null);
       load();
     } finally { setSavingEdit(false); }
   };
 
   const deleteAdmin = async (id: string, name: string) => {
-    if (!confirm(`Supprimer l'admin ${name} ? Cette action est irréversible.`)) return;
+    if (!confirm(`Supprimer l'admin ${name} ?`)) return;
     await api.delete(`/admin/admins/${id}`);
     load();
   };
@@ -203,6 +194,11 @@ export default function Admins() {
     load();
   };
 
+  const canWrite = can('admins', 'write');
+  const canAdd   = can('admins', 'add');
+  const canDel   = can('admins', 'delete');
+  const canSusp  = can('admins', 'suspend');
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -211,7 +207,8 @@ export default function Admins() {
         </h1>
         <button
           onClick={tab === 'admins' ? () => setShowCreate(true) : openCreateRole}
-          className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600"
+          disabled={tab === 'admins' ? !canAdd : !canWrite}
+          className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${(tab === 'admins' ? !canAdd : !canWrite) ? 'bg-gray-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
         >
           {tab === 'admins' ? '+ Nouvel admin' : '+ Nouveau role'}
         </button>
@@ -219,13 +216,8 @@ export default function Admins() {
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
         {(['admins', 'roles'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
             {t === 'admins' ? 'Administrateurs' : 'Roles & Permissions'}
           </button>
         ))}
@@ -236,12 +228,9 @@ export default function Admins() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left p-4 font-medium text-gray-600">Nom</th>
-                <th className="text-left p-4 font-medium text-gray-600">Email</th>
-                <th className="text-left p-4 font-medium text-gray-600">Telephone</th>
-                <th className="text-left p-4 font-medium text-gray-600">Role</th>
-                <th className="text-left p-4 font-medium text-gray-600">Statut</th>
-                <th className="text-left p-4 font-medium text-gray-600">Actions</th>
+                {['Nom','Email','Telephone','Role','Statut','Actions'].map(h => (
+                  <th key={h} className="text-left p-4 font-medium text-gray-600">{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -257,7 +246,8 @@ export default function Admins() {
                     <select
                       value={a.adminRole?.id ?? ''}
                       onChange={(e) => assignRole(a.id, e.target.value)}
-                      className="border border-gray-200 rounded px-2 py-1 text-sm"
+                      disabled={!canWrite}
+                      className={`border border-gray-200 rounded px-2 py-1 text-sm ${!canWrite ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                     >
                       <option value="">- Aucun role -</option>
                       {roles.filter((r) => r.isActive).map((r) => (
@@ -266,29 +256,21 @@ export default function Admins() {
                     </select>
                   </td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      a.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {a.isActive ? 'Actif' : 'Inactif'}
                     </span>
                   </td>
                   <td className="p-4 flex gap-2">
-                    <button
-                      onClick={() => openEditAdmin(a)}
-                      className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100"
-                    >
+                    <button onClick={() => canWrite && openEditAdmin(a)} disabled={!canWrite}
+                      className={`text-sm px-2 py-1 rounded ${canWrite ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                       Editer
                     </button>
-                    <button
-                      onClick={() => toggleStatus(a.id, a.isActive)}
-                      className={`text-sm px-2 py-1 rounded ${a.isActive ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
-                    >
+                    <button onClick={() => canSusp && toggleStatus(a.id, a.isActive)} disabled={!canSusp}
+                      className={`text-sm px-2 py-1 rounded ${canSusp ? (a.isActive ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' : 'bg-green-50 text-green-700 hover:bg-green-100') : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                       {a.isActive ? 'Suspendre' : 'Activer'}
                     </button>
-                    <button
-                      onClick={() => deleteAdmin(a.id, a.firstName)}
-                      className="text-sm bg-red-50 text-red-700 px-2 py-1 rounded hover:bg-red-100"
-                    >
+                    <button onClick={() => canDel && deleteAdmin(a.id, a.firstName)} disabled={!canDel}
+                      className={`text-sm px-2 py-1 rounded ${canDel ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                       Supprimer
                     </button>
                   </td>
@@ -301,9 +283,7 @@ export default function Admins() {
 
       {tab === 'roles' && (
         <div className="space-y-4">
-          {roles.length === 0 && (
-            <p className="text-gray-400 text-center py-8">Aucun role cree</p>
-          )}
+          {roles.length === 0 && <p className="text-gray-400 text-center py-8">Aucun role cree</p>}
           {roles.map((r) => (
             <div key={r.id} className={`bg-white rounded-xl border p-4 ${!r.isActive ? 'opacity-50' : ''}`}>
               <div className="flex items-center justify-between mb-3">
@@ -312,11 +292,13 @@ export default function Admins() {
                   {r.description && <p className="text-sm text-gray-500">{r.description}</p>}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => openEditRole(r)} className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded hover:bg-blue-100">
+                  <button onClick={() => canWrite && openEditRole(r)} disabled={!canWrite}
+                    className={`text-sm px-3 py-1 rounded ${canWrite ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                     Editer
                   </button>
                   {r.isActive && (
-                    <button onClick={() => deactivateRole(r.id)} className="text-sm bg-red-50 text-red-700 px-3 py-1 rounded hover:bg-red-100">
+                    <button onClick={() => canDel && deactivateRole(r.id)} disabled={!canDel}
+                      className={`text-sm px-3 py-1 rounded ${canDel ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                       Desactiver
                     </button>
                   )}
@@ -351,21 +333,15 @@ export default function Admins() {
             ].map(({ label, key, type }) => (
               <div key={key}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                <input
-                  type={type}
-                  value={(form as any)[key]}
+                <input type={type} value={(form as any)[key]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
             ))}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select
-                value={form.roleId}
-                onChange={(e) => setForm({ ...form, roleId: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              >
+              <select value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                 <option value="">- Aucun role -</option>
                 {roles.filter((r) => r.isActive).map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
@@ -394,21 +370,15 @@ export default function Admins() {
             ].map(({ label, key, type }) => (
               <div key={key}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                <input
-                  type={type}
-                  value={(editForm as any)[key]}
+                <input type={type} value={(editForm as any)[key]}
                   onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
             ))}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select
-                value={editForm.roleId}
-                onChange={(e) => setEditForm({ ...editForm, roleId: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              >
+              <select value={editForm.roleId} onChange={(e) => setEditForm({ ...editForm, roleId: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                 <option value="">- Aucun role -</option>
                 {roles.filter((r) => r.isActive).map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
@@ -432,30 +402,25 @@ export default function Admins() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
-                <input
-                  type="text"
-                  value={roleForm.name}
+                <input type="text" value={roleForm.name}
                   onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <input
-                  type="text"
-                  value={roleForm.description}
+                <input type="text" value={roleForm.description}
                   onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Permissions par page</label>
-              <PermMatrix perms={roleForm.permissions} onChange={(p) => setRoleForm({ ...roleForm, permissions: p })} />
+              <PermMatrix perms={roleForm.permissions} onChange={(p) => setRoleForm({ ...roleForm, permissions: p })} disabled={!canWrite} />
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button onClick={() => setShowCreateRole(false)} className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Annuler</button>
-              <button onClick={saveRole} disabled={savingRole} className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50">
+              <button onClick={saveRole} disabled={savingRole || !canWrite}
+                className={`px-4 py-2 text-sm rounded-lg text-white ${canWrite ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-300 cursor-not-allowed'} disabled:opacity-50`}>
                 {savingRole ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>

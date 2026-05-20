@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Sponsor {
   id: string; createdAt: string;
@@ -17,6 +18,7 @@ interface SponsorDetail {
 }
 
 export default function Sponsors() {
+  const { can } = usePermissions();
   const [list, setList] = useState<Sponsor[]>([]);
   const [detail, setDetail] = useState<SponsorDetail | null>(null);
   const [loading, setLoading] = useState(true);

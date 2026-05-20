@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 interface SubscriptionPlan {
   id: string; name: string; description: string | null;
@@ -18,6 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function Subscriptions() {
+  const { can } = usePermissions();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [planModal, setPlanModal] = useState<'create' | 'edit' | null>(null);

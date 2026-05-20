@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Beneficiary {
   id: string; isActive: boolean; isMinor: boolean; createdAt: string;
@@ -10,6 +11,7 @@ interface Beneficiary {
 }
 
 export default function Beneficiaries() {
+  const { can } = usePermissions();
   const [list, setList] = useState<Beneficiary[]>([]);
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
