@@ -122,8 +122,8 @@ function ContactEditFields({ label, prefix, draft, onChange }: {
 }
 
 export default function Merchants() {
-  const { can, permissions, loading } = usePermissions();
-  console.log('[RBAC] permissions:', permissions, 'loading:', loading, 'can approve:', can('merchants', 'approve'));
+  const { can, permissions, loading: permsLoading } = usePermissions();
+  console.log('[RBAC] permissions:', permissions, 'loading:', permsLoading, 'can approve:', can('merchants', 'approve'));
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
