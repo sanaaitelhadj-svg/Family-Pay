@@ -1,0 +1,7 @@
+/* Global: visually disable all disabled buttons */
+button:disabled,
+button[disabled] {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}

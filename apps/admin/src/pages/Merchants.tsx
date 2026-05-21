@@ -57,7 +57,7 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, canEdit = t
           </div>
         ) : (
           <button onClick={onEdit} disabled={!canEdit}
-            className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">
+            className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
             ✏️ Éditer
           </button>
         )}
