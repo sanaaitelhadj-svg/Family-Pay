@@ -94,6 +94,8 @@ adminRouter.get('/transactions', authenticate(['ADMIN']), async (req, res, next)
 adminRouter.get('/audit-logs', authenticate(['ADMIN']), async (req, res, next) => {
   try {
     const { action } = req.query as { action?: string };
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     res.json(await AdminService.getAuditLogs(action));
   } catch (err) { next(err); }
 });

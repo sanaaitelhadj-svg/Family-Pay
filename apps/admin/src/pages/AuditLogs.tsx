@@ -64,7 +64,7 @@ export default function AuditLogs() {
     try {
       const token = localStorage.getItem('admin_token');
       const params = new URLSearchParams({
-        page: String(page), limit: String(limit),
+        page: String(page), limit: String(limit), _t: String(Date.now()),
         ...(search ? { action: search } : {}),
         ...(entity ? { entity }         : {}),
         ...(result ? { result }         : {}),
