@@ -11,13 +11,17 @@ export function requirePermission(page: string, action: 'read' | 'write' | strin
       // Fetch admin with role from DB
       const admin = await prisma.user.findUnique({
         where: { id: user.userId },
-        select: { adminRoleId: true, adminRole: { select: { isActive: true, permissions: true } } },
+        select: { adminRoleId: true, adminRole: { select: { isActive: true, permissions: true, name: true } } },
       });
 
       if (!admin) return next(new AppError('Utilisateur introuvable', 404, 'NOT_FOUND'));
 
       // No role assigned = full access (super admin)
       if (!admin.adminRoleId || !admin.adminRole) return next();
+
+      // Super-admin role = full access regardless of permissions
+      const roleName = (admin.adminRole as any)?.name?.toLowerCase() ?? '';
+      if (roleName.includes('super') || roleName.includes('administrateur général')) return next();
 
       if (!admin.adminRole.isActive) return next(new AppError('Rôle inactif', 403, 'FORBIDDEN'));
 
