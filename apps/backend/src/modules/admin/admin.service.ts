@@ -351,7 +351,7 @@ export class AdminService {
   }
 
 
-  static async setMerchantStatus(merchantId: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<void> {
+  static async setMerchantStatus(merchantId: string, status: 'ACTIVE' | 'SUSPENDED', actorId?: string): Promise<void> {
     await prisma.merchant.update({ where: { id: merchantId }, data: { activationStatus: status } });
   }
 
@@ -526,7 +526,7 @@ export class AdminService {
 
   static async createAdmin(data: {
     firstName: string; lastName?: string; phone: string; email?: string; password: string; roleId?: string;
-  }) {
+  }, actorId?: string) {
     const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
     if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
     const hashed = await bcrypt.hash(data.password, 12);
@@ -539,7 +539,14 @@ export class AdminService {
       },
     });
     await prisma.auditLog.create({
-      data: { action: 'ADMIN_CREATED', entityType: 'User', entityId: user.id, metadata: { phone: data.phone } },
+      data: {
+        actorId: actorId ?? null,
+        action: 'ADMIN_CREATED',
+        result: 'SUCCESS',
+        entityType: 'User',
+        entityId: user.id,
+        newData: { phone: data.phone, firstName: data.firstName, lastName: data.lastName } as any,
+      },
     });
     return { userId: user.id };
   }

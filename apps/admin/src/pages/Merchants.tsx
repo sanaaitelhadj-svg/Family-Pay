@@ -300,8 +300,13 @@ export default function Merchants() {
   };
 
   const suspend = async (id: string, current: string) => {
-    await api.patch(`/admin/merchants/${id}/status`, { status: current === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED' });
-    await load();
+    try {
+      await api.patch(`/admin/merchants/${id}/status`, { status: current === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED' });
+      await load();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      alert(e.response?.data?.message ?? 'Erreur lors de la suspension');
+    }
   };
 
   const filtered = filter === 'ALL' ? merchants : merchants.filter(m => m.activationStatus === filter);

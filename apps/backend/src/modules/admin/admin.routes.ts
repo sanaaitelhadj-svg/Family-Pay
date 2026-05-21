@@ -180,8 +180,10 @@ adminRouter.patch('/merchants/:id/reject', authenticate(['ADMIN']), requirePermi
 
 adminRouter.patch('/merchants/:id/status', authenticate(['ADMIN']), requirePermission('merchants', 'suspend'), async (req, res, next) => {
   try {
+    const u = (req as any).user;
+    const actorId = u?.userId ?? u?.id ?? u?.sub;
     const { status } = z.object({ status: z.enum(['ACTIVE', 'SUSPENDED']) }).parse(req.body);
-    await AdminService.setMerchantStatus(req.params['id'] as string, status);
+    await AdminService.setMerchantStatus(req.params['id'] as string, status, actorId);
     res.json({ message: 'Statut mis à jour.' });
   } catch (err) { next(err); }
 });
@@ -336,7 +338,9 @@ adminRouter.post('/admins', authenticate(['ADMIN']), requirePermission('admins',
       email:     z.string().email().optional(),
       password:  z.string().min(8),
     });
-    const admin = await AdminService.createAdmin(schema.parse(req.body));
+    const u = (req as any).user;
+    const actorId = u?.userId ?? u?.id ?? u?.sub;
+    const admin = await AdminService.createAdmin(schema.parse(req.body), actorId);
     res.status(201).json(admin);
   } catch (err) { next(err); }
 });
