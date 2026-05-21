@@ -501,7 +501,7 @@ adminRouter.post('/fix-roles', authenticate(['ADMIN']), async (_req, res, next) 
       if (name === 'super-admin' || name === 'super_admin')  perms = fullAccess;
       else if (name === 'finance')                           perms = financePerms;
       else                                                   perms = readOnly;
-      await prisma.adminRole.update({ where: { id: role.id }, data: { permissions: perms } });
+      await prisma.adminRole.update({ where: { id: role.id }, data: { permissions: perms as any } });
     }
     res.json({ message: `${roles.length} rôle(s) mis à jour`, roles: roles.map(r => r.name) });
   } catch (err) { next(err); }
