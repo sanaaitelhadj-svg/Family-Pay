@@ -134,8 +134,10 @@ adminRouter.get('/commissions/stats', authenticate(['ADMIN']), async (_req, res,
 
 adminRouter.patch('/merchants/:id/commission', authenticate(['ADMIN']), async (req, res, next) => {
   try {
+    const u = (req as any).user;
+    const actorId = u?.userId ?? u?.id ?? u?.sub;
     const { commissionType, commissionRate } = req.body;
-    res.json(await AdminService.updateMerchantCommission(req.params['id'] as string, commissionType, Number(commissionRate)));
+    res.json(await AdminService.updateMerchantCommission(req.params['id'] as string, commissionType, Number(commissionRate), actorId));
   } catch (err) { next(err); }
 });
 
@@ -154,7 +156,9 @@ adminRouter.post('/subscriptions', authenticate(['ADMIN']), async (req, res, nex
 
 adminRouter.patch('/subscriptions/:id', authenticate(['ADMIN']), async (req, res, next) => {
   try {
-    res.json(await AdminService.updateSubscription(req.params['id'] as string, req.body.status));
+    const u = (req as any).user;
+    const actorId = u?.userId ?? u?.id ?? u?.sub;
+    res.json(await AdminService.updateSubscription(req.params['id'] as string, req.body.status, actorId));
   } catch (err) { next(err); }
 });
 adminRouter.patch('/merchants/:id/contract', authenticate(['ADMIN']), async (req, res, next) => {
@@ -290,7 +294,8 @@ adminRouter.patch('/merchants/:id/info', authenticate(['ADMIN']), async (req, re
       contactLegal:          z.any().optional(),
       contractUrl:           z.string().url().optional(),
     });
-    await AdminService.updateMerchantInfo(req.params['id'] as string, schema.parse(req.body));
+    const _u = (req as any).user; const _actorId = _u?.userId ?? _u?.id ?? _u?.sub;
+    await AdminService.updateMerchantInfo(req.params['id'] as string, schema.parse(req.body), _actorId);
     res.json({ message: 'Informations mises à jour.' });
   } catch (err) { next(err); }
 });

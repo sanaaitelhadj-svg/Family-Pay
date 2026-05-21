@@ -466,10 +466,11 @@ export class AdminService {
     });
   }
 
-  static async updateMerchantInfo(merchantId: string, data: Record<string, unknown>): Promise<void> {
+  static async updateMerchantInfo(merchantId: string, data: Record<string, unknown>, actorId?: string): Promise<void> {
     await prisma.merchant.update({ where: { id: merchantId }, data: data as any });
     await prisma.auditLog.create({
       data: {
+        actorId: actorId ?? null,
         action: 'MERCHANT_INFO_UPDATED',
         result: 'SUCCESS',
         entityType: 'Merchant',
