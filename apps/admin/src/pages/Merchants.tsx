@@ -38,9 +38,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 // ── Section wrapper with edit toggle ─────────────────────────────────────────
-function Section({ title, editing, onEdit, onSave, onCancel, saving, children }: {
+function Section({ title, editing, onEdit, onSave, onCancel, saving, canEdit = true, children }: {
   title: string; editing: boolean; onEdit: () => void;
-  onSave: () => void; onCancel: () => void; saving: boolean; children: React.ReactNode;
+  onSave: () => void; onCancel: () => void; saving: boolean; canEdit?: boolean; children: React.ReactNode;
 }) {
   return (
     <section>
@@ -56,7 +56,7 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, children }:
             </button>
           </div>
         ) : (
-          <button onClick={onEdit} disabled={permsLoading || !can('merchants', 'write')}
+          <button onClick={onEdit} disabled={!canEdit}
             className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">
             ✏️ Éditer
           </button>
