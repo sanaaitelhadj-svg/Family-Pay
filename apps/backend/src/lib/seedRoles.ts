@@ -4,7 +4,12 @@ const ALL_PAGES = ['dashboard','merchants','sponsors','beneficiaries','transacti
   'fraud','subscriptions','commissions','admins','roles','auditLogs'];
 const ALL_ACTIONS = ['*','add','edit','delete','suspend','approve','reject','assign-role','export'];
 const fullAccess   = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true,  write: true,  actions: ALL_ACTIONS }]));
-const readOnly     = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true,  write: false, actions: [] }]));
+const HIDDEN_FOR_SUPERVISEUR = ['commissions', 'auditLogs'];
+const readOnly     = Object.fromEntries(ALL_PAGES.map(p => [p, {
+  read:    !HIDDEN_FOR_SUPERVISEUR.includes(p),
+  write:   false,
+  actions: [],
+}]));
 const financePerms = Object.fromEntries(ALL_PAGES.map(p => {
   if (['commissions','subscriptions'].includes(p)) return [p, { read: true, write: true, actions: ['edit'] }];
   if (p === 'admins' || p === 'roles')             return [p, { read: false, write: false, actions: [] }];

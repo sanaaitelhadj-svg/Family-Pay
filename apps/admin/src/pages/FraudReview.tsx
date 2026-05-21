@@ -1,3 +1,4 @@
+import { usePermissions } from '../contexts/PermissionsContext';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 
@@ -12,6 +13,7 @@ interface Auth {
 }
 
 export default function FraudReview() {
+  const { can, loading: permsLoading } = usePermissions();
   const [list, setList] = useState<Auth[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,11 +61,11 @@ export default function FraudReview() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => approve(auth.id)}
+                <button onClick={() => approve(auth.id)} disabled={permsLoading || !can('fraud','approve')}
                   className="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600">
                   Approuver
                 </button>
-                <button onClick={() => reject(auth.id)}
+                <button onClick={() => reject(auth.id)} disabled={permsLoading || !can('fraud','reject')}
                   className="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-xl hover:bg-red-600">
                   Rejeter
                 </button>

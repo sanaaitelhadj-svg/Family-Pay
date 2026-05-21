@@ -95,7 +95,7 @@ export default function Subscriptions() {
             <h2 className="text-xl font-bold text-gray-900">Catalogue des offres</h2>
             <p className="text-sm text-gray-500">Plans d'abonnement proposés aux marchands</p>
           </div>
-          <button onClick={openCreatePlan}
+          <button onClick={openCreatePlan} disabled={permsLoading || !can('subscriptions','add')}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
             + Nouvelle offre
           </button>
@@ -106,7 +106,7 @@ export default function Subscriptions() {
         ) : plans.length === 0 ? (
           <div className="bg-white rounded-xl shadow p-8 text-center">
             <p className="text-gray-400 mb-2">Aucune offre définie</p>
-            <button onClick={openCreatePlan} className="text-indigo-600 text-sm hover:underline">Créer la première offre →</button>
+            <button onClick={openCreatePlan} disabled={permsLoading || !can('subscriptions','add')} className="text-indigo-600 text-sm hover:underline">Créer la première offre →</button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -135,9 +135,9 @@ export default function Subscriptions() {
                   </ul>
                 )}
                 <div className="flex gap-2 pt-1">
-                  <button onClick={() => openEditPlan(plan)}
+                  <button onClick={() => openEditPlan(plan)} disabled={permsLoading || !can('subscriptions','write')}
                     className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50">Modifier</button>
-                  <button onClick={() => togglePlanActive(plan)}
+                  <button onClick={() => togglePlanActive(plan)} disabled={permsLoading || !can('subscriptions','write')}
                     className={`flex-1 px-3 py-1.5 rounded text-xs font-medium ${plan.isActive ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>
                     {plan.isActive ? 'Désactiver' : 'Activer'}
                   </button>
@@ -205,15 +205,15 @@ export default function Subscriptions() {
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         {sub.status === 'ACTIVE' && (
-                          <button onClick={() => updateSubStatus(sub.id, 'SUSPENDED')}
+                          <button onClick={() => updateSubStatus(sub.id, 'SUSPENDED')} disabled={permsLoading || !can('subscriptions','write')}
                             className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200">Suspendre</button>
                         )}
                         {sub.status === 'SUSPENDED' && (
-                          <button onClick={() => updateSubStatus(sub.id, 'ACTIVE')}
+                          <button onClick={() => updateSubStatus(sub.id, 'ACTIVE')} disabled={permsLoading || !can('subscriptions','write')}
                             className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">Réactiver</button>
                         )}
                         {(sub.status === 'ACTIVE' || sub.status === 'SUSPENDED') && (
-                          <button onClick={() => updateSubStatus(sub.id, 'CANCELLED')}
+                          <button onClick={() => updateSubStatus(sub.id, 'CANCELLED')} disabled={permsLoading || !can('subscriptions','write')}
                             className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">Annuler</button>
                         )}
                       </div>

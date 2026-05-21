@@ -3,16 +3,16 @@ import { Outlet, NavLink } from 'react-router-dom';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 const NAV = [
-  { to: '/',              label: '📊 Dashboard',        end: true },
-  { to: '/sponsors',      label: '👥 Sponsors'                    },
-  { to: '/beneficiaries', label: '🎁 Bénéficiaires'              },
-  { to: '/merchants',     label: '🏪 Marchands KYC'              },
-  { to: '/transactions',  label: '💳 Transactions'               },
-  { to: '/fraud',         label: '🔍 Revue fraude'               },
-  { to: '/subscriptions', label: '📋 Abonnements'                },
-  { to: '/commissions',   label: '💰 Commissions'                },
-  { to: '/admins',        label: '🛡️ Administrateurs'            },
-  { to: '/audit-logs',    label: '📜 Audit Logs'                 },
+  { to: '/',              label: '📊 Dashboard',        page: 'dashboard',      end: true },
+  { to: '/sponsors',      label: '👥 Sponsors',         page: 'sponsors'                  },
+  { to: '/beneficiaries', label: '🎁 Bénéficiaires',   page: 'beneficiaries'             },
+  { to: '/merchants',     label: '🏪 Marchands KYC',   page: 'merchants'                 },
+  { to: '/transactions',  label: '💳 Transactions',    page: 'transactions'              },
+  { to: '/fraud',         label: '🔍 Revue fraude',    page: 'fraud'                     },
+  { to: '/subscriptions', label: '📋 Abonnements',     page: 'subscriptions'             },
+  { to: '/commissions',   label: '💰 Commissions',     page: 'commissions'               },
+  { to: '/admins',        label: '🛡️ Administrateurs', page: 'admins'                    },
+  { to: '/audit-logs',    label: '📜 Audit Logs',      page: 'auditLogs'                 },
 ];
 
 function formatDate(iso: string | null): string {
@@ -33,7 +33,7 @@ function Avatar({ name }: { name: string }) {
 }
 
 export default function Layout() {
-  const { currentAdmin, refreshPermissions } = usePermissions();
+  const { currentAdmin, refreshPermissions, can, permissions } = usePermissions();
 
   useEffect(() => {
     refreshPermissions();
@@ -59,7 +59,7 @@ export default function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {NAV.map(({ to, label, end }: any) => (
+          {NAV.filter(({ page }) => can(page, 'read')).map(({ to, label, end }: any) => (
             <NavLink
               key={to} to={to} end={end}
               className={({ isActive }) =>
