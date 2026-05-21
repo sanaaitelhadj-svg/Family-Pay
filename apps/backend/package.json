@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "rm -rf dist && prisma generate && tsc",
-    "prestart": "prisma migrate resolve --rolled-back 20260521091951_rebuild_audit_sessions 2>/dev/null || true; prisma migrate deploy",
+    "prestart": "prisma migrate deploy",
     "start": "node dist/index.js",
     "lint": "eslint src --ext ts",
     "type-check": "tsc --noEmit",
