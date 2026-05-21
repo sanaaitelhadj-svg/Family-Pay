@@ -4,8 +4,11 @@ import { requirePermission } from '../../middleware/requirePermission.js';
 import { AdminService } from './admin.service.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { prisma } from '../../lib/prisma.js';
+import { sessionMiddleware } from '../../middleware/sessionMiddleware.js';
 
 export const adminRouter = Router();
+
+adminRouter.use(sessionMiddleware);
 
 adminRouter.get('/fraud-review', authenticate(['ADMIN']), async (_req, res, next) => {
   try {
@@ -429,3 +432,19 @@ adminRouter.delete('/admins/:id', authenticate(['ADMIN']), requirePermission('ad
   } catch (err) { next(err); }
 });
 
+// ── Sessions ──────────────────────────────────────────────────────────────────
+adminRouter.get('/sessions', authenticate(['ADMIN']), async (_req, res, next) => {
+  try {
+    const sessions = await AdminService.listActiveSessions();
+    res.json(sessions);
+  } catch (err) { next(err); }
+});
+
+adminRouter.delete('/sessions/:id', authenticate(['ADMIN']), async (req, res, next) => {
+  try {
+    const u = (req as any).user;
+    const revokedById = u?.userId ?? u?.id ?? u?.sub;
+    await AdminService.revokeSession(req.params['id'] as string, revokedById);
+    res.json({ message: 'Session révoquée.' });
+  } catch (err) { next(err); }
+});

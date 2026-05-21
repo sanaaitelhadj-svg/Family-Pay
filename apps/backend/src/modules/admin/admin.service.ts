@@ -580,15 +580,7 @@ export class AdminService {
     });
   }
 
-  static async getAdminMe(userId: string) {
-    return prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true, firstName: true, lastName: true, email: true, phone: true,
-        adminRole: { select: { id: true, name: true, permissions: true } },
-      },
-    });
-  }
+
 
 
   static async updateAdmin(adminId: string, data: {
@@ -608,6 +600,73 @@ export class AdminService {
 
   static async deleteAdmin(adminId: string): Promise<void> {
     await prisma.user.delete({ where: { id: adminId } });
+  }
+
+  // ─── Admin Me ────────────────────────────────────────────────────────────────
+  static async getAdminMe(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, firstName: true, lastName: true, email: true, phone: true,
+        adminRoleId: true,
+        adminRole: { select: { id: true, name: true, permissions: true, isActive: true } },
+        adminSessions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { lastActivityAt: 'desc' },
+          take: 1,
+          select: { id: true, loginAt: true, ipAddress: true, deviceInfo: true, lastActivityAt: true },
+        },
+      },
+    });
+    if (!user) return null;
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      adminRoleId: user.adminRoleId,
+      adminRole: user.adminRole ?? null,
+      lastLogin: user.adminSessions[0]?.loginAt ?? null,
+      lastActivity: user.adminSessions[0]?.lastActivityAt ?? null,
+      lastIp: user.adminSessions[0]?.ipAddress ?? null,
+    };
+  }
+
+  // ─── Sessions ────────────────────────────────────────────────────────────────
+  static async createSession(adminId: string, ip: string | null, userAgent: string | null) {
+    return prisma.adminSession.create({
+      data: { adminId, ipAddress: ip, userAgent, deviceInfo: userAgent, status: 'ACTIVE' },
+    });
+  }
+
+  static async listActiveSessions() {
+    return prisma.adminSession.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        admin: {
+          select: {
+            id: true, firstName: true, lastName: true, email: true,
+            adminRole: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { lastActivityAt: 'desc' },
+    });
+  }
+
+  static async revokeSession(sessionId: string, revokedById: string) {
+    return prisma.adminSession.update({
+      where: { id: sessionId },
+      data: { status: 'REVOKED', revokedAt: new Date(), revokedById },
+    });
+  }
+
+  static async revokeAllSessionsForAdmin(adminId: string) {
+    return prisma.adminSession.updateMany({
+      where: { adminId, status: 'ACTIVE' },
+      data: { status: 'REVOKED', revokedAt: new Date() },
+    });
   }
 
 }

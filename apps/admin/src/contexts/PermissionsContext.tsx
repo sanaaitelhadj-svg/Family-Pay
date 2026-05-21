@@ -2,23 +2,27 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 
 const API = import.meta.env.VITE_API_URL ?? '';
 
-interface PagePermission {
+export interface PagePermission {
   read: boolean;
   write: boolean;
   actions: string[];
 }
 
-interface CurrentAdmin {
+export interface CurrentAdmin {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
   adminRoleId: string | null;
-  adminRole: { id: string; name: string } | null;
+  adminRole: { id: string; name: string; permissions: Record<string, PagePermission>; isActive: boolean } | null;
+  lastLogin: string | null;
+  lastActivity: string | null;
+  lastIp: string | null;
 }
 
 interface PermissionsContextType {
   currentAdmin: CurrentAdmin | null;
+  /** undefined = loading | null = super admin (full access) | object = role with permissions */
   permissions: Record<string, PagePermission> | null | undefined;
   loading: boolean;
   can: (page: string, action: string) => boolean;
@@ -35,8 +39,8 @@ const PermissionsContext = createContext<PermissionsContextType>({
 
 export function PermissionsProvider({ children }: { children: React.ReactNode }) {
   const [currentAdmin, setCurrentAdmin] = useState<CurrentAdmin | null>(null);
-  const [permissions, setPermissions] = useState<Record<string, PagePermission> | null | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [permissions, setPermissions]   = useState<Record<string, PagePermission> | null | undefined>(undefined);
+  const [loading, setLoading]           = useState(true);
   const refreshing = useRef(false);
 
   const refreshPermissions = useCallback(async () => {
@@ -46,33 +50,30 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     try {
       const token = localStorage.getItem('admin_token');
       if (!token) {
-        setPermissions(null);
         setCurrentAdmin(null);
-        setLoading(false);
-        refreshing.current = false;
+        setPermissions(null);
         return;
       }
       const res = await fetch(`${API}/admin/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        setPermissions(null);
         setCurrentAdmin(null);
-        setLoading(false);
-        refreshing.current = false;
+        setPermissions(null);
         return;
       }
-      const data = await res.json();
+      const data: CurrentAdmin = await res.json();
       setCurrentAdmin(data);
 
-      // /admin/me already includes adminRole.permissions — use it directly
       if (!data.adminRole) {
-        // No role assigned = super admin = full access
+        // No role = Super Admin = full access
         setPermissions(null);
       } else {
-        setPermissions(data.adminRole.permissions ?? null);
+        // Use permissions embedded in adminRole directly from /me
+        setPermissions((data.adminRole.permissions as Record<string, PagePermission>) ?? null);
       }
     } catch {
+      setCurrentAdmin(null);
       setPermissions(null);
     } finally {
       setLoading(false);
@@ -80,13 +81,20 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  /**
+   * can() rules:
+   *   undefined  → still loading         → false (optimistic lock)
+   *   null       → no role = super admin → true
+   *   page missing in perms              → not restricted → true
+   *   otherwise                          → check flag
+   */
   const can = useCallback(
     (page: string, action: string): boolean => {
       if (permissions === undefined) return false;
-      if (permissions === null) return true;
+      if (permissions === null)      return true;
       const p = permissions[page];
       if (!p) return true;
-      if (action === 'read') return p.read;
+      if (action === 'read')  return p.read;
       if (action === 'write') return p.write;
       return p.actions?.includes(action) ?? false;
     },

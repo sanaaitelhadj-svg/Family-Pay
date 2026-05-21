@@ -93,6 +93,8 @@ model User {
   adminRole      AdminRole? @relation(fields: [adminRoleId], references: [id])
 
   auditLogs      AuditLog[] @relation("AuditLogAdmin")
+  adminSessions      AdminSession[]     @relation("AdminSessions")
+  impersonationsAsSuperAdmin ImpersonationLog[] @relation("ImpersonationBySuperAdmin")
 
   @@map("users")
 }
@@ -320,18 +322,27 @@ model OtpCode {
 // ═══════════════════════════════════════════════════════════════════════════
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  actorId    String?
-  action     String
-  entityType String
-  entityId   String
-  metadata   Json?
-  adminId    String?
-  admin      User?    @relation("AuditLogAdmin", fields: [adminId], references: [id])
-  createdAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  actorId        String?
+  actorRole      String?
+  admin          User?    @relation("AuditLogAdmin", fields: [actorId], references: [id])
+  action         String
+  result         String   @default("SUCCESS")
+  entityType     String
+  entityId       String
+  previousData   Json?
+  newData        Json?
+  metadata       Json?
+  ipAddress      String?
+  sessionId      String?
+  deviceInfo     String?
+  organizationScope String?
+  createdAt      DateTime @default(now())
 
-  @@index([entityId])
   @@index([actorId])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
@@ -411,4 +422,41 @@ model AdminRole {
   users          User[]
 
   @@map("admin_roles")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN SESSIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+model AdminSession {
+  id             String    @id @default(cuid())
+  adminId        String
+  admin          User      @relation("AdminSessions", fields: [adminId], references: [id])
+  ipAddress      String?
+  userAgent      String?
+  deviceInfo     String?
+  status         String    @default("ACTIVE")   // ACTIVE | EXPIRED | REVOKED
+  loginAt        DateTime  @default(now())
+  lastActivityAt DateTime  @default(now())
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  revokedById    String?
+
+  @@index([adminId])
+  @@index([status])
+  @@map("admin_sessions")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMPERSONATION LOGS
+// ═══════════════════════════════════════════════════════════════════════════════
+model ImpersonationLog {
+  id                 String    @id @default(cuid())
+  superAdminId       String
+  superAdmin         User      @relation("ImpersonationBySuperAdmin", fields: [superAdminId], references: [id])
+  impersonatedUserId String
+  reason             String?
+  startedAt          DateTime  @default(now())
+  endedAt            DateTime?
+
+  @@map("impersonation_logs")
 }

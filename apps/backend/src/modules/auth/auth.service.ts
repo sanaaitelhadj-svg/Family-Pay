@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import { OtpService } from './otp.service.js';
 import { TokenService, JwtPayload } from './token.service.js';
+import { AdminService } from '../admin/admin.service.js';
 import type {
   RegisterSponsorInput,
   RegisterBeneficiaryInput,
@@ -276,7 +277,12 @@ export class AuthService {
     });
   }
 
-  static async loginAdmin(email: string, password: string): Promise<{ accessToken: string; refreshToken: string; user: object }> {
+  static async loginAdmin(
+    email: string,
+    password: string,
+    ip?: string | null,
+    userAgent?: string | null,
+  ): Promise<{ accessToken: string; refreshToken: string; user: object }> {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || user.role !== 'ADMIN' || !user.password) {
       throw new AppError('Identifiants invalides', 401, 'INVALID_CREDENTIALS');
@@ -284,8 +290,12 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new AppError('Identifiants invalides', 401, 'INVALID_CREDENTIALS');
 
-    const accessToken = TokenService.issueAccessToken({ userId: user.id, role: user.role, profileId: '' });
+    const accessToken  = TokenService.issueAccessToken({ userId: user.id, role: user.role, profileId: '' });
     const refreshToken = await TokenService.issueRefreshToken(user.id);
+
+    // Create admin session (fire & forget)
+    AdminService.createSession(user.id, ip ?? null, userAgent ?? null).catch(() => {});
+
     return { accessToken, refreshToken, user: { id: user.id, email: user.email, role: user.role, firstName: user.firstName } };
   }
 

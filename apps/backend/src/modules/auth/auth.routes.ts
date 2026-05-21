@@ -70,7 +70,9 @@ authRouter.post('/admin/seed', wrap(async (req, res) => {
 
 authRouter.post('/admin/login', wrap(async (req, res) => {
   const { email, password } = req.body;
-  const result = await AuthService.loginAdmin(email, password);
+  const ip        = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? null;
+  const userAgent = req.headers['user-agent'] ?? null;
+  const result = await AuthService.loginAdmin(email, password, ip, userAgent);
   res.json(result);
 }));
 
