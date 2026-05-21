@@ -60,7 +60,7 @@ export default function Beneficiaries() {
       <div className="flex-1">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Bénéficiaires ({list.length})</h1>
-          <button onClick={() => { loadSponsors(); setCreateModal(true); }}
+          <button onClick={() => { loadSponsors(); setCreateModal(true); }} disabled={permsLoading || !can('beneficiaries','add')}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
             + Nouveau bénéficiaire
           </button>

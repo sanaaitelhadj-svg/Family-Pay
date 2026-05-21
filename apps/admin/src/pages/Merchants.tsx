@@ -443,7 +443,8 @@ export default function Merchants() {
             {/* Général */}
             <Section title="Général" editing={editingSection === 'general'}
               onEdit={() => startEdit('general', { businessName: selected.businessName, city: selected.city ?? '', pspMerchantReference: selected.pspMerchantReference ?? '' })}
-              onSave={() => saveSection('general')} onCancel={cancelEdit} saving={sectionSaving}>
+              onSave={() => saveSection('general')} onCancel={cancelEdit} saving={sectionSaving}
+              canEdit={!permsLoading && can('merchants', 'write')}>
               {editingSection === 'general' ? (
                 <div className="grid grid-cols-2 gap-2">
                   <EditField label="Nom du commerce" name="businessName" value={draft.businessName ?? ''} onChange={updateDraft} />
@@ -464,7 +465,8 @@ export default function Merchants() {
             {/* Légal */}
             <Section title="Informations légales" editing={editingSection === 'legal'}
               onEdit={() => startEdit('legal', { registrationNumber: selected.registrationNumber ?? '', iceNumber: selected.iceNumber ?? '', taxId: selected.taxId ?? '', fiscalId: selected.fiscalId ?? '', cinRepresentant: selected.cinRepresentant ?? '' })}
-              onSave={() => saveSection('legal')} onCancel={cancelEdit} saving={sectionSaving}>
+              onSave={() => saveSection('legal')} onCancel={cancelEdit} saving={sectionSaving}
+              canEdit={!permsLoading && can('merchants', 'write')}>
               {editingSection === 'legal' ? (
                 <div className="grid grid-cols-2 gap-2">
                   <EditField label="RC / Reg. Number" name="registrationNumber" value={draft.registrationNumber ?? ''} onChange={updateDraft} />
@@ -489,7 +491,8 @@ export default function Merchants() {
             {/* Bancaire */}
             <Section title="Informations bancaires" editing={editingSection === 'banking'}
               onEdit={() => startEdit('banking', { rib: selected.rib ?? '', attestationBancaire: selected.attestationBancaire ?? '' })}
-              onSave={() => saveSection('banking')} onCancel={cancelEdit} saving={sectionSaving}>
+              onSave={() => saveSection('banking')} onCancel={cancelEdit} saving={sectionSaving}
+              canEdit={!permsLoading && can('merchants', 'write')}>
               {editingSection === 'banking' ? (
                 <div className="grid grid-cols-2 gap-2">
                   <EditField label="RIB" name="rib" value={draft.rib ?? ''} onChange={updateDraft} />
@@ -506,7 +509,8 @@ export default function Merchants() {
             {/* Localisation */}
             <Section title="Localisation" editing={editingSection === 'location'}
               onEdit={() => startEdit('location', { address: selected.address ?? '', gpsLat: selected.gpsLat ?? '', gpsLng: selected.gpsLng ?? '' })}
-              onSave={() => saveSection('location')} onCancel={cancelEdit} saving={sectionSaving}>
+              onSave={() => saveSection('location')} onCancel={cancelEdit} saving={sectionSaving}
+              canEdit={!permsLoading && can('merchants', 'write')}>
               {editingSection === 'location' ? (
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-3"><EditField label="Adresse" name="address" value={draft.address ?? ''} onChange={updateDraft} /></div>
@@ -530,7 +534,8 @@ export default function Merchants() {
                 ops_nom: selected.contactOps?.nom ?? '', ops_phone: selected.contactOps?.phone ?? '', ops_email: selected.contactOps?.email ?? '',
                 legal_nom: selected.contactLegal?.nom ?? '', legal_phone: selected.contactLegal?.phone ?? '', legal_email: selected.contactLegal?.email ?? '',
               })}
-              onSave={() => saveSection('contacts')} onCancel={cancelEdit} saving={sectionSaving}>
+              onSave={() => saveSection('contacts')} onCancel={cancelEdit} saving={sectionSaving}
+              canEdit={!permsLoading && can('merchants', 'write')}>
               {editingSection === 'contacts' ? (
                 <div className="grid grid-cols-2 gap-3">
                   <ContactEditFields label="Administratif" prefix="admin" draft={draft} onChange={updateDraft} />
