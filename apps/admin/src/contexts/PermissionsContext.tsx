@@ -44,7 +44,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     refreshing.current = true;
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('admin_token');
       if (!token) {
         setPermissions(null);
         setCurrentAdmin(null);

@@ -44,7 +44,7 @@ export default function AuditLogs() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('admin_token');
       const params = new URLSearchParams({
         page: String(page), limit: String(limit),
         ...(search ? { action: search } : {}),

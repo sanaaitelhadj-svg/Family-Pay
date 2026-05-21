@@ -391,7 +391,7 @@ export default function Merchants() {
                     className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants', 'reject') ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Rejeter</button>
                 </>)}
                 {(selected.activationStatus === 'ACTIVE' || selected.activationStatus === 'SUSPENDED') && (
-                  <button onClick={() => suspend(selected.id, selected.activationStatus)}
+                  <button onClick={() => suspend(selected.id, selected.activationStatus)} disabled={permsLoading || !can('merchants', 'suspend')} className={permsLoading || !can('merchants', 'suspend') ? 'opacity-50 cursor-not-allowed' : ''}
                     className={`px-3 py-1.5 rounded text-sm font-medium ${selected.activationStatus === 'SUSPENDED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}>
                     {selected.activationStatus === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}
                   </button>
