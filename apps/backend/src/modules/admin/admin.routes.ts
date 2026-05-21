@@ -452,3 +452,22 @@ adminRouter.delete('/sessions/:id', authenticate(['ADMIN']), async (req, res, ne
     res.json({ message: 'Session révoquée.' });
   } catch (err) { next(err); }
 });
+
+// ── One-time role fixer (remove after use) ───────────────────────────────────
+adminRouter.post('/fix-roles', authenticate(['ADMIN']), async (_req, res, next) => {
+  try {
+    const ALL_PAGES = ['dashboard','merchants','sponsors','beneficiaries','transactions',
+      'fraud','subscriptions','commissions','admins','roles','auditLogs'];
+    const fullAccess = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: true, actions: ['*','add','edit','delete','suspend','approve','reject','assign-role','export'] }]));
+    const readOnly  = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: false, actions: [] }]));
+
+    const roles = await prisma.adminRole.findMany({ select: { id: true, name: true } });
+    for (const role of roles) {
+      const name = role.name.toLowerCase();
+      const perms = (name.includes('super') || name.includes('admin')) ? fullAccess : readOnly;
+      await prisma.adminRole.update({ where: { id: role.id }, data: { permissions: perms } });
+    }
+    res.json({ message: `${roles.length} rôle(s) mis à jour`, roles: roles.map(r => r.name) });
+  } catch (err) { next(err); }
+});
+

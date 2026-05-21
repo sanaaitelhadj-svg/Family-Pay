@@ -90,7 +90,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
       if (permissions === undefined) return false;
       if (permissions === null)      return true;
       const p = permissions[page];
-      if (!p) return true;
+      if (!p) return false; // deny by default
       if (action === 'read')  return p.read;
       if (action === 'write') return p.write;
       return p.actions?.includes(action) ?? false;
