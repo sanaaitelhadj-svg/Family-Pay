@@ -109,6 +109,9 @@ adminRouter.get('/audit-logs', authenticate(['ADMIN']), async (req, res, next) =
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
+        include: {
+          admin: { select: { id: true, firstName: true, lastName: true, email: true, adminRole: { select: { name: true } } } },
+        },
       }),
     ]);
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');

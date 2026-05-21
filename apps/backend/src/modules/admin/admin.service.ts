@@ -259,10 +259,23 @@ export class AdminService {
     return { total, byMerchant, byStatus };
   }
 
-  static async updateMerchantCommission(merchantId: string, commissionType: string, commissionRate: number) {
-    return prisma.merchant.update({
-      where: { id: merchantId },
-      data: { commissionType, commissionRate },
+  static async updateMerchantCommission(merchantId: string, commissionType: string, commissionRate: number, actorId?: string) {
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.merchant.update({
+        where: { id: merchantId },
+        data: { commissionType, commissionRate },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actorId ?? null,
+          action: 'MERCHANT_COMMISSION_UPDATED',
+          result: 'SUCCESS',
+          entityType: 'Merchant',
+          entityId: merchantId,
+          newData: { commissionType, commissionRate },
+        },
+      });
+      return updated;
     });
   }
 
@@ -290,8 +303,21 @@ export class AdminService {
     });
   }
 
-  static async updateSubscription(id: string, status: string) {
-    return prisma.subscription.update({ where: { id }, data: { status } });
+  static async updateSubscription(id: string, status: string, actorId?: string) {
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.subscription.update({ where: { id }, data: { status } });
+      await tx.auditLog.create({
+        data: {
+          actorId: actorId ?? null,
+          action: 'SUBSCRIPTION_STATUS_UPDATED',
+          result: 'SUCCESS',
+          entityType: 'Subscription',
+          entityId: id,
+          newData: { status },
+        },
+      });
+      return updated;
+    });
   }
 
 
@@ -352,7 +378,19 @@ export class AdminService {
 
 
   static async setMerchantStatus(merchantId: string, status: 'ACTIVE' | 'SUSPENDED', actorId?: string): Promise<void> {
-    await prisma.merchant.update({ where: { id: merchantId }, data: { activationStatus: status } });
+    await prisma.$transaction(async (tx) => {
+      await tx.merchant.update({ where: { id: merchantId }, data: { activationStatus: status } });
+      await tx.auditLog.create({
+        data: {
+          actorId: actorId ?? null,
+          action: status === 'SUSPENDED' ? 'MERCHANT_SUSPENDED' : 'MERCHANT_REACTIVATED',
+          result: 'SUCCESS',
+          entityType: 'Merchant',
+          entityId: merchantId,
+          newData: { status },
+        },
+      });
+    });
   }
 
   static async listSubscriptionPlans() {
@@ -430,6 +468,15 @@ export class AdminService {
 
   static async updateMerchantInfo(merchantId: string, data: Record<string, unknown>): Promise<void> {
     await prisma.merchant.update({ where: { id: merchantId }, data: data as any });
+    await prisma.auditLog.create({
+      data: {
+        action: 'MERCHANT_INFO_UPDATED',
+        result: 'SUCCESS',
+        entityType: 'Merchant',
+        entityId: merchantId,
+        newData: data as any,
+      },
+    });
   }
 
 
