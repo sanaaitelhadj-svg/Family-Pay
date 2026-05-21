@@ -20,8 +20,7 @@ export function requirePermission(page: string, action: 'read' | 'write' | strin
       if (!admin.adminRoleId || !admin.adminRole) return next();
 
       // Super-admin role = full access regardless of permissions
-      const roleName = (admin.adminRole as any)?.name?.toLowerCase() ?? '';
-      if (roleName.includes('super') || roleName.includes('administrateur général')) return next();
+      // Role name bypass removed — only adminRoleId === null grants super-admin access
 
       if (!admin.adminRole.isActive) return next(new AppError('Rôle inactif', 403, 'FORBIDDEN'));
 
