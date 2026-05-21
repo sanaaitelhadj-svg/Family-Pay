@@ -1,6 +1,5 @@
+import { api } from '../api';
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-
-const API = import.meta.env.VITE_API_URL ?? '';
 
 export interface PagePermission {
   read: boolean;
@@ -54,15 +53,13 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
         setPermissions(null);
         return;
       }
-      const res = await fetch(`${API}/admin/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
+      const res = await api.get('/admin/me').catch(() => null);
+      if (!res || res.status !== 200) {
         setCurrentAdmin(null);
         setPermissions(null);
         return;
       }
-      const data: CurrentAdmin = await res.json();
+      const data: CurrentAdmin = res.data;
       setCurrentAdmin(data);
 
       if (!data.adminRole) {
