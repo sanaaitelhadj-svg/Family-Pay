@@ -18,7 +18,7 @@ interface SponsorDetail {
 }
 
 export default function Sponsors() {
-  const { can } = usePermissions();
+  const { can, loading: permsLoading } = usePermissions();
   const [list, setList] = useState<Sponsor[]>([]);
   const [detail, setDetail] = useState<SponsorDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ export default function Sponsors() {
       <div className="flex-1">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Sponsors ({list.length})</h1>
-          <button onClick={() => setCreateModal(true)}
+          <button onClick={() => setCreateModal(true)} disabled={permsLoading || !can('sponsors', 'add')}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
             + Nouveau sponsor
           </button>

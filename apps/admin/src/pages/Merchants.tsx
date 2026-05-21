@@ -56,7 +56,7 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, children }:
             </button>
           </div>
         ) : (
-          <button onClick={onEdit}
+          <button onClick={onEdit} disabled={permsLoading || !can('merchants', 'write')}
             className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">
             ✏️ Éditer
           </button>
@@ -338,7 +338,7 @@ export default function Merchants() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Marchands</h1>
-        <button onClick={() => setCreateModal(true)}
+        <button onClick={() => setCreateModal(true)} disabled={permsLoading || !can('merchants', 'add')}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
           + Nouveau marchand
         </button>
@@ -415,8 +415,8 @@ export default function Merchants() {
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wider">Contrat & Facturation</h3>
-                  <button onClick={() => openBillingEdit(selected)}
-                    className="text-xs px-2 py-1 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50">✏️ Modifier</button>
+                  <button onClick={() => openBillingEdit(selected)} disabled={permsLoading || !can('merchants', 'write')}
+                    className={`text-xs px-2 py-1 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed`}>✏️ Modifier</button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-white p-3 rounded">

@@ -11,7 +11,7 @@ interface Beneficiary {
 }
 
 export default function Beneficiaries() {
-  const { can } = usePermissions();
+  const { can, loading: permsLoading } = usePermissions();
   const [list, setList] = useState<Beneficiary[]>([]);
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
