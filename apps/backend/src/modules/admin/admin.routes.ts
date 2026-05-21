@@ -485,13 +485,22 @@ adminRouter.post('/fix-roles', authenticate(['ADMIN']), async (_req, res, next) 
   try {
     const ALL_PAGES = ['dashboard','merchants','sponsors','beneficiaries','transactions',
       'fraud','subscriptions','commissions','admins','roles','auditLogs'];
-    const fullAccess = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: true, actions: ['*','add','edit','delete','suspend','approve','reject','assign-role','export'] }]));
-    const readOnly  = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: false, actions: [] }]));
+    const ALL_ACTIONS = ['*','add','edit','delete','suspend','approve','reject','assign-role','export'];
+    const fullAccess = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: true,  actions: ALL_ACTIONS }]));
+    const readOnly   = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: false, actions: [] }]));
+    const financePerms = Object.fromEntries(ALL_PAGES.map(p => {
+      if (['commissions','subscriptions'].includes(p)) return [p, { read: true, write: true,  actions: ['edit'] }];
+      if (p === 'admins' || p === 'roles')             return [p, { read: false,write: false, actions: [] }];
+      return [p, { read: true, write: false, actions: [] }];
+    }));
 
     const roles = await prisma.adminRole.findMany({ select: { id: true, name: true } });
     for (const role of roles) {
-      const name = role.name.toLowerCase();
-      const perms = (name.includes('super') || name.includes('admin')) ? fullAccess : readOnly;
+      const name = role.name.toLowerCase().replace(/\s+/g, '-');
+      let perms: unknown;
+      if (name === 'super-admin' || name === 'super_admin')  perms = fullAccess;
+      else if (name === 'finance')                           perms = financePerms;
+      else                                                   perms = readOnly;
       await prisma.adminRole.update({ where: { id: role.id }, data: { permissions: perms } });
     }
     res.json({ message: `${roles.length} rôle(s) mis à jour`, roles: roles.map(r => r.name) });
