@@ -88,7 +88,7 @@ function PermMatrix({
 }
 
 export default function Admins() {
-  const { can, loading: permsLoading, loading: permsLoading } = usePermissions();
+  const { can, loading: permsLoading } = usePermissions();
   const [tab, setTab] = useState<'admins' | 'roles'>('admins');
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
