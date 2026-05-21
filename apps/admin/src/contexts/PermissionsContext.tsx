@@ -65,19 +65,12 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
       const data = await res.json();
       setCurrentAdmin(data);
 
-      if (!data.adminRoleId || !data.adminRole) {
+      // /admin/me already includes adminRole.permissions — use it directly
+      if (!data.adminRole) {
+        // No role assigned = super admin = full access
         setPermissions(null);
       } else {
-        const roleRes = await fetch(`${API}/admin/roles`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (roleRes.ok) {
-          const roles: Array<{ id: string; permissions: Record<string, PagePermission> }> = await roleRes.json();
-          const myRole = roles.find((r) => r.id === data.adminRoleId);
-          setPermissions(myRole?.permissions ?? null);
-        } else {
-          setPermissions(null);
-        }
+        setPermissions(data.adminRole.permissions ?? null);
       }
     } catch {
       setPermissions(null);
