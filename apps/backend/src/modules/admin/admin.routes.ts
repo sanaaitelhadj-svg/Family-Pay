@@ -93,10 +93,27 @@ adminRouter.get('/transactions', authenticate(['ADMIN']), async (req, res, next)
 
 adminRouter.get('/audit-logs', authenticate(['ADMIN']), async (req, res, next) => {
   try {
-    const { action } = req.query as { action?: string };
+    const page   = parseInt((req.query['page']   as string) ?? '1',  10);
+    const limit  = parseInt((req.query['limit']  as string) ?? '50', 10);
+    const action = (req.query['action'] as string) || undefined;
+    const entity = (req.query['entity'] as string) || undefined;
+    const result = (req.query['result'] as string) || undefined;
+    const where: Record<string, unknown> = {};
+    if (action) where['action']     = { contains: action, mode: 'insensitive' };
+    if (entity) where['entityType'] = entity;
+    if (result) where['result']     = result;
+    const [total, logs] = await Promise.all([
+      prisma.auditLog.count({ where }),
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
-    res.json(await AdminService.getAuditLogs(action));
+    res.json({ total, page, limit, logs });
   } catch (err) { next(err); }
 });
 adminRouter.get('/commissions', authenticate(['ADMIN']), async (req, res, next) => {
