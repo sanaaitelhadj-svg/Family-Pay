@@ -504,7 +504,7 @@ adminRouter.patch('/sponsors/:id/status', authenticate(['ADMIN']), requirePermis
     if (!sponsor) { res.status(404).json({ error: 'NOT_FOUND', message: 'Sponsor introuvable' }); return; }
     await prisma.user.update({ where: { id: sponsor.userId }, data: { isActive } });
     await prisma.auditLog.create({ data: { actorId, action: isActive ? 'SPONSOR_ACTIVATED' : 'SPONSOR_SUSPENDED', result: 'SUCCESS', entityType: 'User', entityId: sponsor.userId } });
-    res.json({ message: `Sponsor ${isActive ? 'activé' : 'suspendu'}` });
+    res.json({ message: `Sponsor ${isActive ? 'activé' : 'suspendu'}`, isActive });
   } catch (err) { next(err); }
 });
 
