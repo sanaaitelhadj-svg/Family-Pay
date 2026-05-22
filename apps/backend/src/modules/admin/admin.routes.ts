@@ -499,12 +499,12 @@ adminRouter.patch('/sponsors/:id', authenticate(['ADMIN']), requirePermission('s
 adminRouter.patch('/sponsors/:id/status', authenticate(['ADMIN']), requirePermission('sponsors','suspend'), async (req, res, next) => {
   try {
     const u = (req as any).user; const actorId = u?.userId ?? u?.id;
-    const { isActive } = req.body;
-    const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] as string }, select: { userId: true } });
+    const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] as string }, include: { user: { select: { isActive: true } } } });
     if (!sponsor) { res.status(404).json({ error: 'NOT_FOUND', message: 'Sponsor introuvable' }); return; }
-    await prisma.user.update({ where: { id: sponsor.userId }, data: { isActive } });
-    await prisma.auditLog.create({ data: { actorId, action: isActive ? 'SPONSOR_ACTIVATED' : 'SPONSOR_SUSPENDED', result: 'SUCCESS', entityType: 'User', entityId: sponsor.userId } });
-    res.json({ message: `Sponsor ${isActive ? 'activé' : 'suspendu'}`, isActive });
+    const newIsActive = typeof req.body?.isActive === 'boolean' ? req.body.isActive : !sponsor.user.isActive;
+    await prisma.user.update({ where: { id: sponsor.userId }, data: { isActive: newIsActive } });
+    await prisma.auditLog.create({ data: { actorId, action: newIsActive ? 'SPONSOR_ACTIVATED' : 'SPONSOR_SUSPENDED', result: 'SUCCESS', entityType: 'Sponsor', entityId: req.params['id'] as string, metadata: { before: { isActive: sponsor.user.isActive }, after: { isActive: newIsActive } } as any } });
+    res.json({ message: `Sponsor ${newIsActive ? 'activé' : 'suspendu'}`, isActive: newIsActive });
   } catch (err) { next(err); }
 });
 
