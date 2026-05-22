@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requirePermission } from '../../middleware/requirePermission.js';
