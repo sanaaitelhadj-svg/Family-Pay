@@ -77,7 +77,7 @@ function JsonBlock({ data, label }: { data: Record<string, unknown> | null; labe
 
 function DetailModal({ log, onClose }: { log: AuditLogEntry; onClose: () => void }) {
   const adminName = log.admin
-    ? `${log.admin.firstName} ${log.admin.lastName}`
+    ? (log.admin.firstName ? `${log.admin.firstName} ${log.admin.lastName ?? ''}` : log.admin.email)
     : log.actorId ? `ID: ${log.actorId.slice(0, 8)}…` : null;
 
   return (
@@ -286,7 +286,7 @@ export default function AuditLogs() {
                   <td className="px-4 py-3 text-gray-600">{log.entityType}</td>
                   <td className="px-4 py-3 text-gray-700">
                     {log.admin
-                      ? `${log.admin.firstName} ${log.admin.lastName}`
+                      ? (log.admin.firstName ? `${log.admin.firstName} ${log.admin.lastName ?? ''}` : log.admin.email)
                       : log.actorId
                         ? <span className="text-gray-400 font-mono text-xs">{log.actorId.slice(0, 8)}…</span>
                         : <span className="text-gray-400 italic text-xs">Système</span>}

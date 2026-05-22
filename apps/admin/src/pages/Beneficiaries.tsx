@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { PasswordResetModal } from '../components/PasswordResetModal';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Beneficiary {
@@ -21,6 +22,7 @@ export default function Beneficiaries() {
   const [sponsors, setSponsors]       = useState<{ id: string; user: { firstName: string; phone: string } }[]>([]);
   const [createSaving, setCreateSaving] = useState(false);
 
+  const [resetPwdModal, setResetPwdModal] = useState(false);
   const [editModal, setEditModal]   = useState(false);
   const [editForm, setEditForm]     = useState({ firstName: '', lastName: '', email: '', relationship: '' });
   const [editSaving, setEditSaving] = useState(false);
@@ -109,6 +111,14 @@ export default function Beneficiaries() {
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
             + Nouveau bénéficiaire
           </button>
+      {resetPwdModal && detail && (
+        <PasswordResetModal
+          endpoint={`/admin/beneficiaries/${detail.id}/reset-password`}
+          name={`${detail.user.firstName} ${detail.user.lastName ?? ''}`.trim()}
+          onClose={() => setResetPwdModal(false)}
+        />
+      )}
+
         </div>
         <div className="space-y-3">
           {list.map(b => (

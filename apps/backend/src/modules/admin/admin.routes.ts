@@ -1,3 +1,4 @@
+import * as bcrypt from 'bcrypt';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requirePermission } from '../../middleware/requirePermission.js';
@@ -580,3 +581,94 @@ adminRouter.post('/fix-roles', authenticate(['ADMIN']), async (_req, res, next) 
   } catch (err) { next(err); }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// PASSWORD RESET
+// ──────────────────────────────────────────────────────────────────────────────
+
+adminRouter.patch('/sponsors/:id/reset-password',
+  authenticate(['ADMIN']), requirePermission('sponsors', 'write'),
+  async (req, res, next) => {
+    try {
+      const id = req.params['id'] as string;
+      const { newPassword } = req.body as { newPassword: string };
+      if (!newPassword || newPassword.length < 6)
+        return res.status(400).json({ error: 'Mot de passe trop court (min. 6 caractères)' });
+      const sponsor = await prisma.sponsor.findUnique({ where: { id }, include: { user: true } });
+      if (!sponsor) return res.status(404).json({ error: 'Non trouvé' });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({ where: { id: sponsor.userId }, data: { password: hashed } });
+      await prisma.auditLog.create({ data: {
+        action: 'PASSWORD_RESET', entityType: 'Sponsor', entityId: id,
+        adminId: req.user?.userId,
+        metadata: { target: sponsor.user.email, phone: sponsor.user.phone } as any,
+      }});
+      res.json({ success: true });
+    } catch (err) { next(err); }
+  }
+);
+
+adminRouter.patch('/beneficiaries/:id/reset-password',
+  authenticate(['ADMIN']), requirePermission('beneficiaries', 'write'),
+  async (req, res, next) => {
+    try {
+      const id = req.params['id'] as string;
+      const { newPassword } = req.body as { newPassword: string };
+      if (!newPassword || newPassword.length < 6)
+        return res.status(400).json({ error: 'Mot de passe trop court (min. 6 caractères)' });
+      const ben = await prisma.beneficiary.findUnique({ where: { id }, include: { user: true } });
+      if (!ben) return res.status(404).json({ error: 'Non trouvé' });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({ where: { id: ben.userId }, data: { password: hashed } });
+      await prisma.auditLog.create({ data: {
+        action: 'PASSWORD_RESET', entityType: 'Beneficiary', entityId: id,
+        adminId: req.user?.userId,
+        metadata: { target: ben.user.email, phone: ben.user.phone } as any,
+      }});
+      res.json({ success: true });
+    } catch (err) { next(err); }
+  }
+);
+
+adminRouter.patch('/merchants/:id/reset-password',
+  authenticate(['ADMIN']), requirePermission('merchants', 'write'),
+  async (req, res, next) => {
+    try {
+      const id = req.params['id'] as string;
+      const { newPassword } = req.body as { newPassword: string };
+      if (!newPassword || newPassword.length < 6)
+        return res.status(400).json({ error: 'Mot de passe trop court (min. 6 caractères)' });
+      const merchant = await prisma.merchant.findUnique({ where: { id }, include: { user: true } });
+      if (!merchant) return res.status(404).json({ error: 'Non trouvé' });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({ where: { id: merchant.userId }, data: { password: hashed } });
+      await prisma.auditLog.create({ data: {
+        action: 'PASSWORD_RESET', entityType: 'Merchant', entityId: id,
+        adminId: req.user?.userId,
+        metadata: { target: merchant.user.email, merchantName: merchant.businessName } as any,
+      }});
+      res.json({ success: true });
+    } catch (err) { next(err); }
+  }
+);
+
+adminRouter.patch('/admins/:id/reset-password',
+  authenticate(['ADMIN']), requirePermission('admins', 'write'),
+  async (req, res, next) => {
+    try {
+      const id = req.params['id'] as string;
+      const { newPassword } = req.body as { newPassword: string };
+      if (!newPassword || newPassword.length < 6)
+        return res.status(400).json({ error: 'Mot de passe trop court (min. 6 caractères)' });
+      const admin = await prisma.user.findUnique({ where: { id } });
+      if (!admin) return res.status(404).json({ error: 'Non trouvé' });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({ where: { id }, data: { password: hashed } });
+      await prisma.auditLog.create({ data: {
+        action: 'PASSWORD_RESET', entityType: 'Admin', entityId: id,
+        adminId: req.user?.userId,
+        metadata: { target: admin.email } as any,
+      }});
+      res.json({ success: true });
+    } catch (err) { next(err); }
+  }
+);

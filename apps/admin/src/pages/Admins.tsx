@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { PasswordResetModal } from '../components/PasswordResetModal';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Role {
@@ -94,6 +95,14 @@ function PermMatrix({
           })}
         </tbody>
       </table>
+      {resetPwdTarget && (
+        <PasswordResetModal
+          endpoint={`/admin/admins/${resetPwdTarget.id}/reset-password`}
+          name={resetPwdTarget.name}
+          onClose={() => setResetPwdTarget(null)}
+        />
+      )}
+
     </div>
   );
 }
@@ -101,6 +110,7 @@ function PermMatrix({
 export default function Admins() {
   const { can, loading: permsLoading } = usePermissions();
   const [tab, setTab] = useState<'admins' | 'roles'>('admins');
+  const [resetPwdTarget, setResetPwdTarget] = useState<{id:string;name:string} | null>(null);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [showCreate, setShowCreate] = useState(false);

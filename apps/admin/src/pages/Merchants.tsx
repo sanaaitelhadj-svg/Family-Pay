@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import { PasswordResetModal } from '../components/PasswordResetModal';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 interface ContactInfo { nom?: string; phone?: string; email?: string }
@@ -54,6 +55,14 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, canEdit = t
               className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50">
               {saving ? '...' : 'Enregistrer'}
             </button>
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name="Marchand"
+          onClose={() => setResetPwdModal(null)}
+        />
+      )}
+
           </div>
         ) : (
           <button onClick={onEdit} disabled={!canEdit}
@@ -124,6 +133,7 @@ function ContactEditFields({ label, prefix, draft, onChange }: {
 export default function Merchants() {
   const { can, loading: permsLoading } = usePermissions();
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [resetPwdModal, setResetPwdModal] = useState<string | null>(null); // merchantId
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
