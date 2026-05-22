@@ -82,7 +82,6 @@ export default function Sponsors() {
       const newIsActive: boolean = patchRes.data?.isActive ?? !detail.user.isActive;
       setDetail(d => d ? { ...d, user: { ...d.user, isActive: newIsActive } } : null);
       setList(l => l.map(s => s.id === detail.id ? { ...s, user: { ...s.user, isActive: newIsActive } } : s));
-      load();
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setActionSaving(false); }
   };
