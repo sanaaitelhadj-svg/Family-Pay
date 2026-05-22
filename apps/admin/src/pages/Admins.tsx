@@ -20,7 +20,18 @@ interface Admin {
   adminRole?: { id: string; name: string } | null;
 }
 
-const PAGES = ['dashboard','merchants','subscriptions','sponsors','beneficiaries','admins'];
+const PAGES = ['dashboard','merchants','subscriptions','commissions','transactions','fraud','sponsors','beneficiaries','admins'];
+const PAGE_LABELS: Record<string, string> = {
+  dashboard:     'Dashboard',
+  merchants:     'Marchands',
+  subscriptions: 'Abonnements',
+  commissions:   'Commissions',
+  transactions:  'Transactions',
+  fraud:         'Revue de fraude',
+  sponsors:      'Sponsors',
+  beneficiaries: 'Bénéficiaires',
+  admins:        'Administrateurs',
+};
 const ACTIONS = ['approve','add','reject','delete','suspend'];
 
 function PermMatrix({
@@ -61,7 +72,7 @@ function PermMatrix({
             const cur = perms[page] ?? { read: false, write: false, actions: [] };
             return (
               <tr key={page} className="hover:bg-gray-50">
-                <td className="p-2 border border-gray-200 font-medium capitalize">{page}</td>
+                <td className="p-2 border border-gray-200 font-medium">{PAGE_LABELS[page] ?? page}</td>
                 <td className="p-2 border border-gray-200 text-center">
                   <input type="checkbox" checked={cur.read} onChange={() => toggle(page, 'read')} disabled={disabled} />
                 </td>
