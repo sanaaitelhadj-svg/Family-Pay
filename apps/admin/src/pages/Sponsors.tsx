@@ -4,40 +4,45 @@ import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Sponsor {
   id: string; createdAt: string;
-  user: { firstName: string; phone: string; email: string | null; createdAt: string };
+  user: { firstName: string; lastName: string | null; phone: string; email: string | null; isActive: boolean; createdAt: string };
   _count: { allocations: number; beneficiaries: number };
 }
 
-interface SponsorDetail {
-  id: string;
+interface SponsorDetail extends Sponsor {
   pspCustomerReference: string | null;
   maskedCardReference: string | null;
-  user: { firstName: string; phone: string; email: string | null };
+  user: { firstName: string; lastName: string | null; phone: string; email: string | null; isActive: boolean };
   totalVolume: number; totalTransactions: number;
   allocations: any[]; beneficiaries: any[];
 }
 
 export default function Sponsors() {
   const { can, loading: permsLoading } = usePermissions();
-  const [list, setList] = useState<Sponsor[]>([]);
+  const [list, setList]     = useState<Sponsor[]>([]);
   const [detail, setDetail] = useState<SponsorDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [createModal, setCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ firstName: '', lastName: '', phone: '', email: '', password: '' });
+  const [createForm, setCreateForm]   = useState({ firstName: '', lastName: '', phone: '', email: '', password: '' });
   const [createSaving, setCreateSaving] = useState(false);
 
-  useEffect(() => { api.get('/admin/sponsors').then(r => setList(r.data)).finally(() => setLoading(false)); }, []);
+  const [editModal, setEditModal]   = useState(false);
+  const [editForm, setEditForm]     = useState({ firstName: '', lastName: '', email: '' });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [actionSaving, setActionSaving]   = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    api.get('/admin/sponsors').then(r => setList(r.data)).finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
 
   async function openDetail(id: string) {
     const res = await api.get(`/admin/sponsors/${id}`);
     setDetail(res.data);
   }
-
-  if (loading) return <p className="text-gray-500">Chargement...</p>;
-
-
-  const load = () => { setLoading(true); api.get('/admin/sponsors').then(r => setList(r.data)).finally(() => setLoading(false)); };
 
   const submitCreate = async () => {
     if (!createForm.firstName || !createForm.phone || !createForm.password) return;
@@ -49,19 +54,56 @@ export default function Sponsors() {
       });
       setCreateModal(false);
       setCreateForm({ firstName: '', lastName: '', phone: '', email: '', password: '' });
-      await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur');
-    } finally { setCreateSaving(false); }
+      load();
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setCreateSaving(false); }
   };
 
+  const submitEdit = async () => {
+    if (!detail) return;
+    setEditSaving(true);
+    try {
+      await api.patch(`/admin/sponsors/${detail.id}`, editForm);
+      setEditModal(false);
+      const res = await api.get(`/admin/sponsors/${detail.id}`);
+      setDetail(res.data);
+      load();
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setEditSaving(false); }
+  };
+
+  const toggleStatus = async () => {
+    if (!detail) return;
+    setActionSaving(true);
+    try {
+      await api.patch(`/admin/sponsors/${detail.id}/status`, { isActive: !detail.user.isActive });
+      const res = await api.get(`/admin/sponsors/${detail.id}`);
+      setDetail(res.data);
+      load();
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setActionSaving(false); }
+  };
+
+  const deleteSponsor = async () => {
+    if (!detail) return;
+    setActionSaving(true);
+    try {
+      await api.delete(`/admin/sponsors/${detail.id}`);
+      setDeleteConfirm(false);
+      setDetail(null);
+      load();
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setActionSaving(false); }
+  };
+
+  if (loading) return <p className="text-gray-500 p-6">Chargement...</p>;
+
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-6 p-6">
       <div className="flex-1">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Sponsors ({list.length})</h1>
-          <button onClick={() => setCreateModal(true)} disabled={permsLoading || !can('sponsors', 'add')}
+          <button onClick={() => setCreateModal(true)} disabled={permsLoading || !can('sponsors','add')}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
             + Nouveau sponsor
           </button>
@@ -72,7 +114,10 @@ export default function Sponsors() {
               className={`w-full bg-white rounded-2xl p-5 shadow-sm text-left hover:shadow-md transition-shadow border-2 ${detail?.id === s.id ? 'border-indigo-500' : 'border-transparent'}`}>
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-semibold text-gray-900">{s.user.firstName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{s.user.firstName} {s.user.lastName ?? ''}</p>
+                    {!s.user.isActive && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">Suspendu</span>}
+                  </div>
                   <p className="text-sm text-gray-500">{s.user.phone}</p>
                   {s.user.email && <p className="text-sm text-gray-400">{s.user.email}</p>}
                 </div>
@@ -90,12 +135,34 @@ export default function Sponsors() {
 
       {detail && (
         <div className="w-96 bg-white rounded-2xl p-6 shadow-sm h-fit sticky top-0 max-h-screen overflow-y-auto">
-          <div className="flex justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">{detail.user.firstName}</h2>
+          <div className="flex justify-between mb-2">
+            <h2 className="text-lg font-bold text-gray-900">{detail.user.firstName} {detail.user.lastName ?? ''}</h2>
             <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
           </div>
           <p className="text-sm text-gray-500 mb-1">{detail.user.phone}</p>
-          {detail.user.email && <p className="text-sm text-gray-400 mb-4">{detail.user.email}</p>}
+          {detail.user.email && <p className="text-sm text-gray-400 mb-1">{detail.user.email}</p>}
+          <div className="mb-4">
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${detail.user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+              {detail.user.isActive ? 'Actif' : 'Suspendu'}
+            </span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 mb-6 flex-wrap">
+            <button onClick={() => { setEditForm({ firstName: detail.user.firstName, lastName: detail.user.lastName ?? '', email: detail.user.email ?? '' }); setEditModal(true); }}
+              disabled={permsLoading || !can('sponsors','write')}
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700">
+              ✏️ Modifier
+            </button>
+            <button onClick={toggleStatus} disabled={permsLoading || !can('sponsors','suspend') || actionSaving}
+              className={`flex-1 px-3 py-1.5 text-sm rounded-lg font-medium ${detail.user.isActive ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
+              {detail.user.isActive ? '⏸ Suspendre' : '▶ Activer'}
+            </button>
+            <button onClick={() => setDeleteConfirm(true)} disabled={permsLoading || !can('sponsors','delete') || actionSaving}
+              className="px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200">
+              🗑 Supprimer
+            </button>
+          </div>
 
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="bg-indigo-50 rounded-xl p-3 text-center">
@@ -108,32 +175,11 @@ export default function Sponsors() {
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-4 mb-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">PSP</p>
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs text-gray-400">Référence client PSP</p>
-                <p className={`text-sm font-medium ${detail.pspCustomerReference ? 'text-gray-900' : 'text-gray-400'}`}>
-                  {detail.pspCustomerReference || 'Non configuré'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Carte de paiement</p>
-                <p className={`text-sm font-medium ${detail.maskedCardReference ? 'text-gray-900' : 'text-gray-400'}`}>
-                  {detail.maskedCardReference || 'Non configurée'}
-                </p>
-              </div>
-            </div>
-          </div>
-
           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Bénéficiaires ({detail.beneficiaries.length})</p>
           <div className="space-y-2 mb-4">
             {detail.beneficiaries.map((b: any) => (
               <div key={b.id} className="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
-                <div>
-                  <span>{b.user.firstName}</span>
-                  {b.relationship && <span className="ml-2 text-xs text-gray-400">({b.relationship})</span>}
-                </div>
+                <span>{b.user.firstName}</span>
                 <span className="text-gray-400">{b.user.phone}</span>
               </div>
             ))}
@@ -153,6 +199,51 @@ export default function Sponsors() {
           </div>
         </div>
       )}
+
+      {/* Edit Modal */}
+      {editModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Modifier le sponsor</h2>
+            {([['Prénom *', 'firstName'], ['Nom', 'lastName'], ['Email', 'email']] as const).map(([label, key]) => (
+              <div key={key}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                <input type="text" value={editForm[key]}
+                  onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            ))}
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setEditModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">Annuler</button>
+              <button onClick={submitEdit} disabled={editSaving || !editForm.firstName}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {editSaving ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Confirmer la suppression</h2>
+            <p className="text-sm text-gray-600 mb-6">Le compte sera désactivé. Cette action est réversible.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setDeleteConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">Annuler</button>
+              <button onClick={deleteSponsor} disabled={actionSaving}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50">
+                {actionSaving ? '...' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal */}
       {createModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
@@ -161,8 +252,7 @@ export default function Sponsors() {
               {([['Prénom *', 'firstName'], ['Nom', 'lastName'], ['Téléphone *', 'phone'], ['Email', 'email']] as const).map(([label, key]) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <input type={key === 'email' ? 'email' : 'text'}
-                    value={createForm[key]}
+                  <input type={key === 'email' ? 'email' : 'text'} value={createForm[key]}
                     onChange={e => setCreateForm(f => ({ ...f, [key]: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
                 </div>
@@ -176,9 +266,8 @@ export default function Sponsors() {
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setCreateModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={submitCreate}
-                disabled={createSaving || !createForm.firstName || !createForm.phone || !createForm.password}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">Annuler</button>
+              <button onClick={submitCreate} disabled={createSaving || !createForm.firstName || !createForm.phone || !createForm.password}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {createSaving ? 'Création...' : 'Créer'}
               </button>
@@ -186,7 +275,6 @@ export default function Sponsors() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

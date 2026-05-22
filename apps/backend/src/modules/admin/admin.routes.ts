@@ -481,6 +481,79 @@ adminRouter.delete('/sessions/:id', authenticate(['ADMIN']), async (req, res, ne
 });
 
 // ── One-time role fixer (remove after use) ───────────────────────────────────
+
+// ── Sponsors: edit / status / delete ─────────────────────────────────────────
+adminRouter.patch('/sponsors/:id', authenticate(['ADMIN']), requirePermission('sponsors','write'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const { firstName, lastName, email } = req.body;
+    const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] }, select: { userId: true } });
+    if (!sponsor) { res.status(404).json({ error: 'NOT_FOUND', message: 'Sponsor introuvable' }); return; }
+    await prisma.user.update({ where: { id: sponsor.userId }, data: { firstName, lastName, email: email || undefined } });
+    await prisma.auditLog.create({ data: { actorId, action: 'SPONSOR_UPDATED', result: 'SUCCESS', entityType: 'User', entityId: sponsor.userId, newData: { firstName, lastName, email } } });
+    res.json({ message: 'Sponsor mis à jour' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/sponsors/:id/status', authenticate(['ADMIN']), requirePermission('sponsors','suspend'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const { isActive } = req.body;
+    const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] }, select: { userId: true } });
+    if (!sponsor) { res.status(404).json({ error: 'NOT_FOUND', message: 'Sponsor introuvable' }); return; }
+    await prisma.user.update({ where: { id: sponsor.userId }, data: { isActive } });
+    await prisma.auditLog.create({ data: { actorId, action: isActive ? 'SPONSOR_ACTIVATED' : 'SPONSOR_SUSPENDED', result: 'SUCCESS', entityType: 'User', entityId: sponsor.userId } });
+    res.json({ message: `Sponsor ${isActive ? 'activé' : 'suspendu'}` });
+  } catch (err) { next(err); }
+});
+
+adminRouter.delete('/sponsors/:id', authenticate(['ADMIN']), requirePermission('sponsors','delete'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] }, select: { userId: true } });
+    if (!sponsor) { res.status(404).json({ error: 'NOT_FOUND', message: 'Sponsor introuvable' }); return; }
+    await prisma.user.update({ where: { id: sponsor.userId }, data: { isActive: false } });
+    await prisma.auditLog.create({ data: { actorId, action: 'SPONSOR_DELETED', result: 'SUCCESS', entityType: 'User', entityId: sponsor.userId } });
+    res.json({ message: 'Sponsor désactivé' });
+  } catch (err) { next(err); }
+});
+
+// ── Beneficiaries: edit / status / delete ────────────────────────────────────
+adminRouter.patch('/beneficiaries/:id', authenticate(['ADMIN']), requirePermission('beneficiaries','write'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const { firstName, lastName, email } = req.body;
+    const bene = await prisma.beneficiary.findUnique({ where: { id: req.params['id'] }, select: { userId: true } });
+    if (!bene) { res.status(404).json({ error: 'NOT_FOUND', message: 'Bénéficiaire introuvable' }); return; }
+    await prisma.user.update({ where: { id: bene.userId }, data: { firstName, lastName, email: email || undefined } });
+    await prisma.auditLog.create({ data: { actorId, action: 'BENEFICIARY_UPDATED', result: 'SUCCESS', entityType: 'User', entityId: bene.userId, newData: { firstName, lastName, email } } });
+    res.json({ message: 'Bénéficiaire mis à jour' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.patch('/beneficiaries/:id/status', authenticate(['ADMIN']), requirePermission('beneficiaries','suspend'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const { isActive } = req.body;
+    const bene = await prisma.beneficiary.findUnique({ where: { id: req.params['id'] }, select: { userId: true } });
+    if (!bene) { res.status(404).json({ error: 'NOT_FOUND', message: 'Bénéficiaire introuvable' }); return; }
+    await prisma.user.update({ where: { id: bene.userId }, data: { isActive } });
+    await prisma.auditLog.create({ data: { actorId, action: isActive ? 'BENEFICIARY_ACTIVATED' : 'BENEFICIARY_SUSPENDED', result: 'SUCCESS', entityType: 'User', entityId: bene.userId } });
+    res.json({ message: `Bénéficiaire ${isActive ? 'activé' : 'suspendu'}` });
+  } catch (err) { next(err); }
+});
+
+adminRouter.delete('/beneficiaries/:id', authenticate(['ADMIN']), requirePermission('beneficiaries','delete'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const bene = await prisma.beneficiary.findUnique({ where: { id: req.params['id'] }, select: { userId: true } });
+    if (!bene) { res.status(404).json({ error: 'NOT_FOUND', message: 'Bénéficiaire introuvable' }); return; }
+    await prisma.user.update({ where: { id: bene.userId }, data: { isActive: false } });
+    await prisma.auditLog.create({ data: { actorId, action: 'BENEFICIARY_DELETED', result: 'SUCCESS', entityType: 'User', entityId: bene.userId } });
+    res.json({ message: 'Bénéficiaire désactivé' });
+  } catch (err) { next(err); }
+});
+
 adminRouter.post('/fix-roles', authenticate(['ADMIN']), async (_req, res, next) => {
   try {
     const ALL_PAGES = ['dashboard','merchants','sponsors','beneficiaries','transactions',
