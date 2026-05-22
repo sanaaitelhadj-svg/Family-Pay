@@ -80,10 +80,10 @@ export default function Beneficiaries() {
     if (!detail) return;
     setActionSaving(true);
     try {
-      await api.patch(`/admin/beneficiaries/${detail.id}/status`, { isActive: !detail.isActive });
-      const res = await api.get(`/admin/beneficiaries/${detail.id}`);
-      setDetail(res.data);
-      load();
+      const patchRes = await api.patch(`/admin/beneficiaries/${detail.id}/status`);
+      const newIsActive: boolean = patchRes.data?.isActive ?? !detail.isActive;
+      setDetail(d => d ? { ...d, isActive: newIsActive, user: { ...d.user, isActive: newIsActive } } : null);
+      setList(l => l.map(b => b.id === detail.id ? { ...b, isActive: newIsActive, user: { ...b.user, isActive: newIsActive } } : b));
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setActionSaving(false); }
   };
