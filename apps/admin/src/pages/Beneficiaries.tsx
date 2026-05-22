@@ -32,7 +32,7 @@ export default function Beneficiaries() {
 
   const load = () => {
     setLoading(true);
-    api.get('/admin/beneficiaries').then(r => setList(r.data)).finally(() => setLoading(false));
+    api.get(`/admin/beneficiaries?_t=${Date.now()}`).then(r => setList(r.data)).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 

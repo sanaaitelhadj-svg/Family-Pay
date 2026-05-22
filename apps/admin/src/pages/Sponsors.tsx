@@ -37,7 +37,7 @@ export default function Sponsors() {
 
   const load = () => {
     setLoading(true);
-    api.get('/admin/sponsors').then(r => setList(r.data)).finally(() => setLoading(false));
+    api.get(`/admin/sponsors?_t=${Date.now()}`).then(r => setList(r.data)).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
