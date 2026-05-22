@@ -95,6 +95,7 @@ function PermMatrix({
           })}
         </tbody>
       </table>
+
       {resetPwdTarget && (
         <PasswordResetModal
           endpoint={`/admin/admins/${resetPwdTarget.id}/reset-password`}
@@ -102,7 +103,6 @@ function PermMatrix({
           onClose={() => setResetPwdTarget(null)}
         />
       )}
-
     </div>
   );
 }
@@ -445,16 +445,15 @@ export default function Admins() {
                 {savingRole ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>
-         
+ </div>
+        </div>
+      )}
       {resetPwdTarget && (
         <PasswordResetModal
           endpoint={`/admin/admins/${resetPwdTarget.id}/reset-password`}
           name={resetPwdTarget.name}
           onClose={() => setResetPwdTarget(null)}
         />
-      )}
- </div>
-        </div>
       )}
     </div>
   );
