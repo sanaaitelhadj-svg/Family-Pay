@@ -96,7 +96,6 @@ function PermMatrix({
         </tbody>
       </table>
 
-      )}
     </div>
   );
 }
