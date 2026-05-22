@@ -96,12 +96,6 @@ function PermMatrix({
         </tbody>
       </table>
 
-      {resetPwdTarget && (
-        <PasswordResetModal
-          endpoint={`/admin/admins/${resetPwdTarget.id}/reset-password`}
-          name={resetPwdTarget.name}
-          onClose={() => setResetPwdTarget(null)}
-        />
       )}
     </div>
   );
