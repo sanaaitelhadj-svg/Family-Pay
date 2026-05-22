@@ -539,6 +539,7 @@ adminRouter.patch('/beneficiaries/:id/status', authenticate(['ADMIN']), requireP
     if (!bene) { res.status(404).json({ error: 'NOT_FOUND', message: 'Bénéficiaire introuvable' }); return; }
     const newIsActive = !bene.user.isActive;
     await prisma.user.update({ where: { id: bene.userId }, data: { isActive: newIsActive } });
+    await prisma.beneficiary.update({ where: { id: req.params['id'] as string }, data: { isActive: newIsActive } });
     await prisma.auditLog.create({ data: { actorId, action: newIsActive ? 'BENEFICIARY_ACTIVATED' : 'BENEFICIARY_SUSPENDED', result: 'SUCCESS', entityType: 'User', entityId: bene.userId, metadata: { before: { isActive: bene.user.isActive }, after: { isActive: newIsActive } } as any } });
     res.json({ message: `Bénéficiaire ${newIsActive ? 'activé' : 'suspendu'}`, isActive: newIsActive });
   } catch (err) { next(err); return; }
