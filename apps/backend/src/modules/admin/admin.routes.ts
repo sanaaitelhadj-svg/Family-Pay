@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const bcrypt = require('bcrypt') as { hash: (s: string, r: number) => Promise<string> };
+import bcrypt from 'bcrypt';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requirePermission } from '../../middleware/requirePermission.js';
