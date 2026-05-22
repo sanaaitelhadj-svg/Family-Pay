@@ -55,13 +55,6 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, canEdit = t
               className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50">
               {saving ? '...' : 'Enregistrer'}
             </button>
-      {resetPwdModal && (
-        <PasswordResetModal
-          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
-          name="Marchand"
-          onClose={() => setResetPwdModal(null)}
-        />
-      )}
 
           </div>
         ) : (
@@ -70,7 +63,15 @@ function Section({ title, editing, onEdit, onSave, onCancel, saving, canEdit = t
             ✏️ Éditer
           </button>
         )}
-      </div>
+      
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name="Marchand"
+          onClose={() => setResetPwdModal(null)}
+        />
+      )}
+</div>
       {children}
     </section>
   );
@@ -81,7 +82,15 @@ function Field({ label, value }: { label: string; value: string | null | undefin
     <div className="bg-gray-50 p-3 rounded">
       <p className="text-xs text-gray-500 mb-0.5">{label}</p>
       <p className="text-sm font-medium text-gray-900 break-all">{value ?? '—'}</p>
-    </div>
+    
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name="Marchand"
+          onClose={() => setResetPwdModal(null)}
+        />
+      )}
+</div>
   );
 }
 
@@ -94,7 +103,15 @@ function EditField({ label, name, value, onChange, placeholder }: {
       <input type="text" value={value} placeholder={placeholder ?? ''}
         onChange={e => onChange(name, e.target.value)}
         className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-indigo-500" />
-    </div>
+    
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name="Marchand"
+          onClose={() => setResetPwdModal(null)}
+        />
+      )}
+</div>
   );
 }
 
@@ -107,7 +124,15 @@ function ContactCard({ label, contact }: { label: string; contact: ContactInfo |
           {contact.phone && <p className="text-xs text-gray-500">{contact.phone}</p>}
           {contact.email && <p className="text-xs text-gray-500">{contact.email}</p>}</>
       ) : <p className="text-sm text-gray-400">—</p>}
-    </div>
+    
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name="Marchand"
+          onClose={() => setResetPwdModal(null)}
+        />
+      )}
+</div>
   );
 }
 
@@ -126,14 +151,22 @@ function ContactEditFields({ label, prefix, draft, onChange }: {
       <input type="email" placeholder="Email" value={draft[`${prefix}_email`] ?? ''}
         onChange={e => onChange(`${prefix}_email`, e.target.value)}
         className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
-    </div>
+    
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name="Marchand"
+          onClose={() => setResetPwdModal(null)}
+        />
+      )}
+</div>
   );
 }
 
 export default function Merchants() {
+  const [resetPwdModal, setResetPwdModal] = useState<string | null>(null);
   const { can, loading: permsLoading } = usePermissions();
   const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [resetPwdModal, setResetPwdModal] = useState<string | null>(null); // merchantId
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
@@ -762,6 +795,14 @@ export default function Merchants() {
         </div>
       )}
 
-    </div>
+    
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name="Marchand"
+          onClose={() => setResetPwdModal(null)}
+        />
+      )}
+</div>
   );
 }
