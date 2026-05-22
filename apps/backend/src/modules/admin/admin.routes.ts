@@ -535,12 +535,12 @@ adminRouter.patch('/beneficiaries/:id', authenticate(['ADMIN']), requirePermissi
 adminRouter.patch('/beneficiaries/:id/status', authenticate(['ADMIN']), requirePermission('beneficiaries','suspend'), async (req, res, next) => {
   try {
     const u = (req as any).user; const actorId = u?.userId ?? u?.id;
-    const { isActive } = req.body;
-    const bene = await prisma.beneficiary.findUnique({ where: { id: req.params['id'] as string }, select: { userId: true } });
+    const bene = await prisma.beneficiary.findUnique({ where: { id: req.params['id'] as string }, include: { user: { select: { isActive: true } } } });
     if (!bene) { res.status(404).json({ error: 'NOT_FOUND', message: 'Bénéficiaire introuvable' }); return; }
-    await prisma.user.update({ where: { id: bene.userId }, data: { isActive } });
-    await prisma.auditLog.create({ data: { actorId, action: isActive ? 'BENEFICIARY_ACTIVATED' : 'BENEFICIARY_SUSPENDED', result: 'SUCCESS', entityType: 'User', entityId: bene.userId } });
-    res.json({ message: `Bénéficiaire ${isActive ? 'activé' : 'suspendu'}` });
+    const newIsActive = !bene.user.isActive;
+    await prisma.user.update({ where: { id: bene.userId }, data: { isActive: newIsActive } });
+    await prisma.auditLog.create({ data: { actorId, action: newIsActive ? 'BENEFICIARY_ACTIVATED' : 'BENEFICIARY_SUSPENDED', result: 'SUCCESS', entityType: 'User', entityId: bene.userId, metadata: { before: { isActive: bene.user.isActive }, after: { isActive: newIsActive } } as any } });
+    res.json({ message: `Bénéficiaire ${newIsActive ? 'activé' : 'suspendu'}`, isActive: newIsActive });
   } catch (err) { next(err); return; }
 });
 

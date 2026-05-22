@@ -143,7 +143,7 @@ export class AdminService {
   static async getSponsors() {
     return prisma.sponsor.findMany({
       include: {
-        user: { select: { firstName: true, phone: true, email: true, createdAt: true } },
+        user: { select: { firstName: true, phone: true, email: true, createdAt: true, isActive: true } },
         _count: { select: { allocations: true, beneficiaries: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -154,7 +154,7 @@ export class AdminService {
     const sponsor = await prisma.sponsor.findUnique({
       where: { id: sponsorId },
       include: {
-        user: { select: { firstName: true, phone: true, email: true, createdAt: true } },
+        user: { select: { firstName: true, phone: true, email: true, createdAt: true, isActive: true } },
         allocations: {
           include: { beneficiary: { include: { user: { select: { firstName: true, phone: true } } } } },
           orderBy: { createdAt: 'desc' },
@@ -176,7 +176,7 @@ export class AdminService {
   static async getBeneficiaries() {
     return prisma.beneficiary.findMany({
       include: {
-        user: { select: { firstName: true, phone: true, createdAt: true } },
+        user: { select: { firstName: true, phone: true, createdAt: true, isActive: true } },
         sponsor: { include: { user: { select: { firstName: true } } } },
         _count: { select: { allocations: true } },
       },
@@ -188,7 +188,7 @@ export class AdminService {
     const beneficiary = await prisma.beneficiary.findUnique({
       where: { id: beneficiaryId },
       include: {
-        user: { select: { firstName: true, phone: true, createdAt: true } },
+        user: { select: { firstName: true, phone: true, createdAt: true, isActive: true } },
         sponsor: { include: { user: { select: { firstName: true, phone: true } } } },
         allocations: { orderBy: { createdAt: 'desc' } },
       },
