@@ -11,7 +11,7 @@ interface Sponsor {
 interface SponsorDetail extends Sponsor {
   pspCustomerReference: string | null;
   maskedCardReference: string | null;
-  user: { firstName: string; lastName: string | null; phone: string; email: string | null; isActive: boolean };
+  user: { firstName: string; lastName: string | null; phone: string; email: string | null; isActive: boolean; createdAt: string };
   totalVolume: number; totalTransactions: number;
   allocations: any[]; beneficiaries: any[];
 }
