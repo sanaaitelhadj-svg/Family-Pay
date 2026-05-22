@@ -78,9 +78,10 @@ export default function Sponsors() {
     if (!detail) return;
     setActionSaving(true);
     try {
-      await api.patch(`/admin/sponsors/${detail.id}/status`, { isActive: !detail.user.isActive });
-      const res = await api.get(`/admin/sponsors/${detail.id}`);
-      setDetail(res.data);
+      const patchRes = await api.patch(`/admin/sponsors/${detail.id}/status`);
+      const newIsActive: boolean = patchRes.data?.isActive ?? !detail.user.isActive;
+      setDetail(d => d ? { ...d, user: { ...d.user, isActive: newIsActive } } : null);
+      setList(l => l.map(s => s.id === detail.id ? { ...s, user: { ...s.user, isActive: newIsActive } } : s));
       load();
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setActionSaving(false); }
