@@ -122,10 +122,11 @@ export default function Sponsors() {
     if (!detail) return;
     setModalSaving(true);
     try {
-      const r = await api.post('/admin/beneficiaries', { ...addBeneForm, sponsorId: detail.id });
-      setDetail(d => d ? { ...d, beneficiaries: [...d.beneficiaries, r.data] } : null);
+      await api.post('/admin/beneficiaries', { ...addBeneForm, sponsorId: detail.id });
       setAddBeneModal(false);
       setAddBeneForm({ firstName: '', lastName: '', phone: '', password: '', relationship: '' });
+      const refreshed = await api.get(`/admin/sponsors/${detail.id}?_t=${Date.now()}`);
+      setDetail(refreshed.data);
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setModalSaving(false); }
   };
