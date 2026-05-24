@@ -145,6 +145,7 @@ export default function Sponsors() {
   if (loading) return <p className="text-gray-500 p-6">Chargement...</p>;
 
   return (
+    <>
     <div className="flex gap-6 p-6">
       <div className="flex-1">
         <div className="flex items-center justify-between mb-6">
@@ -453,5 +454,6 @@ export default function Sponsors() {
         </div>
       )}
 
+    </>
   );
 }
