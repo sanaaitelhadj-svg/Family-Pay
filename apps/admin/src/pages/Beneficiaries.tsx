@@ -179,6 +179,10 @@ export default function Beneficiaries() {
               className={"flex-1 px-3 py-1.5 text-sm rounded-lg font-medium " + (detail.isActive ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" : "bg-green-100 text-green-700 hover:bg-green-200")}>
               {detail.isActive ? "Suspendre" : "Activer"}
             </button>
+            <button onClick={() => setResetPwdModal(true)} disabled={permsLoading || !can("beneficiaries","reset-password")}
+              className={`px-3 py-1.5 text-sm rounded-lg font-medium ${can("beneficiaries","reset-password") ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+              🔑 MDP
+            </button>
             <button onClick={() => setDeleteConfirm(true)} disabled={permsLoading || !can("beneficiaries","delete") || actionSaving}
               className="px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200">
               Supprimer

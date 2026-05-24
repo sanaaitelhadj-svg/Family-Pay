@@ -93,6 +93,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
       if (!p) return false; // deny by default
       if (action === 'read')  return p.read;
       if (action === 'write') return p.write;
+      if (p.actions?.includes('*')) return true;
       return p.actions?.includes(action) ?? false;
     },
     [permissions],

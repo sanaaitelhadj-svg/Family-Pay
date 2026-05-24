@@ -33,7 +33,7 @@ const PAGE_LABELS: Record<string, string> = {
   beneficiaries: 'Bénéficiaires',
   admins:        'Administrateurs',
 };
-const ACTIONS = ['approve','add','reject','delete','suspend'];
+const ACTIONS = ['approve','add','reject','delete','suspend','reset-password'];
 
 function PermMatrix({
   perms, onChange, disabled,
