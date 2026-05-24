@@ -212,6 +212,7 @@ export default function Admins() {
   const canAdd   = can('admins', 'add');
   const canDel   = can('admins', 'delete');
   const canSusp  = can('admins', 'suspend');
+  const canReset = can('admins', 'reset-password');
 
   return (
     <div className="p-6 space-y-6">
