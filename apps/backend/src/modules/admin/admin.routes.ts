@@ -560,7 +560,7 @@ adminRouter.post('/fix-roles', authenticate(['ADMIN']), async (_req, res, next) 
   try {
     const ALL_PAGES = ['dashboard','merchants','sponsors','beneficiaries','transactions',
       'fraud','subscriptions','commissions','admins','roles','auditLogs'];
-    const ALL_ACTIONS = ['*','add','edit','delete','suspend','approve','reject','assign-role','export'];
+    const ALL_ACTIONS = ['*','add','edit','delete','suspend','approve','reject','assign-role','export','reset-password'];
     const fullAccess = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: true,  actions: ALL_ACTIONS }]));
     const readOnly   = Object.fromEntries(ALL_PAGES.map(p => [p, { read: true, write: false, actions: [] }]));
     const financePerms = Object.fromEntries(ALL_PAGES.map(p => {

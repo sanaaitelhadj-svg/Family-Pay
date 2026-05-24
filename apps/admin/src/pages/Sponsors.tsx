@@ -172,6 +172,10 @@ export default function Sponsors() {
               className="px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200">
               🗑 Supprimer
             </button>
+            <button onClick={() => setResetPwdModal(true)} disabled={permsLoading || !can('sponsors','reset-password')}
+              className={`px-3 py-1.5 text-sm rounded-lg font-medium ${can('sponsors','reset-password') ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+              🔑 MDP
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-6">

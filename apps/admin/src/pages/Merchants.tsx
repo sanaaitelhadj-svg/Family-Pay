@@ -404,6 +404,13 @@ export default function Merchants() {
                     {selected.activationStatus === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}
                   </button>
                 )}
+                {(selected.activationStatus === 'ACTIVE' || selected.activationStatus === 'SUSPENDED') && (
+                  <button onClick={() => setResetPwdModal(selected.id)}
+                    disabled={permsLoading || !can('merchants','reset-password')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants','reset-password') ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+                    🔑 MDP
+                  </button>
+                )}
               </div>
             </div>
 
@@ -753,6 +760,14 @@ export default function Merchants() {
             </div>
           </div>
         </div>
+      )}
+
+      {resetPwdModal && (
+        <PasswordResetModal
+          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
+          name={merchants.find(m => m.id === resetPwdModal)?.businessName ?? 'Marchand'}
+          onClose={() => setResetPwdModal(null)}
+        />
       )}
 </div>
   );

@@ -287,6 +287,10 @@ export default function Admins() {
                       className={`text-sm px-2 py-1 rounded ${canDel ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                       Supprimer
                     </button>
+                    <button onClick={() => setResetPwdTarget({id: a.id, name: a.firstName})}
+                      className="text-sm px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100">
+                      🔑 MDP
+                    </button>
                   </td>
                 </tr>
               ))}
