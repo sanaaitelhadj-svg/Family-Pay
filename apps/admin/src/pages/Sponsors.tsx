@@ -31,6 +31,9 @@ export default function Sponsors() {
   const [allocModal, setAllocModal]             = useState(false);
   const [editAllocTarget, setEditAllocTarget]   = useState<any>(null);
   const [addBeneModal, setAddBeneModal]         = useState(false);
+  const [beneModalTab, setBeneModalTab]         = useState<'create'|'select'>('create');
+  const [allBeneficiaries, setAllBeneficiaries] = useState<any[]>([]);
+  const [beneSearch, setBeneSearch]             = useState('');
   const [allocForm, setAllocForm]               = useState({ beneficiaryId: '', category: 'GENERAL', limitAmount: '', expiresAt: '', status: 'ACTIVE' });
   const [addBeneForm, setAddBeneForm]           = useState({ firstName: '', lastName: '', phone: '', password: '', relationship: '' });
   const [modalSaving, setModalSaving]           = useState(false);
@@ -116,6 +119,20 @@ export default function Sponsors() {
       await api.delete(`/admin/sponsors/${detail.id}/allocations/${allocId}`);
       setDetail(d => d ? { ...d, allocations: d.allocations.filter((a: any) => a.id !== allocId) } : null);
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+  };
+
+
+  const linkBene = async (beneId: string) => {
+    if (!detail) return;
+    setModalSaving(true);
+    try {
+      await api.patch(`/admin/beneficiaries/${beneId}/link-sponsor`, { sponsorId: detail.id });
+      const refreshed = await api.get(`/admin/sponsors/${detail.id}?_t=${Date.now()}`);
+      setDetail(refreshed.data);
+      setAddBeneModal(false);
+      setBeneSearch('');
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setModalSaving(false); }
   };
 
   const saveBene = async () => {
@@ -238,7 +255,7 @@ export default function Sponsors() {
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-gray-500 uppercase">Bénéficiaires ({detail.beneficiaries.length})</p>
             {can('beneficiaries','add') && (
-              <button onClick={() => setAddBeneModal(true)} className="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded-lg font-medium">+ Ajouter</button>
+              <button onClick={() => { setBeneModalTab('create'); setAddBeneModal(true); api.get(`/admin/beneficiaries?_t=${Date.now()}`).then(r => setAllBeneficiaries(r.data)); }} className="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded-lg font-medium">+ Ajouter</button>
             )}
           </div>
           <div className="space-y-2 mb-4">
@@ -426,31 +443,69 @@ export default function Sponsors() {
       {addBeneModal && detail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Nouveau bénéficiaire</h2>
+            <h2 className="text-lg font-bold text-gray-900">Ajouter un bénéficiaire</h2>
             <p className="text-sm text-gray-500">Sponsor : {detail.user.firstName}</p>
-            {[
-              { label: 'Prénom *', key: 'firstName', type: 'text', placeholder: 'Prénom' },
-              { label: 'Nom', key: 'lastName', type: 'text', placeholder: 'Nom (optionnel)' },
-              { label: 'Téléphone *', key: 'phone', type: 'tel', placeholder: '06XXXXXXXX' },
-              { label: 'Mot de passe *', key: 'password', type: 'password', placeholder: '8 caractères min' },
-              { label: 'Lien', key: 'relationship', type: 'text', placeholder: 'ex: Fils, Épouse…' },
-            ].map(({ label, key, type, placeholder }) => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                <input type={type} placeholder={placeholder}
-                  value={(addBeneForm as any)[key]}
-                  onChange={e => setAddBeneForm(f => ({...f, [key]: e.target.value}))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
-            ))}
-            <div className="flex justify-end gap-3 pt-2">
-              <button onClick={() => setAddBeneModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={saveBene} disabled={modalSaving || !addBeneForm.firstName || !addBeneForm.phone || !addBeneForm.password}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
-                {modalSaving ? 'Création…' : 'Créer'}
-              </button>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
+              {(['select','create'] as const).map(tab => (
+                <button key={tab} onClick={() => setBeneModalTab(tab)}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${beneModalTab === tab ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                  {tab === 'select' ? '🔍 Sélectionner existant' : '➕ Créer nouveau'}
+                </button>
+              ))}
             </div>
+
+            {beneModalTab === 'select' ? (
+              <div className="space-y-3">
+                <input type="text" placeholder="Rechercher par nom ou téléphone…"
+                  value={beneSearch} onChange={e => setBeneSearch(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {allBeneficiaries
+                    .filter(b => !detail.beneficiaries.some((db: any) => db.id === b.id))
+                    .filter(b => !beneSearch || `${b.user.firstName} ${b.user.phone}`.toLowerCase().includes(beneSearch.toLowerCase()))
+                    .map(b => (
+                      <button key={b.id} onClick={() => linkBene(b.id)} disabled={modalSaving}
+                        className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition-colors">
+                        <p className="text-sm font-medium text-gray-900">{b.user.firstName} {b.user.lastName ?? ''}</p>
+                        <p className="text-xs text-gray-500">{b.user.phone} · Sponsor actuel : {b.sponsor?.user?.firstName ?? '—'}</p>
+                      </button>
+                    ))}
+                  {allBeneficiaries.filter(b => !detail.beneficiaries.some((db: any) => db.id === b.id)).length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4">Aucun bénéficiaire disponible</p>
+                  )}
+                </div>
+                <button onClick={() => setAddBeneModal(false)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {[
+                  { label: 'Prénom *', key: 'firstName', type: 'text', placeholder: 'Prénom' },
+                  { label: 'Nom', key: 'lastName', type: 'text', placeholder: 'Nom (optionnel)' },
+                  { label: 'Téléphone *', key: 'phone', type: 'tel', placeholder: '06XXXXXXXX' },
+                  { label: 'Mot de passe *', key: 'password', type: 'password', placeholder: '8 caractères min' },
+                  { label: 'Lien', key: 'relationship', type: 'text', placeholder: 'ex: Fils, Épouse…' },
+                ].map(({ label, key, type, placeholder }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                    <input type={type} placeholder={placeholder}
+                      value={(addBeneForm as any)[key]}
+                      onChange={e => setAddBeneForm(f => ({...f, [key]: e.target.value}))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                ))}
+                <div className="flex justify-end gap-3 pt-2">
+                  <button onClick={() => setAddBeneModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+                  <button onClick={saveBene} disabled={modalSaving || !addBeneForm.firstName || !addBeneForm.phone || !addBeneForm.password}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
+                    {modalSaving ? 'Création…' : 'Créer'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -532,6 +532,21 @@ adminRouter.patch('/beneficiaries/:id', authenticate(['ADMIN']), requirePermissi
   } catch (err) { next(err); return; }
 });
 
+
+adminRouter.patch('/beneficiaries/:id/link-sponsor', authenticate(['ADMIN']), requirePermission('beneficiaries','write'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const { sponsorId } = req.body;
+    const bene = await prisma.beneficiary.findUnique({ where: { id: req.params['id'] as string } });
+    if (!bene) { res.status(404).json({ error: 'NOT_FOUND', message: 'Bénéficiaire introuvable' }); return; }
+    const sponsor = await prisma.sponsor.findUnique({ where: { id: sponsorId } });
+    if (!sponsor) { res.status(404).json({ error: 'NOT_FOUND', message: 'Sponsor introuvable' }); return; }
+    await prisma.beneficiary.update({ where: { id: req.params['id'] as string }, data: { sponsorId } });
+    await prisma.auditLog.create({ data: { actorId, action: 'BENEFICIARY_LINKED', result: 'SUCCESS', entityType: 'Beneficiary', entityId: req.params['id'] as string, metadata: { sponsorId } as any } });
+    res.json({ message: 'Bénéficiaire lié au sponsor' });
+  } catch (err) { next(err); return; }
+});
+
 adminRouter.patch('/beneficiaries/:id/status', authenticate(['ADMIN']), requirePermission('beneficiaries','suspend'), async (req, res, next) => {
   try {
     const u = (req as any).user; const actorId = u?.userId ?? u?.id;
