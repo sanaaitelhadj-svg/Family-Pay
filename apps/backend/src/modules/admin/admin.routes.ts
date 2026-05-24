@@ -606,7 +606,41 @@ adminRouter.patch('/sponsors/:id/reset-password',
       return res.json({ success: true });
     } catch (err) { next(err); return; }
   }
-);
+)
+
+// ── Sponsor Allocations CRUD ───────────────────────────────────────────────
+adminRouter.post('/sponsors/:id/allocations', authenticate(['ADMIN']), requirePermission('sponsors','write'), async (req, res, next) => {
+  try {
+    const u = (req as any).user; const actorId = u?.userId ?? u?.id;
+    const sponsorId = req.params['id'] as string;
+    const { beneficiaryId, category, limitAmount, expiresAt } = req.body;
+    const bene = await prisma.beneficiary.findFirst({ where: { id: beneficiaryId, sponsorId } });
+    if (!bene) { res.status(400).json({ error: 'INVALID', message: 'Bénéficiaire invalide pour ce sponsor' }); return; }
+    const alloc = await prisma.allocation.create({ data: { sponsorId, beneficiaryId, category, limitAmount: Number(limitAmount), remainingAmount: Number(limitAmount), ...(expiresAt ? { expiresAt: new Date(expiresAt) } : {}) } });
+    await prisma.auditLog.create({ data: { actorId, action: 'ALLOCATION_CREATED', result: 'SUCCESS', entityType: 'Allocation', entityId: alloc.id, metadata: { category, limitAmount } as any } });
+    res.status(201).json(alloc);
+  } catch (err) { next(err); return; }
+});
+
+adminRouter.patch('/sponsors/:id/allocations/:allocId', authenticate(['ADMIN']), requirePermission('sponsors','write'), async (req, res, next) => {
+  try {
+    const alloc = await prisma.allocation.findFirst({ where: { id: req.params['allocId'] as string, sponsorId: req.params['id'] as string } });
+    if (!alloc) { res.status(404).json({ error: 'NOT_FOUND', message: 'Allocation introuvable' }); return; }
+    const { limitAmount, status, expiresAt } = req.body;
+    const updated = await prisma.allocation.update({ where: { id: alloc.id }, data: { ...(limitAmount !== undefined ? { limitAmount: Number(limitAmount), remainingAmount: Number(limitAmount) } : {}), ...(status !== undefined ? { status } : {}), ...(expiresAt !== undefined ? { expiresAt: expiresAt ? new Date(expiresAt) : null } : {}) } });
+    res.json(updated);
+  } catch (err) { next(err); return; }
+});
+
+adminRouter.delete('/sponsors/:id/allocations/:allocId', authenticate(['ADMIN']), requirePermission('sponsors','delete'), async (req, res, next) => {
+  try {
+    const alloc = await prisma.allocation.findFirst({ where: { id: req.params['allocId'] as string, sponsorId: req.params['id'] as string } });
+    if (!alloc) { res.status(404).json({ error: 'NOT_FOUND', message: 'Allocation introuvable' }); return; }
+    await prisma.allocation.delete({ where: { id: alloc.id } });
+    res.json({ message: 'Allocation supprimée' });
+  } catch (err) { next(err); return; }
+});
+;
 
 adminRouter.patch('/beneficiaries/:id/reset-password',
   authenticate(['ADMIN']), requirePermission('beneficiaries', 'write'),
