@@ -23,6 +23,9 @@ export default function Beneficiaries() {
   const [createSaving, setCreateSaving] = useState(false);
 
   const [resetPwdModal, setResetPwdModal] = useState(false);
+  const [editAllocTarget, setEditAllocTarget] = useState<any>(null);
+  const [allocForm, setAllocForm]             = useState({ limitAmount: '', status: 'ACTIVE', expiresAt: '' });
+  const [allocSaving, setAllocSaving]         = useState(false);
   const [editModal, setEditModal]   = useState(false);
   const [editForm, setEditForm]     = useState({ firstName: '', lastName: '', email: '', relationship: '' });
   const [editSaving, setEditSaving] = useState(false);
@@ -86,6 +89,30 @@ export default function Beneficiaries() {
       setList(l => l.map(b => b.id === detail.id ? { ...b, isActive: newIsActive, user: { ...b.user, isActive: newIsActive } } : b));
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setActionSaving(false); }
+  };
+
+
+  const saveEditAlloc = async () => {
+    if (!editAllocTarget) return;
+    setAllocSaving(true);
+    try {
+      const r = await api.patch(`/admin/sponsors/${editAllocTarget.sponsorId}/allocations/${editAllocTarget.id}`, {
+        limitAmount: Number(allocForm.limitAmount),
+        status: allocForm.status,
+        expiresAt: allocForm.expiresAt || null,
+      });
+      setDetail((d: any) => d ? { ...d, allocations: d.allocations.map((a: any) => a.id === editAllocTarget.id ? { ...a, ...r.data } : a) } : null);
+      setEditAllocTarget(null);
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setAllocSaving(false); }
+  };
+
+  const deleteAlloc = async (a: any) => {
+    if (!window.confirm('Supprimer cette allocation ?')) return;
+    try {
+      await api.delete(`/admin/sponsors/${a.sponsorId}/allocations/${a.id}`);
+      setDetail((d: any) => d ? { ...d, allocations: d.allocations.filter((al: any) => al.id !== a.id) } : null);
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
   };
 
   const deleteBeneficiary = async () => {
@@ -194,17 +221,29 @@ export default function Beneficiaries() {
             <div><p className="text-xs text-gray-400">Lien</p><p className="text-sm font-medium text-gray-900">{detail.relationship || "Non renseigné"}</p></div>
           </div>
 
-          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Allocations</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Allocations ({detail.allocations?.length ?? 0})</p>
           <div className="space-y-2 mb-4">
             {detail.allocations?.map((a: any) => (
               <div key={a.id} className="text-sm bg-gray-50 rounded-lg px-3 py-2">
-                <div className="flex justify-between">
-                  <span className="font-medium">{a.category}</span>
-                  <span className={"text-xs px-2 py-0.5 rounded-full " + (a.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")}>{a.status}</span>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="font-medium">{a.category}</span>
+                    <span className={"ml-2 text-xs px-2 py-0.5 rounded-full " + (a.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")}>{a.status}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {can("beneficiaries","write") && (
+                      <button onClick={() => { setEditAllocTarget(a); setAllocForm({ limitAmount: String(Number(a.limitAmount)), status: a.status, expiresAt: a.expiresAt ? a.expiresAt.slice(0,10) : '' }); }}
+                        className="text-blue-500 hover:text-blue-700 text-xs">✏️</button>
+                    )}
+                    {can("beneficiaries","delete") && (
+                      <button onClick={() => deleteAlloc(a)} className="text-red-400 hover:text-red-600 text-xs">🗑</button>
+                    )}
+                  </div>
                 </div>
                 <div className="text-gray-500 mt-1">{Number(a.remainingAmount).toFixed(0)} / {Number(a.limitAmount).toFixed(0)} MAD</div>
               </div>
             ))}
+            {!detail.allocations?.length && <p className="text-xs text-gray-400 text-center py-2">Aucune allocation</p>}
           </div>
 
           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Transactions récentes</p>
@@ -306,5 +345,45 @@ export default function Beneficiaries() {
         </div>
       )}
     </div>
+
+      {/* Edit allocation modal */}
+      {editAllocTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Modifier l'allocation</h2>
+            <p className="text-sm text-gray-500">{editAllocTarget.category} — {detail?.user?.firstName}</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Montant limite (MAD)</label>
+              <input type="number" min="0" value={allocForm.limitAmount}
+                onChange={e => setAllocForm(f => ({...f, limitAmount: e.target.value}))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+              <select value={allocForm.status} onChange={e => setAllocForm(f => ({...f, status: e.target.value}))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                {["ACTIVE","PAUSED","EXPIRED","EXHAUSTED"].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expiration (optionnel)</label>
+              <input type="date" value={allocForm.expiresAt}
+                onChange={e => setAllocForm(f => ({...f, expiresAt: e.target.value}))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setEditAllocTarget(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+              <button onClick={saveEditAlloc} disabled={allocSaving || !allocForm.limitAmount}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
+                {allocSaving ? "Enregistrement…" : "Modifier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
   );
 }
