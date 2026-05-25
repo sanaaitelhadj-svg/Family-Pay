@@ -92,20 +92,41 @@ export class AdminService {
     });
   }
   static async getStats() {
-    const [sponsors, beneficiaries, activeMerchants, txAgg, pendingFraudReview] = await Promise.all([
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const [
+      sponsors, beneficiaries, txAgg, pendingFraudReview,
+      merchantsByStatus, merchantsByCategory,
+      newSponsorsWeek, newMerchantsWeek, txWeekAgg,
+      pendingKyc, recentLogs,
+    ] = await Promise.all([
       prisma.sponsor.count(),
       prisma.beneficiary.count(),
-      prisma.merchant.count({ where: { kycStatus: 'APPROVED' } }),
       prisma.transaction.aggregate({ _sum: { amount: true }, _count: true, where: { status: 'COMPLETED' } }),
       prisma.authorization.count({ where: { status: 'PENDING_REVIEW' } }),
+      prisma.merchant.groupBy({ by: ['activationStatus'], _count: true }),
+      prisma.merchant.groupBy({ by: ['category'], _count: true }),
+      prisma.sponsor.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.merchant.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.transaction.aggregate({ _sum: { amount: true }, _count: true, where: { status: 'COMPLETED', createdAt: { gte: weekAgo } } }),
+      prisma.merchant.count({ where: { kycStatus: 'PENDING' } }),
+      prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, include: { actor: { select: { firstName: true, email: true } } } }),
     ]);
     return {
       sponsors,
       beneficiaries,
-      activeMerchants,
+      activeMerchants: (merchantsByStatus.find(m => m.activationStatus === 'ACTIVE')?._count ?? 0),
       totalTransactions: txAgg._count,
       totalVolume: Number(txAgg._sum.amount ?? 0),
       pendingFraudReview,
+      merchantsByStatus: Object.fromEntries(merchantsByStatus.map(m => [m.activationStatus, m._count])),
+      merchantsByCategory: Object.fromEntries(merchantsByCategory.map(m => [m.category, m._count])),
+      newSponsorsWeek,
+      newMerchantsWeek,
+      weekVolume: Number(txWeekAgg._sum.amount ?? 0),
+      weekTransactions: txWeekAgg._count,
+      pendingKyc,
+      recentLogs,
     };
   }
 
