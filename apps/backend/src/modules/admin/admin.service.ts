@@ -399,6 +399,7 @@ export class AdminService {
 
 
   static async setMerchantStatus(merchantId: string, status: 'ACTIVE' | 'SUSPENDED', actorId?: string): Promise<void> {
+    const merchant = await prisma.merchant.findUnique({ where: { id: merchantId }, select: { businessName: true, activationStatus: true } });
     await prisma.$transaction(async (tx) => {
       await tx.merchant.update({ where: { id: merchantId }, data: { activationStatus: status } });
       await tx.auditLog.create({
@@ -408,7 +409,9 @@ export class AdminService {
           result: 'SUCCESS',
           entityType: 'Merchant',
           entityId: merchantId,
-          newData: { status },
+          previousData: { status: merchant?.activationStatus } as any,
+          newData: { status } as any,
+          metadata: { entityName: merchant?.businessName ?? merchantId } as any,
         },
       });
     });
@@ -488,6 +491,14 @@ export class AdminService {
   }
 
   static async updateMerchantInfo(merchantId: string, data: Record<string, unknown>, actorId?: string): Promise<void> {
+    const current = await prisma.merchant.findUnique({
+      where: { id: merchantId },
+      select: { businessName: true, city: true, category: true, email: true, phone: true, siret: true },
+    });
+    const previousData: Record<string, unknown> = {};
+    for (const key of Object.keys(data)) {
+      if (current && key in current) previousData[key] = (current as Record<string, unknown>)[key];
+    }
     await prisma.merchant.update({ where: { id: merchantId }, data: data as any });
     await prisma.auditLog.create({
       data: {
@@ -496,7 +507,9 @@ export class AdminService {
         result: 'SUCCESS',
         entityType: 'Merchant',
         entityId: merchantId,
+        previousData: Object.keys(previousData).length ? previousData as any : undefined,
         newData: data as any,
+        metadata: { entityName: current?.businessName ?? merchantId } as any,
       },
     });
   }

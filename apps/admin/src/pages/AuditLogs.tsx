@@ -110,7 +110,12 @@ function DetailModal({ log, onClose }: { log: AuditLogEntry; onClose: () => void
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Entité concernée</p>
-              <p className="text-gray-700 font-medium">{log.entityType}</p>
+              <p className="text-gray-700 font-medium">
+                {log.entityType}
+                {(log.metadata as Record<string,unknown> | null)?.entityName
+                  ? <span className="ml-1 text-gray-500">— {String((log.metadata as Record<string,unknown>).entityName)}</span>
+                  : null}
+              </p>
               <p className="text-gray-400 font-mono text-xs break-all">{log.entityId}</p>
             </div>
             <div>

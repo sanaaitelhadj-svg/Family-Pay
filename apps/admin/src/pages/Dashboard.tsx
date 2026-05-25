@@ -108,7 +108,7 @@ function LogModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-xs text-gray-400 uppercase font-medium mb-0.5">Entité</p>
-              <p className="text-gray-700 font-medium">{log.entityType}</p>
+              <p className="text-gray-700 font-medium">{log.entityType}{log.metadata?.entityName ? ` — ${String(log.metadata.entityName)}` : ''}</p>
               <p className="text-gray-400 font-mono text-xs break-all">{log.entityId}</p>
             </div>
             <div>
