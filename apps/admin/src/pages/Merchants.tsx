@@ -423,7 +423,6 @@ export default function Merchants() {
           </select>
         </div>
       </div>
-      </div>
 
       {/* Category dashboard */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
