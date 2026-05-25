@@ -386,31 +386,7 @@ export default function Merchants() {
           </select>
         </div>
 
-        {/* Category filter */}
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-gray-500 font-medium">Catégorie :</span>
-          {['ALL', ...categories].map(cat => (
-            <button key={cat} onClick={() => setCatFilter(cat)}
-              className={`px-3 py-1 rounded text-xs font-medium ${catFilter === cat ? 'bg-orange-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
-              {cat === 'ALL' ? 'Toutes' : cat}
-              {cat !== 'ALL' && <span className="ml-1 opacity-60">({merchants.filter(m => m.category === cat).length})</span>}
-            </button>
-          ))}
-          {showNewCat ? (
-            <div className="flex gap-1 items-center">
-              <input autoFocus type="text" value={newCatInput} onChange={e => setNewCatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addCategory(newCatInput); if (e.key === 'Escape') { setShowNewCat(false); setNewCatInput(''); } }}
-                placeholder="Nom…" className="border border-orange-300 rounded-full px-3 py-1 text-xs w-28 focus:outline-none focus:ring-2 focus:ring-orange-400" />
-              <button onClick={() => addCategory(newCatInput)} className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full hover:bg-orange-600">✓</button>
-              <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full hover:bg-gray-300">✕</button>
-            </div>
-          ) : (
-            <button onClick={() => setShowNewCat(true)}
-              className="px-3 py-1 rounded text-xs font-medium bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
-              +
-            </button>
-          )}
-        </div>
+
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 font-medium">Ville :</span>
@@ -436,6 +412,21 @@ export default function Merchants() {
             </button>
           );
         })}
+        {showNewCat ? (
+          <div className="flex gap-2 items-center rounded-xl p-3 bg-white border-2 border-indigo-300 shadow-sm">
+            <input autoFocus type="text" value={newCatInput} onChange={e => setNewCatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addCategory(newCatInput); if (e.key === 'Escape') { setShowNewCat(false); setNewCatInput(''); } }}
+              placeholder="Nom…" className="border border-indigo-300 rounded-lg px-2 py-1 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <button onClick={() => addCategory(newCatInput)} className="text-sm bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700">✓</button>
+            <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-sm bg-gray-200 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-300">✕</button>
+          </div>
+        ) : (
+          <button onClick={() => setShowNewCat(true)}
+            className="rounded-xl p-3 text-left border-2 border-dashed border-indigo-300 bg-white hover:bg-indigo-50 transition-all">
+            <p className="text-2xl font-bold text-indigo-400">+</p>
+            <p className="text-xs font-medium text-indigo-400 uppercase mt-1">Catégorie</p>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
