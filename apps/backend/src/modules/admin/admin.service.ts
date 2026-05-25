@@ -11,7 +11,7 @@ export class AdminService {
         beneficiary: {
           include: { user: { select: { firstName: true, phone: true } } },
         },
-        merchant: { select: { businessName: true, city: true } },
+        merchant: { select: { businessName: true, city: true, category: true } },
         allocation: { select: { category: true, remainingAmount: true } },
       },
       orderBy: { createdAt: 'asc' },
