@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { PasswordResetModal } from '../components/PasswordResetModal';
+import { MOROCCAN_CITIES } from '../lib/moroccan-cities';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Beneficiary {
@@ -18,7 +19,7 @@ export default function Beneficiaries() {
   const [loading, setLoading] = useState(true);
 
   const [createModal, setCreateModal] = useState(false);
-  const [createForm, setCreateForm]   = useState({ firstName: '', lastName: '', phone: '', password: '', sponsorId: '', relationship: '' });
+  const [createForm, setCreateForm]   = useState({ firstName: '', lastName: '', phone: '', password: '', sponsorId: '', relationship: '', city: '' });
   const [sponsors, setSponsors]       = useState<{ id: string; user: { firstName: string; phone: string } }[]>([]);
   const [createSaving, setCreateSaving] = useState(false);
 
@@ -326,6 +327,14 @@ export default function Beneficiaries() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                   <option value="">— Sélectionner un sponsor —</option>
                   {sponsors.map(s => <option key={s.id} value={s.id}>{s.user.firstName} ({s.user.phone})</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                <select value={createForm.city ?? ''} onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  <option value="">Sélectionner une ville…</option>
+                  {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div className="col-span-2">

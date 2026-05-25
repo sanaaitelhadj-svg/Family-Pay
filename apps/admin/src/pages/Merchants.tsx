@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { PasswordResetModal } from '../components/PasswordResetModal';
+import { MOROCCAN_CITIES } from '../lib/moroccan-cities';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 interface ContactInfo { nom?: string; phone?: string; email?: string }
@@ -408,18 +409,30 @@ export default function Merchants() {
         </div>
 
         {/* City filter */}
-        {cities.length > 0 && (
-          <div className="flex gap-2 flex-wrap items-center">
-            <span className="text-xs text-gray-500 font-medium">Ville :</span>
-            {['ALL', ...cities].map(city => (
-              <button key={city} onClick={() => setCityFilter(city)}
-                className={`px-3 py-1 rounded text-xs font-medium ${cityFilter === city ? 'bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
-                {city === 'ALL' ? 'Toutes' : city}
-                {city !== 'ALL' && <span className="ml-1 opacity-60">({merchants.filter(m => m.city === city).length})</span>}
-              </button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500 font-medium">Ville :</span>
+          <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <option value="ALL">Toutes les villes</option>
+            {cities.map(city => (
+              <option key={city} value={city}>{city} ({merchants.filter(m => m.city === city).length})</option>
             ))}
-          </div>
-        )}
+          </select>
+        </div>
+      </div>
+
+      {/* Category dashboard */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
+        {categories.map(cat => {
+          const count = merchants.filter(m => m.category === cat).length;
+          return (
+            <button key={cat} onClick={() => setCatFilter(catFilter === cat ? 'ALL' : cat)}
+              className={`rounded-xl p-3 text-left transition-all border-2 ${catFilter === cat ? 'border-orange-500 bg-orange-50' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
+              <p className="text-2xl font-bold text-gray-800">{count}</p>
+              <p className="text-xs font-medium text-gray-500 uppercase mt-1 truncate">{cat}</p>
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -790,9 +803,11 @@ export default function Merchants() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
-                <input type="text" value={createForm.city}
-                  onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                <select value={createForm.city} onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  <option value="">Sélectionner une ville…</option>
+                  {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>

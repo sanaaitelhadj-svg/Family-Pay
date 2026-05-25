@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { PasswordResetModal } from '../components/PasswordResetModal';
+import { MOROCCAN_CITIES } from '../lib/moroccan-cities';
 import { usePermissions } from '../contexts/PermissionsContext';
 
 interface Sponsor {
@@ -496,6 +497,14 @@ export default function Sponsors() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
                   </div>
                 ))}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                  <select value={(addBeneForm as any).city ?? ''} onChange={e => setAddBeneForm(f => ({...f, city: e.target.value}))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    <option value="">Sélectionner une ville…</option>
+                    {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={() => setAddBeneModal(false)}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
