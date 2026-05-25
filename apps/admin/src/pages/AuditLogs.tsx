@@ -75,6 +75,83 @@ function JsonBlock({ data, label }: { data: Record<string, unknown> | null; labe
   );
 }
 
+
+const FIELD_LABELS: Record<string, string> = {
+  firstName: 'Prénom', lastName: 'Nom', email: 'Email', phone: 'Téléphone',
+  city: 'Ville', category: 'Catégorie', businessName: 'Raison sociale',
+  isActive: 'Actif', status: 'Statut', amount: 'Montant', limitAmount: 'Limite',
+  reason: 'Raison', billingType: 'Facturation',
+};
+
+const META_LABELS: Record<string, string> = {
+  entityName: 'Nom entité', sponsorName: 'Sponsor', beneficiaryName: 'Bénéficiaire',
+  businessName: 'Raison sociale', category: 'Catégorie', limitAmount: 'Montant alloué',
+  fraudScore: 'Score fraude', adminReason: 'Raison admin', reason: 'Raison',
+  phone: 'Téléphone', pspTransactionId: 'ID PSP',
+};
+
+function MetadataDisplay({ data }: { data: Record<string, unknown> | null }) {
+  if (!data) return null;
+  const entries = Object.entries(data).filter(([, v]) => typeof v !== 'object' || v === null);
+  if (entries.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contexte</p>
+      <div className="grid grid-cols-2 gap-2">
+        {entries.map(([key, value]) => (
+          <div key={key} className="bg-indigo-50 rounded-lg px-3 py-2">
+            <p className="text-xs text-indigo-400 mb-0.5">{META_LABELS[key] ?? key}</p>
+            <p className="text-sm font-semibold text-indigo-900 break-all">{String(value)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DiffView({ previous, next, meta }: { previous: Record<string, unknown> | null; next: Record<string, unknown> | null; meta?: Record<string, unknown> | null }) {
+  const prev = previous ?? (meta?.['before'] as Record<string, unknown> | null ?? null);
+  const nxt  = next  ?? (meta?.['after']  as Record<string, unknown> | null ?? null);
+  if (!prev && !nxt) return null;
+  const allKeys = [...new Set([...Object.keys(prev ?? {}), ...Object.keys(nxt ?? {})])];
+  if (allKeys.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Modifications</p>
+      <div className="rounded-xl overflow-hidden border border-gray-200">
+        <div className="grid grid-cols-2 divide-x divide-gray-200">
+          <div className="bg-red-50 px-3 py-3">
+            <p className="text-xs font-bold text-red-500 mb-2">Avant</p>
+            <div className="space-y-2">
+              {allKeys.map(key => (prev ?? {})[key] !== undefined ? (
+                <div key={key}>
+                  <p className="text-xs text-red-400">{FIELD_LABELS[key] ?? key}</p>
+                  <p className="text-sm font-semibold text-red-800 break-all">
+                    {typeof (prev ?? {})[key] === 'boolean' ? ((prev ?? {})[key] ? 'Oui' : 'Non') : String((prev ?? {})[key])}
+                  </p>
+                </div>
+              ) : <div key={key} className="opacity-0 h-8" />)}
+            </div>
+          </div>
+          <div className="bg-green-50 px-3 py-3">
+            <p className="text-xs font-bold text-green-500 mb-2">Après</p>
+            <div className="space-y-2">
+              {allKeys.map(key => (nxt ?? {})[key] !== undefined ? (
+                <div key={key}>
+                  <p className="text-xs text-green-400">{FIELD_LABELS[key] ?? key}</p>
+                  <p className="text-sm font-semibold text-green-800 break-all">
+                    {typeof (nxt ?? {})[key] === 'boolean' ? ((nxt ?? {})[key] ? 'Oui' : 'Non') : String((nxt ?? {})[key])}
+                  </p>
+                </div>
+              ) : <div key={key} className="opacity-0 h-8" />)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailModal({ log, onClose }: { log: AuditLogEntry; onClose: () => void }) {
   const adminName = log.admin
     ? (log.admin.firstName ? `${log.admin.firstName} ${log.admin.lastName ?? ''}` : log.admin.email)
@@ -153,11 +230,10 @@ function DetailModal({ log, onClose }: { log: AuditLogEntry; onClose: () => void
             )}
           </div>
 
-          {/* Data diffs */}
-          <div className="space-y-3">
-            <JsonBlock data={log.previousData} label="Avant" />
-            <JsonBlock data={log.newData}      label="Après" />
-            <JsonBlock data={log.metadata}     label="Métadonnées" />
+          {/* Context + Diff */}
+          <div className="space-y-4">
+            <MetadataDisplay data={log.metadata as Record<string, unknown> | null} />
+            <DiffView previous={log.previousData} next={log.newData} meta={log.metadata as Record<string, unknown> | null} />
           </div>
         </div>
       </div>
