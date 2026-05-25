@@ -204,7 +204,7 @@ export default function Merchants() {
       let body: Record<string, unknown> = {};
 
       if (section === 'general') {
-        body = { businessName: draft.businessName, city: draft.city, pspMerchantReference: draft.pspMerchantReference };
+        body = { businessName: draft.businessName, city: draft.city, category: draft.category, pspMerchantReference: draft.pspMerchantReference };
       } else if (section === 'legal') {
         body = { registrationNumber: draft.registrationNumber, iceNumber: draft.iceNumber, taxId: draft.taxId, fiscalId: draft.fiscalId, cinRepresentant: draft.cinRepresentant };
       } else if (section === 'banking') {
@@ -535,13 +535,27 @@ export default function Merchants() {
 
             {/* Général */}
             <Section title="Général" editing={editingSection === 'general'}
-              onEdit={() => startEdit('general', { businessName: selected.businessName, city: selected.city ?? '', pspMerchantReference: selected.pspMerchantReference ?? '' })}
+              onEdit={() => startEdit('general', { businessName: selected.businessName, city: selected.city ?? '', category: selected.category ?? '', pspMerchantReference: selected.pspMerchantReference ?? '' })}
               onSave={() => saveSection('general')} onCancel={cancelEdit} saving={sectionSaving}
               canEdit={!permsLoading && can('merchants', 'write')}>
               {editingSection === 'general' ? (
                 <div className="grid grid-cols-2 gap-2">
                   <EditField label="Nom du commerce" name="businessName" value={draft.businessName ?? ''} onChange={updateDraft} />
-                  <EditField label="Ville" name="city" value={draft.city ?? ''} onChange={updateDraft} />
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Ville</label>
+                    <select value={draft.city ?? ''} onChange={e => updateDraft({ target: { name: 'city', value: e.target.value } } as any)}
+                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                      <option value="">— Sélectionner —</option>
+                      {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Catégorie</label>
+                    <select value={draft.category ?? ''} onChange={e => updateDraft({ target: { name: 'category', value: e.target.value } } as any)}
+                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                  </div>
                   <div className="col-span-2">
                     <EditField label="Référence PSP" name="pspMerchantReference" value={draft.pspMerchantReference ?? ''} onChange={updateDraft} />
                   </div>
@@ -550,6 +564,7 @@ export default function Merchants() {
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Nom du commerce" value={selected.businessName} />
                   <Field label="Ville" value={selected.city} />
+                  <Field label="Catégorie" value={selected.category} />
                   <Field label="Référence PSP" value={selected.pspMerchantReference} />
                 </div>
               )}
