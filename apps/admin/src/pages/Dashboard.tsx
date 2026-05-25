@@ -10,7 +10,7 @@ interface Stats {
   newSponsorsWeek: number; newMerchantsWeek: number;
   weekVolume: number; weekTransactions: number;
   pendingKyc: number;
-  recentLogs: { id: string; action: string; entityType: string; createdAt: string; actor?: { firstName?: string; email?: string } | null }[];
+  recentLogs: { id: string; action: string; entityType: string; createdAt: string; admin?: { firstName?: string; email?: string } | null }[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
