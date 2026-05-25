@@ -129,7 +129,24 @@ export default function Merchants() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selected, setSelected] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('ALL');
+  const [filter, setFilter]       = useState('ALL');
+  const [catFilter, setCatFilter] = useState('ALL');
+  const [cityFilter, setCityFilter] = useState('ALL');
+  const DEFAULT_CATS = ['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER'];
+  const [categories, setCategories] = useState<string[]>(() => {
+    try { const s = localStorage.getItem('fp_merchant_cats'); return s ? JSON.parse(s) : ['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER']; }
+    catch { return ['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER']; }
+  });
+  const [newCatInput, setNewCatInput] = useState('');
+  const [showNewCat, setShowNewCat]   = useState(false);
+  const addCategory = (name: string) => {
+    const n = name.trim().toUpperCase();
+    if (!n || categories.includes(n)) return;
+    const updated = [...categories, n];
+    setCategories(updated);
+    localStorage.setItem('fp_merchant_cats', JSON.stringify(updated));
+    setNewCatInput(''); setShowNewCat(false);
+  };
 
   // Section inline editing
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -312,7 +329,19 @@ export default function Merchants() {
     }
   };
 
-  const filtered = filter === 'ALL' ? merchants : merchants.filter(m => m.activationStatus === filter);
+  const filtered = merchants
+    .filter(m => filter === 'ALL' || m.activationStatus === filter)
+    .filter(m => catFilter === 'ALL' || m.category === catFilter)
+    .filter(m => cityFilter === 'ALL' || m.city === cityFilter);
+  const cities = Array.from(new Set(merchants.map(m => m.city).filter(Boolean))) as string[];
+  const grouped: [string, typeof merchants][] = catFilter === 'ALL'
+    ? Object.entries(filtered.reduce((acc, m) => {
+        const k = m.category || 'OTHER';
+        if (!acc[k]) acc[k] = [];
+        acc[k].push(m);
+        return acc;
+      }, {} as Record<string, typeof merchants>))
+    : [['', filtered]];
 
 
   const submitCreate = async () => {
@@ -354,6 +383,43 @@ export default function Merchants() {
             </button>
           ))}
         </div>
+
+        {/* Category filter */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <span className="text-xs text-gray-500 font-medium">Catégorie :</span>
+          {['ALL', ...categories].map(cat => (
+            <button key={cat} onClick={() => setCatFilter(cat)}
+              className={`px-3 py-1 rounded text-xs font-medium ${catFilter === cat ? 'bg-orange-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+              {cat === 'ALL' ? 'Toutes' : cat}
+              {cat !== 'ALL' && <span className="ml-1 opacity-60">({merchants.filter(m => m.category === cat).length})</span>}
+            </button>
+          ))}
+          {showNewCat ? (
+            <div className="flex gap-1">
+              <input autoFocus type="text" value={newCatInput} onChange={e => setNewCatInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addCategory(newCatInput)}
+                placeholder="Nom catégorie" className="border border-gray-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:ring-1 focus:ring-orange-400" />
+              <button onClick={() => addCategory(newCatInput)} className="text-xs bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600">✓</button>
+              <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded hover:bg-gray-300">✕</button>
+            </div>
+          ) : (
+            <button onClick={() => setShowNewCat(true)} className="text-xs bg-gray-100 text-gray-600 border border-dashed border-gray-300 px-2 py-1 rounded hover:bg-gray-200">+ Catégorie</button>
+          )}
+        </div>
+
+        {/* City filter */}
+        {cities.length > 0 && (
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-xs text-gray-500 font-medium">Ville :</span>
+            {['ALL', ...cities].map(city => (
+              <button key={city} onClick={() => setCityFilter(city)}
+                className={`px-3 py-1 rounded text-xs font-medium ${cityFilter === city ? 'bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                {city === 'ALL' ? 'Toutes' : city}
+                {city !== 'ALL' && <span className="ml-1 opacity-60">({merchants.filter(m => m.city === city).length})</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -361,22 +427,32 @@ export default function Merchants() {
         <div className="lg:col-span-1 bg-white rounded-xl shadow overflow-hidden">
           {loading ? <div className="p-8 text-center text-gray-400">Chargement...</div>
             : filtered.length === 0 ? <div className="p-8 text-center text-gray-400">Aucun marchand</div>
-            : <ul className="divide-y divide-gray-100">
-                {filtered.map(m => (
-                  <li key={m.id} onClick={() => { setSelected(m); setEditingSection(null); }}
-                    className={`p-4 cursor-pointer hover:bg-gray-50 ${selected?.id === m.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">{m.businessName}</p>
-                        <p className="text-xs text-gray-500">{m.category}{m.city ? ` · ${m.city}` : ''}</p>
+            : <div className="divide-y divide-gray-100">
+                {grouped.map(([cat, items]) => (
+                  <div key={cat}>
+                    {catFilter === 'ALL' && cat && (
+                      <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 sticky top-0">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{cat}</span>
+                        <span className="ml-2 text-xs text-gray-400">({items.length})</span>
                       </div>
-                      <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[m.activationStatus] ?? 'bg-gray-100'}`}>
-                        {m.activationStatus}
-                      </span>
-                    </div>
-                  </li>
+                    )}
+                    {items.map(m => (
+                      <div key={m.id} onClick={() => { setSelected(m); setEditingSection(null); }}
+                        className={`p-4 cursor-pointer hover:bg-gray-50 ${selected?.id === m.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 text-sm truncate">{m.businessName}</p>
+                            <p className="text-xs text-gray-500">{m.city ?? '—'}</p>
+                          </div>
+                          <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[m.activationStatus] ?? 'bg-gray-100'}`}>
+                            {m.activationStatus}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ))}
-              </ul>}
+              </div>}
         </div>
 
         {/* Detail Panel */}
@@ -707,7 +783,7 @@ export default function Merchants() {
                 <select value={createForm.category}
                   onChange={e => setCreateForm(f => ({ ...f, category: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  {['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER'].map(c => (
+                  {categories.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
