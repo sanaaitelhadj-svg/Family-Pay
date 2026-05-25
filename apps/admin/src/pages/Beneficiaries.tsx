@@ -59,7 +59,7 @@ export default function Beneficiaries() {
         sponsorId: createForm.sponsorId, relationship: createForm.relationship || undefined,
       });
       setCreateModal(false);
-      setCreateForm({ firstName: '', lastName: '', phone: '', password: '', sponsorId: '', relationship: '' });
+      setCreateForm({ firstName: '', lastName: '', phone: '', password: '', sponsorId: '', relationship: '', city: '' });
       load();
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setCreateSaving(false); }
