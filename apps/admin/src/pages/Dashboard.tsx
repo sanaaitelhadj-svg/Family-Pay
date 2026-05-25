@@ -111,7 +111,7 @@ export default function Dashboard() {
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-800 truncate">{log.action.replace(/_/g,' ')}</p>
                   <p className="text-xs text-gray-400">
-                    {log.actor?.firstName ?? log.actor?.email ?? 'Système'} · {new Date(log.createdAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                    {log.admin?.firstName ?? log.admin?.email ?? 'Système'} · {new Date(log.createdAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
                   </p>
                 </div>
               </div>

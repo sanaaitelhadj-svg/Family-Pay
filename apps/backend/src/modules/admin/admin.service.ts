@@ -109,8 +109,8 @@ export class AdminService {
       prisma.sponsor.count({ where: { createdAt: { gte: weekAgo } } }),
       prisma.merchant.count({ where: { createdAt: { gte: weekAgo } } }),
       prisma.transaction.aggregate({ _sum: { amount: true }, _count: true, where: { status: 'COMPLETED', createdAt: { gte: weekAgo } } }),
-      prisma.merchant.count({ where: { kycStatus: 'PENDING' } }),
-      prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, include: { actor: { select: { firstName: true, email: true } } } }),
+      prisma.merchant.count({ where: { kycStatus: 'PENDING_PSP' } }),
+      prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, include: { admin: { select: { firstName: true, email: true } } } }),
     ]);
     return {
       sponsors,
