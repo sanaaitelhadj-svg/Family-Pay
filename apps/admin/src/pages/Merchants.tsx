@@ -375,14 +375,15 @@ export default function Merchants() {
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
           + Nouveau marchand
         </button>
-        <div className="flex gap-2 flex-wrap">
-          {['ALL','INACTIVE','PENDING','ACTIVE','SUSPENDED','REJECTED'].map(s => (
-            <button key={s} onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded text-sm font-medium ${filter === s ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-              {s === 'ALL' ? 'Tous' : s}
-              {s !== 'ALL' && <span className="ml-1 text-xs opacity-60">({merchants.filter(m => m.activationStatus === s).length})</span>}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 font-medium">Statut :</span>
+          <select value={filter} onChange={e => setFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option value="ALL">Tous les statuts</option>
+            {['INACTIVE','PENDING','ACTIVE','SUSPENDED','REJECTED'].map(s => (
+              <option key={s} value={s}>{s} ({merchants.filter(m => m.activationStatus === s).length})</option>
+            ))}
+          </select>
         </div>
 
         {/* Category filter */}
@@ -396,20 +397,22 @@ export default function Merchants() {
             </button>
           ))}
           {showNewCat ? (
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
               <input autoFocus type="text" value={newCatInput} onChange={e => setNewCatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addCategory(newCatInput)}
-                placeholder="Nom catégorie" className="border border-gray-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:ring-1 focus:ring-orange-400" />
-              <button onClick={() => addCategory(newCatInput)} className="text-xs bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600">✓</button>
-              <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded hover:bg-gray-300">✕</button>
+                onKeyDown={e => { if (e.key === 'Enter') addCategory(newCatInput); if (e.key === 'Escape') { setShowNewCat(false); setNewCatInput(''); } }}
+                placeholder="Nom…" className="border border-orange-300 rounded-full px-3 py-1 text-xs w-28 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <button onClick={() => addCategory(newCatInput)} className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full hover:bg-orange-600">✓</button>
+              <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full hover:bg-gray-300">✕</button>
             </div>
           ) : (
-            <button onClick={() => setShowNewCat(true)} className="text-xs bg-gray-100 text-gray-600 border border-dashed border-gray-300 px-2 py-1 rounded hover:bg-gray-200">+ Catégorie</button>
+            <button onClick={() => setShowNewCat(true)}
+              className="px-3 py-1 rounded text-xs font-medium bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
+              +
+            </button>
           )}
         </div>
 
-        {/* City filter */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 font-medium">Ville :</span>
           <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
@@ -419,6 +422,7 @@ export default function Merchants() {
             ))}
           </select>
         </div>
+      </div>
       </div>
 
       {/* Category dashboard */}

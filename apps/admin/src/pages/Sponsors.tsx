@@ -25,7 +25,7 @@ export default function Sponsors() {
   const [loading, setLoading] = useState(true);
 
   const [createModal, setCreateModal] = useState(false);
-  const [createForm, setCreateForm]   = useState({ firstName: '', lastName: '', phone: '', email: '', password: '' });
+  const [createForm, setCreateForm]   = useState({ firstName: '', lastName: '', phone: '', email: '', password: '', city: '' });
   const [createSaving, setCreateSaving] = useState(false);
 
   const [resetPwdModal, setResetPwdModal] = useState(false);
@@ -65,7 +65,7 @@ export default function Sponsors() {
         phone: createForm.phone, email: createForm.email || undefined, password: createForm.password,
       });
       setCreateModal(false);
-      setCreateForm({ firstName: '', lastName: '', phone: '', email: '', password: '' });
+      setCreateForm({ firstName: '', lastName: '', phone: '', email: '', password: '', city: '' });
       load();
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setCreateSaving(false); }
@@ -364,6 +364,14 @@ export default function Sponsors() {
                 <input type="password" value={createForm.password}
                   onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                <select value={createForm.city} onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  <option value="">Sélectionner une ville…</option>
+                  {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
             </div>
             <div className="flex justify-end gap-3">
