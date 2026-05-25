@@ -156,6 +156,7 @@ model Merchant {
   address              String
   city                 String
   phone                String
+  email                String?
   kycStatus            MerchantKycStatus        @default(PENDING_PSP)
   activationStatus     MerchantActivationStatus @default(INACTIVE)
   pspMerchantReference String?

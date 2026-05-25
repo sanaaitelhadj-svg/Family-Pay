@@ -493,7 +493,7 @@ export class AdminService {
   static async updateMerchantInfo(merchantId: string, data: Record<string, unknown>, actorId?: string): Promise<void> {
     const current = await prisma.merchant.findUnique({
       where: { id: merchantId },
-      select: { businessName: true, city: true, category: true, email: true, phone: true, siret: true },
+      select: { businessName: true, city: true, category: true, phone: true, email: true, address: true },
     });
     const previousData: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
