@@ -543,7 +543,7 @@ export default function Merchants() {
                   <EditField label="Nom du commerce" name="businessName" value={draft.businessName ?? ''} onChange={updateDraft} />
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Ville</label>
-                    <select value={draft.city ?? ''} onChange={e => updateDraft({ target: { name: 'city', value: e.target.value } } as any)}
+                    <select value={draft.city ?? ''} onChange={e => updateDraft('city', e.target.value)}
                       className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
                       <option value="">— Sélectionner —</option>
                       {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
@@ -551,7 +551,7 @@ export default function Merchants() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Catégorie</label>
-                    <select value={draft.category ?? ''} onChange={e => updateDraft({ target: { name: 'category', value: e.target.value } } as any)}
+                    <select value={draft.category ?? ''} onChange={e => updateDraft('category', e.target.value)}
                       className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
                       {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
