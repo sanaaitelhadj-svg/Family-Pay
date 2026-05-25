@@ -400,14 +400,14 @@ export default function Merchants() {
             <div className="flex gap-1 items-center">
               <input autoFocus type="text" value={newCatInput} onChange={e => setNewCatInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') addCategory(newCatInput); if (e.key === 'Escape') { setShowNewCat(false); setNewCatInput(''); } }}
-                placeholder="Nom…" className="border border-orange-300 rounded-full px-3 py-1 text-xs w-28 focus:outline-none focus:ring-2 focus:ring-orange-400" />
-              <button onClick={() => addCategory(newCatInput)} className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full hover:bg-orange-600">✓</button>
-              <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full hover:bg-gray-300">✕</button>
+                placeholder="Nom catégorie…" className="border border-indigo-300 rounded-lg px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <button onClick={() => addCategory(newCatInput)} className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700">✓</button>
+              <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-sm bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-300">✕</button>
             </div>
           ) : (
             <button onClick={() => setShowNewCat(true)}
-              className="px-3 py-1 rounded text-xs font-medium bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">
-              +
+              className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+              + Catégorie
             </button>
           )}
         </div>
@@ -422,20 +422,6 @@ export default function Merchants() {
             ))}
           </select>
         </div>
-      </div>
-
-      {/* Category dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-        {categories.map(cat => {
-          const count = merchants.filter(m => m.category === cat).length;
-          return (
-            <button key={cat} onClick={() => setCatFilter(catFilter === cat ? 'ALL' : cat)}
-              className={`rounded-xl p-3 text-left transition-all border-2 ${catFilter === cat ? 'border-orange-500 bg-orange-50' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
-              <p className="text-2xl font-bold text-gray-800">{count}</p>
-              <p className="text-xs font-medium text-gray-500 uppercase mt-1 truncate">{cat}</p>
-            </button>
-          );
-        })}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
