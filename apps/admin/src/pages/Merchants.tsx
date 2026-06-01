@@ -98,7 +98,7 @@ export default function Merchants() {
   const updateDraft = (field: string, value: any) => setDraft(d => ({ ...d, [field]: value }));
   const save = async () => {
     if (!selected) return; setSaving(true);
-    try { const u = await api.put(`/admin/merchants/${selected.id}`, draft); setMerchants(m=>m.map(x=>x.id===selected.id?{...x,...u}:x)); setSelected(s=>s?{...s,...u}:s); setEditing(false); setDraft({}); }
+    try { const res = await api.put(`/admin/merchants/${selected.id}`, draft); const u = res.data; setMerchants(m=>m.map(x=>x.id===selected.id?{...x,...u}:x)); setSelected(s=>s?{...s,...u}:s); setEditing(false); setDraft({}); }
     catch(e){console.error(e);} finally{setSaving(false);}
   };
   const openApprovalModal = (m: Merchant) => {
