@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
-import { Users, Shield, Plus, RefreshCw, CheckCircle2, XCircle, X, ChevronRight, Key, Trash2, Edit2, UserCheck, UserX } from 'lucide-react';
+import { Users, Shield, Plus, RefreshCw, CheckCircle2, XCircle, X, ChevronRight, ChevronDown, Key, Trash2, Edit2, UserCheck, UserX } from 'lucide-react';
 
 interface Role {
   id: string; name: string; description?: string;
@@ -103,6 +103,9 @@ export default function Admins() {
   const [adminForm, setAdminForm] = useState({firstName:'',lastName:'',phone:'',email:'',password:''});
   const [roleForm,  setRoleForm]  = useState<{name:string;description:string;permissions:Record<string,{read:boolean;write:boolean}>}>({name:'',description:'',permissions:emptyPerms()});
   const [newPwd,    setNewPwd]    = useState('');
+
+  const [expandedRoles, setExpandedRoles] = useState<Record<string,boolean>>({});
+  const toggleExpand = (id:string) => setExpandedRoles(s=>({...s,[id]:!s[id]}));
 
   const loadAll = useCallback(()=>{
     setLoading(true);
@@ -328,7 +331,7 @@ export default function Admins() {
             </div>
           ) : roles.map(role=>(
             <div key={role.id} style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b" style={{borderColor:'#ECECF2'}}>
+              <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors" onClick={()=>toggleExpand(role.id)}>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background:'#EDE9FF'}}>
                     <Shield className="w-5 h-5" style={{color:'#5B3DF5'}}/>
@@ -339,18 +342,23 @@ export default function Admins() {
                   </div>
                   {!role.isActive && <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{color:'#DC2626',background:'#FEE2E2'}}>Inactif</span>}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" onClick={e=>e.stopPropagation()}>
                   <button onClick={()=>setEditRoleModal(role)} style={{border:'1px solid #ECECF2'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50">
                     <Edit2 className="w-3.5 h-3.5"/>Modifier
                   </button>
                   <button onClick={()=>deleteRole(role.id)} style={{border:'1px solid #FEE2E2',color:'#DC2626'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-red-50">
                     <Trash2 className="w-3.5 h-3.5"/>Désactiver
                   </button>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'#F8F8FC'}}>
+                    {expandedRoles[role.id] ? <ChevronDown className="w-4 h-4 text-gray-400"/> : <ChevronRight className="w-4 h-4 text-gray-400"/>}
+                  </div>
                 </div>
               </div>
-              <div className="p-4">
-                <PermMatrix perms={role.permissions} onChange={()=>{}} disabled={true}/>
-              </div>
+              {expandedRoles[role.id] && (
+                <div className="p-4 border-t" style={{borderColor:'#ECECF2'}}>
+                  <PermMatrix perms={role.permissions} onChange={()=>{}} disabled={true}/>
+                </div>
+              )}
             </div>
           ))}
         </div>
