@@ -18,10 +18,19 @@ interface Plan { id: string; name: string; price: number; durationMonths: number
 interface ApprovalForm { contractUrl: string; billingType: 'commission' | 'subscription'; commissionType: string; commissionRate: string; planId: string; startDate: string; endDate: string; }
 interface CreateForm { businessName: string; category: string; city: string; phone: string; registrationNumber: string; iceNumber: string; address: string; password: string; }
 
-const CATEGORIES = ['Alimentation','Restauration','Habillement','Électronique','Santé & Pharmacie','Éducation','Transport','Loisirs & Culture','Services','Beauté & Bien-être','Autre'];
+const CATEGORY_OPTIONS = [
+  { value:'FOOD',      label:'Alimentation / Restauration' },
+  { value:'PHARMACY',  label:'Pharmacie & Santé' },
+  { value:'CLOTHING',  label:'Habillement' },
+  { value:'EDUCATION', label:'Éducation' },
+  { value:'LEISURE',   label:'Loisirs & Culture' },
+  { value:'GENERAL',   label:'Général / Autres' },
+];
+const CATEGORIES = CATEGORY_OPTIONS.map(o => o.value);
+const catLabel = (v: string) => CATEGORY_OPTIONS.find(o => o.value === v)?.label ?? v;
 const MOROCCAN_CITIES = ['Casablanca','Rabat','Marrakech','Fès','Tanger','Agadir','Meknès','Oujda','Kénitra','Tétouan','Safi','Mohammedia','El Jadida','Beni Mellal','Nador','Settat','Khémisset','Laâyoune','Taza','Berrechid'];
 const defaultApprovalForm: ApprovalForm = { contractUrl:'', billingType:'commission', commissionType:'TRANSACTION_PERCENTAGE', commissionRate:'', planId:'', startDate:'', endDate:'' };
-const defaultCreateForm: CreateForm = { businessName:'', category:CATEGORIES[0], city:'', phone:'', registrationNumber:'', iceNumber:'', address:'', password:'' };
+const defaultCreateForm: CreateForm = { businessName:'', category:CATEGORY_OPTIONS[0].value, city:'', phone:'', registrationNumber:'', iceNumber:'', address:'', password:'' };
 
 const KycBadge = ({ status }: { status: Merchant['kycStatus'] }) => {
   const s = { PENDING_PSP:{label:'En attente KYC',bg:'#FFF8E6',color:'#B45309',dot:'#F59E0B'}, APPROVED:{label:'KYC Approuvé',bg:'#F0FDF4',color:'#166534',dot:'#22C55E'}, REJECTED:{label:'KYC Rejeté',bg:'#FEF2F2',color:'#991B1B',dot:'#EF4444'} }[status] ?? {label:status,bg:'#F3F4F6',color:'#6B7280',dot:'#9CA3AF'};
@@ -148,7 +157,7 @@ export default function Merchants() {
           <div className="relative flex-1 min-w-48"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
             <input type="text" placeholder="Rechercher un marchand..." value={search} onChange={e=>setSearch(e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full pl-9 pr-4 py-2 rounded-xl text-sm bg-gray-50 focus:outline-none focus:bg-white" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
           </div>
-          <select value={filterCategory} onChange={e=>setFilterCategory(e.target.value)} style={{border:'1px solid #ECECF2'}} className="px-3 py-2 rounded-xl text-sm bg-gray-50 text-gray-600 focus:outline-none"><option value="">Toutes catégories</option>{uniqueCategories.map(c=><option key={c} value={c}>{c}</option>)}</select>
+          <select value={filterCategory} onChange={e=>setFilterCategory(e.target.value)} style={{border:'1px solid #ECECF2'}} className="px-3 py-2 rounded-xl text-sm bg-gray-50 text-gray-600 focus:outline-none"><option value="">Toutes catégories</option>{uniqueCategories.map(c=><option key={c} value={c}>{catLabel(c)}</option>)}</select>
           <select value={filterKyc} onChange={e=>setFilterKyc(e.target.value)} style={{border:'1px solid #ECECF2'}} className="px-3 py-2 rounded-xl text-sm bg-gray-50 text-gray-600 focus:outline-none"><option value="">Statut KYC</option><option value="PENDING_PSP">En attente</option><option value="APPROVED">Approuvé</option><option value="REJECTED">Rejeté</option></select>
           <select value={filterActive} onChange={e=>setFilterActive(e.target.value)} style={{border:'1px solid #ECECF2'}} className="px-3 py-2 rounded-xl text-sm bg-gray-50 text-gray-600 focus:outline-none"><option value="">Statut activation</option><option value="PENDING">Inactif</option><option value="ACTIVE">Actif</option><option value="SUSPENDED">Suspendu</option></select>
           {(search||filterCategory||filterKyc||filterActive)&&<button onClick={()=>{setSearch('');setFilterCategory('');setFilterKyc('');setFilterActive('');}} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-100"><X className="w-3.5 h-3.5"/>Effacer</button>}
@@ -169,7 +178,7 @@ export default function Merchants() {
                 <div style={{color:'#5B3DF5',background:'rgba(91,61,245,0.08)'}} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold">{m.businessName.charAt(0).toUpperCase()}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{m.businessName}</p>
-                  <div className="flex items-center gap-2 mt-0.5"><span className="text-xs text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3"/>{m.city}</span><span className="text-xs text-gray-300">·</span><span className="text-xs text-gray-400 truncate">{m.category}</span></div>
+                  <div className="flex items-center gap-2 mt-0.5"><span className="text-xs text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3"/>{m.city}</span><span className="text-xs text-gray-300">·</span><span className="text-xs text-gray-400 truncate">{catLabel(m.category)}</span></div>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0"><KycBadge status={m.kycStatus}/><ActiveBadge status={m.activationStatus}/></div>
                 <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0"/>
@@ -186,7 +195,7 @@ export default function Merchants() {
                   <div style={{background:'rgba(91,61,245,0.08)',color:'#5B3DF5'}} className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0">{selected.businessName.charAt(0)}</div>
                   <div>
                     <h2 className="text-base font-bold text-gray-900">{selected.businessName}</h2>
-                    <div className="flex items-center gap-2 mt-0.5"><span className="text-xs text-gray-500 flex items-center gap-1"><Tag className="w-3 h-3"/>{selected.category}</span><span className="text-xs text-gray-300">·</span><span className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3"/>{selected.city}</span></div>
+                    <div className="flex items-center gap-2 mt-0.5"><span className="text-xs text-gray-500 flex items-center gap-1"><Tag className="w-3 h-3"/>{catLabel(selected.category)}</span><span className="text-xs text-gray-300">·</span><span className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3"/>{selected.city}</span></div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0"><KycBadge status={selected.kycStatus}/><ActiveBadge status={selected.activationStatus}/><button onClick={()=>setSelected(null)} className="ml-1 text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
@@ -364,7 +373,7 @@ export default function Merchants() {
             <div className="flex items-start justify-between"><div><h2 className="text-base font-bold text-gray-900">Nouveau marchand</h2><p className="text-sm text-gray-500 mt-0.5">Créer un compte marchand</p></div><button onClick={()=>setCreateModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nom du commerce <span className="text-red-400">*</span></label><input type="text" value={createForm.businessName} onChange={e=>setCreateForm(f=>({...f,businessName:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Catégorie <span className="text-red-400">*</span></label><select value={createForm.category} onChange={e=>setCreateForm(f=>({...f,category:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Catégorie <span className="text-red-400">*</span></label><select value={createForm.category} onChange={e=>setCreateForm(f=>({...f,category:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">{CATEGORY_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
               <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ville <span className="text-red-400">*</span></label><select value={createForm.city} onChange={e=>setCreateForm(f=>({...f,city:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none"><option value="">Sélectionner...</option>{MOROCCAN_CITIES.map(v=><option key={v} value={v}>{v}</option>)}</select></div>
               <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Téléphone <span className="text-red-400">*</span></label><input type="text" value={createForm.phone} onChange={e=>setCreateForm(f=>({...f,phone:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
               <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">N° RC</label><input type="text" value={createForm.registrationNumber} onChange={e=>setCreateForm(f=>({...f,registrationNumber:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/></div>
