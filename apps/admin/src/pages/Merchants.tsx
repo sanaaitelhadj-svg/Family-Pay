@@ -1,874 +1,385 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Store, Search, Plus, X, Check, Ban, Edit2, Save, ChevronRight, MapPin, Phone, Mail, Tag, CreditCard, FileText, CheckCircle2, Clock, AlertCircle, KeyRound, Users, Landmark, Shield, RefreshCw } from 'lucide-react';
 import { api } from '../api';
 import { PasswordResetModal } from '../components/PasswordResetModal';
-import { MOROCCAN_CITIES } from '../lib/moroccan-cities';
-import { usePermissions } from '../contexts/PermissionsContext';
 
-interface ContactInfo { nom?: string; phone?: string; email?: string }
-interface SubscriptionInfo {
-  id: string; planId: string | null;
-  subscriptionPlan: { name: string; price: string; durationMonths: number } | null;
-  startDate: string | null; endDate: string | null; status: string;
-}
+interface Contact { name?: string; phone?: string; email?: string; }
 interface Merchant {
-  id: string; businessName: string; category: string; city: string | null;
-  activationStatus: string; pspMerchantReference: string | null;
-  contractUrl: string | null; commissionType: string | null; commissionRate: string | null;
-  registrationNumber: string | null; iceNumber: string | null; taxId: string | null;
-  fiscalId: string | null; cinRepresentant: string | null;
-  rib: string | null; attestationBancaire: string | null;
-  address: string | null; gpsLat: string | null; gpsLng: string | null;
-  contactAdmin: ContactInfo | null; contactFinance: ContactInfo | null;
-  contactOps: ContactInfo | null; contactLegal: ContactInfo | null;
-  riskLevel: string | null; cguSignedAt: string | null; cguVersion: string | null;
-  subscriptions?: SubscriptionInfo[]; createdAt: string;
+  id: string; businessName: string; category: string; city: string; phone: string; email?: string; address?: string;
+  kycStatus: 'PENDING_PSP' | 'APPROVED' | 'REJECTED'; activationStatus: 'PENDING' | 'ACTIVE' | 'SUSPENDED';
+  registrationNumber?: string; iceNumber?: string; taxId?: string; legalForm?: string;
+  bankName?: string; iban?: string; rib?: string;
+  contactAdmin?: Contact; contactFinance?: Contact; contactOps?: Contact; contactLegal?: Contact;
+  contractUrl?: string; billingType?: 'commission' | 'subscription'; commissionType?: string; commissionRate?: number;
+  planId?: string; planName?: string; subscriptionStart?: string; subscriptionEnd?: string;
+  cguVersion?: string; cguSignedAt?: string; createdAt: string;
 }
-interface SubscriptionPlan {
-  id: string; name: string; description: string | null;
-  price: string; durationMonths: number; isActive: boolean;
-}
-interface ApprovalForm {
-  contractUrl: string; billingType: 'commission' | 'subscription';
-  commissionType: string; commissionRate: string;
-  planId: string; startDate: string; endDate: string;
-}
+interface Plan { id: string; name: string; price: number; durationMonths: number; isActive: boolean; }
+interface ApprovalForm { contractUrl: string; billingType: 'commission' | 'subscription'; commissionType: string; commissionRate: string; planId: string; startDate: string; endDate: string; }
+interface CreateForm { businessName: string; category: string; city: string; phone: string; registrationNumber: string; iceNumber: string; address: string; password: string; }
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800', ACTIVE: 'bg-green-100 text-green-800',
-  SUSPENDED: 'bg-red-100 text-red-800', REJECTED: 'bg-gray-100 text-gray-700',
-  INACTIVE: 'bg-gray-100 text-gray-700',
+const CATEGORIES = ['Alimentation','Restauration','Habillement','Électronique','Santé & Pharmacie','Éducation','Transport','Loisirs & Culture','Services','Beauté & Bien-être','Autre'];
+const MOROCCAN_CITIES = ['Casablanca','Rabat','Marrakech','Fès','Tanger','Agadir','Meknès','Oujda','Kénitra','Tétouan','Safi','Mohammedia','El Jadida','Beni Mellal','Nador','Settat','Khémisset','Laâyoune','Taza','Berrechid'];
+const defaultApprovalForm: ApprovalForm = { contractUrl:'', billingType:'commission', commissionType:'TRANSACTION_PERCENTAGE', commissionRate:'', planId:'', startDate:'', endDate:'' };
+const defaultCreateForm: CreateForm = { businessName:'', category:CATEGORIES[0], city:'', phone:'', registrationNumber:'', iceNumber:'', address:'', password:'' };
+
+const KycBadge = ({ status }: { status: Merchant['kycStatus'] }) => {
+  const s = { PENDING_PSP:{label:'En attente KYC',bg:'#FFF8E6',color:'#B45309',dot:'#F59E0B'}, APPROVED:{label:'KYC Approuvé',bg:'#F0FDF4',color:'#166534',dot:'#22C55E'}, REJECTED:{label:'KYC Rejeté',bg:'#FEF2F2',color:'#991B1B',dot:'#EF4444'} }[status] ?? {label:status,bg:'#F3F4F6',color:'#6B7280',dot:'#9CA3AF'};
+  return <span style={{background:s.bg,color:s.color}} className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"><span style={{background:s.dot}} className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" />{s.label}</span>;
 };
+const ActiveBadge = ({ status }: { status: Merchant['activationStatus'] }) => {
+  const s = { PENDING:{label:'Inactif',bg:'#F3F4F6',color:'#6B7280',dot:'#9CA3AF'}, ACTIVE:{label:'Actif',bg:'#F0FDF4',color:'#166534',dot:'#22C55E'}, SUSPENDED:{label:'Suspendu',bg:'#FEF2F2',color:'#991B1B',dot:'#EF4444'} }[status] ?? {label:status,bg:'#F3F4F6',color:'#6B7280',dot:'#9CA3AF'};
+  return <span style={{background:s.bg,color:s.color}} className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"><span style={{background:s.dot}} className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" />{s.label}</span>;
+};
+const InfoRow = ({ label, value }: { label: string; value?: string | null }) =>
+  value ? <div><p className="text-xs text-gray-400 mb-0.5">{label}</p><p className="text-sm text-gray-800 font-medium break-all">{value}</p></div> : null;
 
-// ── Section wrapper with edit toggle ─────────────────────────────────────────
-function Section({ title, editing, onEdit, onSave, onCancel, saving, canEdit = true, children }: {
-  title: string; editing: boolean; onEdit: () => void;
-  onSave: () => void; onCancel: () => void; saving: boolean; canEdit?: boolean; children: React.ReactNode;
-}) {
+const EditField = ({ label, field, value, draft, onChange }: { label: string; field: string; value?: string | null; draft: Partial<Merchant>; onChange: (f: string, v: any) => void }) => (
+  <div><p className="text-xs text-gray-400 mb-0.5">{label}</p>
+    <input type="text" value={String((draft as any)[field] ?? value ?? '')} onChange={e => onChange(field, e.target.value)}
+      style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none"
+      onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')} /></div>
+);
+const ContactCard = ({ label, contact }: { label: string; contact?: Contact }) => (
+  <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl p-3">
+    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{label}</p>
+    {contact?.name ? <div className="space-y-1"><p className="text-sm font-medium text-gray-800">{contact.name}</p>
+      {contact.phone && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Phone className="w-3 h-3 flex-shrink-0"/>{contact.phone}</p>}
+      {contact.email && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Mail className="w-3 h-3 flex-shrink-0"/>{contact.email}</p>}</div>
+    : <p className="text-xs text-gray-400 italic">Non renseigné</p>}
+  </div>
+);
+const ContactEditFields = ({ label, prefix, draft, onChange }: { label: string; prefix: string; draft: Partial<Merchant>; onChange: (f: string, v: any) => void }) => {
+  const key = ('contact' + prefix.charAt(0).toUpperCase() + prefix.slice(1)) as keyof Merchant;
+  const contact = ((draft[key] || {}) as Contact);
+  const update = (f: keyof Contact, v: string) => onChange(key as string, { ...contact, [f]: v });
   return (
-    <section>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</h3>
-        {editing ? (
-          <div className="flex gap-2">
-            <button onClick={onCancel}
-              className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">Annuler</button>
-            <button onClick={onSave} disabled={saving}
-              className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50">
-              {saving ? '...' : 'Enregistrer'}
-            </button>
-
-          </div>
-        ) : (
-          <button onClick={onEdit} disabled={!canEdit}
-            className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
-            ✏️ Éditer
-          </button>
-        )}
-</div>
-      {children}
-    </section>
+    <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl p-3 space-y-2">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+      <input type="text" placeholder="Nom" value={contact.name??''} onChange={e=>update('name',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
+      <input type="text" placeholder="Téléphone" value={contact.phone??''} onChange={e=>update('phone',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
+      <input type="email" placeholder="Email" value={contact.email??''} onChange={e=>update('email',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
+    </div>
   );
-}
-
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div className="bg-gray-50 p-3 rounded">
-      <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-      <p className="text-sm font-medium text-gray-900 break-all">{value ?? '—'}</p>
-</div>
-  );
-}
-
-function EditField({ label, name, value, onChange, placeholder }: {
-  label: string; name: string; value: string; onChange: (k: string, v: string) => void; placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-500 mb-1">{label}</label>
-      <input type="text" value={value} placeholder={placeholder ?? ''}
-        onChange={e => onChange(name, e.target.value)}
-        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-indigo-500" />
-</div>
-  );
-}
-
-function ContactCard({ label, contact }: { label: string; contact: ContactInfo | null | undefined }) {
-  return (
-    <div className="bg-gray-50 p-3 rounded">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      {contact ? (
-        <><p className="text-sm font-medium">{contact.nom ?? '—'}</p>
-          {contact.phone && <p className="text-xs text-gray-500">{contact.phone}</p>}
-          {contact.email && <p className="text-xs text-gray-500">{contact.email}</p>}</>
-      ) : <p className="text-sm text-gray-400">—</p>}
-</div>
-  );
-}
-
-function ContactEditFields({ label, prefix, draft, onChange }: {
-  label: string; prefix: string; draft: Record<string, string>; onChange: (k: string, v: string) => void;
-}) {
-  return (
-    <div className="bg-gray-50 p-3 rounded space-y-2">
-      <p className="text-xs font-medium text-gray-600">{label}</p>
-      <input type="text" placeholder="Nom" value={draft[`${prefix}_nom`] ?? ''}
-        onChange={e => onChange(`${prefix}_nom`, e.target.value)}
-        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
-      <input type="text" placeholder="Téléphone" value={draft[`${prefix}_phone`] ?? ''}
-        onChange={e => onChange(`${prefix}_phone`, e.target.value)}
-        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
-      <input type="email" placeholder="Email" value={draft[`${prefix}_email`] ?? ''}
-        onChange={e => onChange(`${prefix}_email`, e.target.value)}
-        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
-</div>
-  );
-}
+};
+const SectionHeader = ({ icon: Icon, title }: { icon: React.ComponentType<{className?: string; style?: React.CSSProperties}>; title: string }) => (
+  <div className="flex items-center gap-2 mb-4">
+    <div style={{background:'rgba(91,61,245,0.08)'}} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
+      <Icon className="w-4 h-4" style={{color:'#5B3DF5'}}/>
+    </div>
+    <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+  </div>
+);
 
 export default function Merchants() {
-  const [resetPwdModal, setResetPwdModal] = useState<string | null>(null);
-  const { can, loading: permsLoading } = usePermissions();
   const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [selected, setSelected] = useState<Merchant | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter]       = useState('ALL');
-  const [catFilter, setCatFilter] = useState('ALL');
-  const [cityFilter, setCityFilter] = useState('ALL');
-  const DEFAULT_CATS = ['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER'];
-  const [categories, setCategories] = useState<string[]>(() => {
-    try { const s = localStorage.getItem('fp_merchant_cats'); return s ? JSON.parse(s) : ['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER']; }
-    catch { return ['PHARMACY','FOOD','GENERAL','EDUCATION','HEALTH','OTHER']; }
-  });
-  const [newCatInput, setNewCatInput] = useState('');
-  const [showNewCat, setShowNewCat]   = useState(false);
-  const addCategory = (name: string) => {
-    const n = name.trim().toUpperCase();
-    if (!n || categories.includes(n)) return;
-    const updated = [...categories, n];
-    setCategories(updated);
-    localStorage.setItem('fp_merchant_cats', JSON.stringify(updated));
-    setNewCatInput(''); setShowNewCat(false);
-  };
-
-  // Section inline editing
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [sectionSaving, setSectionSaving] = useState(false);
-
-  // Billing modal
-  const [approvalModal, setApprovalModal] = useState<{ id: string; name: string; isEdit?: boolean } | null>(null);
-  const [approvalForm, setApprovalForm] = useState<ApprovalForm>({
-    contractUrl: '', billingType: 'commission', commissionType: 'TRANSACTION_PERCENTAGE',
-    commissionRate: '', planId: '', startDate: new Date().toISOString().slice(0, 10), endDate: '',
-  });
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [selected, setSelected] = useState<Merchant | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Partial<Merchant>>({});
   const [saving, setSaving] = useState(false);
-
-  // Reject modal
-  const [rejectModal, setRejectModal] = useState<{ id: string; name: string } | null>(null);
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterKyc, setFilterKyc] = useState('');
+  const [filterActive, setFilterActive] = useState('');
+  const [approvalModal, setApprovalModal] = useState<{id:string;name:string;isEdit:boolean}|null>(null);
+  const [approvalForm, setApprovalForm] = useState<ApprovalForm>(defaultApprovalForm);
+  const [rejectModal, setRejectModal] = useState<{id:string;name:string}|null>(null);
   const [rejectReason, setRejectReason] = useState('');
-
   const [createModal, setCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ businessName: '', category: 'PHARMACY', city: '', phone: '', password: '', address: '', registrationNumber: '', iceNumber: '' });
+  const [createForm, setCreateForm] = useState<CreateForm>(defaultCreateForm);
   const [createSaving, setCreateSaving] = useState(false);
+  const [resetPwdModal, setResetPwdModal] = useState<string|null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/admin/merchants');
-      setMerchants(res.data);
-      if (selected) {
-        const updated = res.data.find((m: Merchant) => m.id === selected.id);
-        if (updated) setSelected(updated);
-      }
-    } finally { setLoading(false); }
+  useEffect(() => { fetchMerchants(); fetchPlans(); }, []);
+  const fetchMerchants = async () => { setLoading(true); try { const d = await api.get('/admin/merchants'); setMerchants(d.data); } catch(e){console.error(e);} finally{setLoading(false);} };
+  const fetchPlans = async () => { try { const d = await api.get('/admin/plans'); setPlans(d.data); } catch(e){console.error(e);} };
+  const updateDraft = (field: string, value: any) => setDraft(d => ({ ...d, [field]: value }));
+  const save = async () => {
+    if (!selected) return; setSaving(true);
+    try { const u = await api.put(`/admin/merchants/${selected.id}`, draft); setMerchants(m=>m.map(x=>x.id===selected.id?{...x,...u}:x)); setSelected(s=>s?{...s,...u}:s); setEditing(false); setDraft({}); }
+    catch(e){console.error(e);} finally{setSaving(false);}
   };
-  useEffect(() => { load(); }, []);
-
-  const loadPlans = async () => {
-    try { const res = await api.get('/admin/subscription-plans'); setPlans(res.data); }
-    catch { setPlans([]); }
-  };
-
-  // ── Section editing helpers ──────────────────────────────────────────────
-  const startEdit = (section: string, values: Record<string, string>) => {
-    setEditingSection(section);
-    setDraft(values);
-  };
-  const cancelEdit = () => { setEditingSection(null); setDraft({}); };
-  const updateDraft = (key: string, value: string) => setDraft(d => ({ ...d, [key]: value }));
-
-  const saveSection = async (section: string) => {
-    if (!selected) return;
-    setSectionSaving(true);
-    try {
-      let body: Record<string, unknown> = {};
-
-      if (section === 'general') {
-        body = { businessName: draft.businessName, city: draft.city, category: draft.category, pspMerchantReference: draft.pspMerchantReference };
-      } else if (section === 'legal') {
-        body = { registrationNumber: draft.registrationNumber, iceNumber: draft.iceNumber, taxId: draft.taxId, fiscalId: draft.fiscalId, cinRepresentant: draft.cinRepresentant };
-      } else if (section === 'banking') {
-        body = { rib: draft.rib, attestationBancaire: draft.attestationBancaire };
-      } else if (section === 'location') {
-        body = { address: draft.address, gpsLat: draft.gpsLat, gpsLng: draft.gpsLng };
-      } else if (section === 'contacts') {
-        body = {
-          contactAdmin:   { nom: draft.admin_nom,    phone: draft.admin_phone,    email: draft.admin_email },
-          contactFinance: { nom: draft.finance_nom,  phone: draft.finance_phone,  email: draft.finance_email },
-          contactOps:     { nom: draft.ops_nom,      phone: draft.ops_phone,      email: draft.ops_email },
-          contactLegal:   { nom: draft.legal_nom,    phone: draft.legal_phone,    email: draft.legal_email },
-        };
-      }
-
-      // Remove empty values
-      Object.keys(body).forEach(k => { if (body[k] === '' || body[k] === undefined) delete body[k]; });
-
-      await api.patch(`/admin/merchants/${selected.id}/info`, body);
-      setEditingSection(null);
-      await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur');
-    } finally { setSectionSaving(false); }
-  };
-
-  // ── Billing modal helpers ────────────────────────────────────────────────
   const openApprovalModal = (m: Merchant) => {
-    loadPlans();
-    setApprovalForm({
-      contractUrl: m.contractUrl ?? '',
-      billingType: m.subscriptions?.length ? 'subscription' : 'commission',
-      commissionType: m.commissionType && m.commissionType !== 'NONE' ? m.commissionType : 'TRANSACTION_PERCENTAGE',
-      commissionRate: m.commissionRate && m.commissionType === 'TRANSACTION_PERCENTAGE'
-        ? (parseFloat(m.commissionRate) * 100).toFixed(2) : m.commissionRate ?? '',
-      planId: '', startDate: new Date().toISOString().slice(0, 10), endDate: '',
-    });
-    setApprovalModal({ id: m.id, name: m.businessName, isEdit: false });
+    const isEdit = m.activationStatus === 'ACTIVE';
+    setApprovalForm({ ...defaultApprovalForm, contractUrl:m.contractUrl??'', billingType:m.billingType??'commission', commissionType:m.commissionType??'TRANSACTION_PERCENTAGE', commissionRate:m.commissionRate!=null?String(m.commissionRate):'', planId:m.planId??'', startDate:m.subscriptionStart?m.subscriptionStart.slice(0,10):'', endDate:m.subscriptionEnd?m.subscriptionEnd.slice(0,10):'' });
+    setApprovalModal({ id:m.id, name:m.businessName, isEdit });
   };
-
-  const openBillingEdit = (m: Merchant) => {
-    loadPlans();
-    const sub = m.subscriptions?.[0];
-    setApprovalForm({
-      contractUrl: m.contractUrl ?? '',
-      billingType: sub ? 'subscription' : 'commission',
-      commissionType: m.commissionType && m.commissionType !== 'NONE' ? m.commissionType : 'TRANSACTION_PERCENTAGE',
-      commissionRate: m.commissionRate && m.commissionType === 'TRANSACTION_PERCENTAGE'
-        ? (parseFloat(m.commissionRate) * 100).toFixed(2) : m.commissionRate ?? '',
-      planId: sub?.planId ?? '',
-      startDate: sub?.startDate ? sub.startDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      endDate: sub?.endDate ? sub.endDate.slice(0, 10) : '',
-    });
-    setApprovalModal({ id: m.id, name: m.businessName, isEdit: true });
-  };
-
-  const handlePlanChange = (planId: string) => {
-    const plan = plans.find(p => p.id === planId);
-    if (plan) {
-      const d = new Date(approvalForm.startDate || new Date().toISOString().slice(0, 10));
-      d.setMonth(d.getMonth() + plan.durationMonths);
-      setApprovalForm(f => ({ ...f, planId, endDate: d.toISOString().slice(0, 10) }));
-    } else { setApprovalForm(f => ({ ...f, planId, endDate: '' })); }
-  };
-
-  const handleStartDateChange = (startDate: string) => {
-    const plan = plans.find(p => p.id === approvalForm.planId);
-    if (plan) {
-      const d = new Date(startDate);
-      d.setMonth(d.getMonth() + plan.durationMonths);
-      setApprovalForm(f => ({ ...f, startDate, endDate: d.toISOString().slice(0, 10) }));
-    } else { setApprovalForm(f => ({ ...f, startDate })); }
-  };
-
+  const handlePlanChange = (planId: string) => { const p=plans.find(x=>x.id===planId); const patch:Partial<ApprovalForm>={planId}; if(p&&approvalForm.startDate){const e=new Date(approvalForm.startDate);e.setMonth(e.getMonth()+p.durationMonths);patch.endDate=e.toISOString().slice(0,10);} setApprovalForm(f=>({...f,...patch})); };
+  const handleStartDateChange = (date: string) => { const p=plans.find(x=>x.id===approvalForm.planId); const patch:Partial<ApprovalForm>={startDate:date}; if(p&&date){const e=new Date(date);e.setMonth(e.getMonth()+p.durationMonths);patch.endDate=e.toISOString().slice(0,10);} setApprovalForm(f=>({...f,...patch})); };
   const submitApproval = async () => {
-    if (!approvalModal) return;
-    setSaving(true);
+    if(!approvalModal) return; setSaving(true);
     try {
-      const endpoint = approvalModal.isEdit
-        ? `/admin/merchants/${approvalModal.id}/billing`
-        : `/admin/merchants/${approvalModal.id}/activate`;
-      await api.patch(endpoint, {
-        contractUrl: approvalForm.contractUrl || undefined,
-        billingType: approvalForm.billingType,
-        ...(approvalForm.billingType === 'commission' ? {
-          commissionType: approvalForm.commissionType,
-          commissionRate: approvalForm.commissionRate ? parseFloat(approvalForm.commissionRate) / 100 : undefined,
-        } : {
-          planId: approvalForm.planId || undefined,
-          startDate: approvalForm.startDate,
-          endDate: approvalForm.endDate || undefined,
-        }),
-      });
-      setApprovalModal(null);
-      await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur');
-    } finally { setSaving(false); }
+      const payload:any={contractUrl:approvalForm.contractUrl||undefined,billingType:approvalForm.billingType};
+      if(approvalForm.billingType==='commission'){payload.commissionType=approvalForm.commissionType;payload.commissionRate=approvalForm.commissionRate?Number(approvalForm.commissionRate):undefined;}
+      else{payload.planId=approvalForm.planId||undefined;payload.subscriptionStart=approvalForm.startDate||undefined;payload.subscriptionEnd=approvalForm.endDate||undefined;}
+      const ep=approvalModal.isEdit?`/admin/merchants/${approvalModal.id}/billing`:`/admin/merchants/${approvalModal.id}/approve`;
+      await api.post(ep,payload); await fetchMerchants(); setApprovalModal(null); setApprovalForm(defaultApprovalForm);
+    } catch(e){console.error(e);} finally{setSaving(false);}
   };
+  const reject = async () => { if(!rejectModal||!rejectReason.trim()) return; setSaving(true); try { await api.post(`/admin/merchants/${rejectModal.id}/reject`,{reason:rejectReason}); await fetchMerchants(); if(selected?.id===rejectModal.id)setSelected(null); setRejectModal(null); setRejectReason(''); } catch(e){console.error(e);} finally{setSaving(false);} };
+  const toggleActive = async (m: Merchant) => { try { await api.post(m.activationStatus==='ACTIVE'?`/admin/merchants/${m.id}/suspend`:`/admin/merchants/${m.id}/activate`,{}); await fetchMerchants(); } catch(e){console.error(e);} };
+  const submitCreate = async () => { if(!createForm.businessName||!createForm.phone||!createForm.password||!createForm.city) return; setCreateSaving(true); try { await api.post('/admin/merchants',createForm); await fetchMerchants(); setCreateModal(false); setCreateForm(defaultCreateForm); } catch(e){console.error(e);} finally{setCreateSaving(false);} };
 
-  const reject = async () => {
-    if (!rejectModal || !rejectReason.trim()) return;
-    try {
-      await api.patch(`/admin/merchants/${rejectModal.id}/reject`, { reason: rejectReason });
-      setRejectModal(null); setRejectReason('');
-      if (selected?.id === rejectModal.id) setSelected(null);
-      await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur');
-    }
-  };
-
-  const suspend = async (id: string, current: string) => {
-    try {
-      await api.patch(`/admin/merchants/${id}/status`, { status: current === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED' });
-      await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur lors de la suspension');
-    }
-  };
-
-  const filtered = merchants
-    .filter(m => filter === 'ALL' || m.activationStatus === filter)
-    .filter(m => catFilter === 'ALL' || m.category === catFilter)
-    .filter(m => cityFilter === 'ALL' || m.city === cityFilter);
-  const cities = Array.from(new Set(merchants.map(m => m.city).filter(Boolean))) as string[];
-  const grouped: [string, typeof merchants][] = catFilter === 'ALL'
-    ? Object.entries(filtered.reduce((acc, m) => {
-        const k = m.category || 'OTHER';
-        if (!acc[k]) acc[k] = [];
-        acc[k].push(m);
-        return acc;
-      }, {} as Record<string, typeof merchants>))
-    : [['', filtered]];
-
-
-  const submitCreate = async () => {
-    if (!createForm.businessName || !createForm.phone || !createForm.password || !createForm.city) return;
-    setCreateSaving(true);
-    try {
-      await api.post('/admin/merchants/create', {
-        businessName: createForm.businessName, category: createForm.category,
-        city: createForm.city, phone: createForm.phone, password: createForm.password,
-        address: createForm.address || undefined,
-        registrationNumber: createForm.registrationNumber || undefined,
-        iceNumber: createForm.iceNumber || undefined,
-        activationStatus: 'INACTIVE',
-      });
-      setCreateModal(false);
-      setCreateForm({ businessName: '', category: 'PHARMACY', city: '', phone: '', password: '', address: '', registrationNumber: '', iceNumber: '' });
-      await load();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message ?? 'Erreur');
-    } finally { setCreateSaving(false); }
-  };
+  const filtered = merchants.filter(m => {
+    const q=search.toLowerCase();
+    return (!q||m.businessName.toLowerCase().includes(q)||m.city.toLowerCase().includes(q)||(m.phone&&m.phone.includes(q))||(m.email&&m.email.toLowerCase().includes(q)))&&(!filterCategory||m.category===filterCategory)&&(!filterKyc||m.kycStatus===filterKyc)&&(!filterActive||m.activationStatus===filterActive);
+  });
+  const stats = { total:merchants.length, active:merchants.filter(m=>m.activationStatus==='ACTIVE').length, pending:merchants.filter(m=>m.kycStatus==='PENDING_PSP').length, rejected:merchants.filter(m=>m.kycStatus==='REJECTED').length };
+  const uniqueCategories = [...new Set(merchants.map(m=>m.category).filter(Boolean))];
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Marchands</h1>
-        <button onClick={() => setCreateModal(true)} disabled={permsLoading || !can('merchants', 'add')}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
-          + Nouveau marchand
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 font-medium">Statut :</span>
-          <select value={filter} onChange={e => setFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
-            <option value="ALL">Tous les statuts</option>
-            {['INACTIVE','PENDING','ACTIVE','SUSPENDED','REJECTED'].map(s => (
-              <option key={s} value={s}>{s} ({merchants.filter(m => m.activationStatus === s).length})</option>
-            ))}
-          </select>
-        </div>
-
-
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 font-medium">Ville :</span>
-          <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-            <option value="ALL">Toutes les villes</option>
-            {cities.map(city => (
-              <option key={city} value={city}>{city} ({merchants.filter(m => m.city === city).length})</option>
-            ))}
-          </select>
-        </div>
+    <div style={{background:'#F8F8FC'}} className="min-h-screen p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div><h1 className="text-2xl font-bold text-gray-900">Marchands</h1><p className="text-sm text-gray-500 mt-0.5">{merchants.length} marchands enregistrés</p></div>
+        <button onClick={()=>setCreateModal(true)} style={{background:'#5B3DF5'}} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"><Plus className="w-4 h-4"/>Nouveau marchand</button>
       </div>
-
-      {/* Category dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-        {categories.map(cat => {
-          const count = merchants.filter(m => m.category === cat).length;
-          return (
-            <button key={cat} onClick={() => setCatFilter(catFilter === cat ? 'ALL' : cat)}
-              className={`rounded-xl p-3 text-left transition-all border-2 ${catFilter === cat ? 'border-orange-500 bg-orange-50' : 'border-transparent bg-white hover:bg-gray-50 shadow-sm'}`}>
-              <p className="text-2xl font-bold text-gray-800">{count}</p>
-              <p className="text-xs font-medium text-gray-500 uppercase mt-1 truncate">{cat}</p>
-            </button>
-          );
-        })}
-        {showNewCat ? (
-          <div className="flex gap-2 items-center rounded-xl p-3 bg-white border-2 border-indigo-300 shadow-sm">
-            <input autoFocus type="text" value={newCatInput} onChange={e => setNewCatInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') addCategory(newCatInput); if (e.key === 'Escape') { setShowNewCat(false); setNewCatInput(''); } }}
-              placeholder="Nom…" className="border border-indigo-300 rounded-lg px-2 py-1 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-            <button onClick={() => addCategory(newCatInput)} className="text-sm bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700">✓</button>
-            <button onClick={() => { setShowNewCat(false); setNewCatInput(''); }} className="text-sm bg-gray-200 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-300">✕</button>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        {[{label:'Total',value:stats.total,Icon:Store,color:'#5B3DF5',bg:'rgba(91,61,245,0.08)'},{label:'Actifs',value:stats.active,Icon:CheckCircle2,color:'#22C55E',bg:'#F0FDF4'},{label:'En attente KYC',value:stats.pending,Icon:Clock,color:'#F59E0B',bg:'#FFF8E6'},{label:'Rejetés',value:stats.rejected,Icon:AlertCircle,color:'#EF4444',bg:'#FEF2F2'}].map(({label,value,Icon,color,bg})=>(
+          <div key={label} style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+            <div style={{background:bg}} className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"><Icon className="w-5 h-5" style={{color}}/></div>
+            <div><p className="text-2xl font-bold text-gray-900">{value}</p><p className="text-xs text-gray-500">{label}</p></div>
           </div>
-        ) : (
-          <button onClick={() => setShowNewCat(true)}
-            className="rounded-xl p-3 text-left border-2 border-dashed border-indigo-300 bg-white hover:bg-indigo-50 transition-all">
-            <p className="text-2xl font-bold text-indigo-400">+</p>
-            <p className="text-xs font-medium text-indigo-400 uppercase mt-1">Catégorie</p>
-          </button>
-        )}
+        ))}
       </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* List */}
-        <div className="lg:col-span-1 bg-white rounded-xl shadow overflow-hidden">
-          {loading ? <div className="p-8 text-center text-gray-400">Chargement...</div>
-            : filtered.length === 0 ? <div className="p-8 text-center text-gray-400">Aucun marchand</div>
-            : <div className="divide-y divide-gray-100">
-                {grouped.map(([cat, items]) => (
-                  <div key={cat}>
-                    {catFilter === 'ALL' && cat && (
-                      <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 sticky top-0">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{cat}</span>
-                        <span className="ml-2 text-xs text-gray-400">({items.length})</span>
-                      </div>
-                    )}
-                    {items.map(m => (
-                      <div key={m.id} onClick={() => { setSelected(m); setEditingSection(null); }}
-                        className={`p-4 cursor-pointer hover:bg-gray-50 ${selected?.id === m.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 text-sm truncate">{m.businessName}</p>
-                            <p className="text-xs text-gray-500">{m.city ?? '—'}</p>
-                          </div>
-                          <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[m.activationStatus] ?? 'bg-gray-100'}`}>
-                            {m.activationStatus}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>}
+      <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl p-4 mb-4 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-48"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
+            <input type="text" placeholder="Rechercher un marchand..." value={search} onChange={e=>setSearch(e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full pl-9 pr-4 py-2 rounded-xl text-sm bg-gray-50 focus:outline-none focus:bg-white" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+          </div>
+          <select value={filterCategory} onChange={e=>setFilterCategory(e.target.value)} style={{border:'1px solid #ECECF2'}} className="px-3 py-2 rounded-xl text-sm bg-gray-50 text-gray-600 focus:outline-none"><option value="">Toutes catégories</option>{uniqueCategories.map(c=><option key={c} value={c}>{c}</option>)}</select>
+          <select value={filterKyc} onChange={e=>setFilterKyc(e.target.value)} style={{border:'1px solid #ECECF2'}} className="px-3 py-2 rounded-xl text-sm bg-gray-50 text-gray-600 focus:outline-none"><option value="">Statut KYC</option><option value="PENDING_PSP">En attente</option><option value="APPROVED">Approuvé</option><option value="REJECTED">Rejeté</option></select>
+          <select value={filterActive} onChange={e=>setFilterActive(e.target.value)} style={{border:'1px solid #ECECF2'}} className="px-3 py-2 rounded-xl text-sm bg-gray-50 text-gray-600 focus:outline-none"><option value="">Statut activation</option><option value="PENDING">Inactif</option><option value="ACTIVE">Actif</option><option value="SUSPENDED">Suspendu</option></select>
+          {(search||filterCategory||filterKyc||filterActive)&&<button onClick={()=>{setSearch('');setFilterCategory('');setFilterKyc('');setFilterActive('');}} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-gray-500 hover:bg-gray-100"><X className="w-3.5 h-3.5"/>Effacer</button>}
+          <button onClick={fetchMerchants} className="ml-auto text-gray-400 hover:text-gray-600 p-1.5"><RefreshCw className="w-4 h-4"/></button>
+          <span className="text-xs text-gray-400">{filtered.length} résultat{filtered.length!==1?'s':''}</span>
+        </div>
+      </div>
+      <div className="flex gap-4" style={{minHeight:480}}>
+        <div style={{width:selected?'40%':'100%',background:'#fff',border:'1px solid #ECECF2',transition:'width 0.2s ease'}} className="rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div style={{borderBottom:'1px solid #ECECF2'}} className="px-4 py-3"><span className="text-sm font-semibold text-gray-700">Liste des marchands</span></div>
+          <div className="overflow-y-auto flex-1" style={{maxHeight:600}}>
+            {loading ? <div className="flex items-center justify-center h-32"><div style={{borderColor:'#5B3DF5',borderTopColor:'transparent'}} className="w-6 h-6 border-2 rounded-full animate-spin"/></div>
+            : filtered.length===0 ? <div className="flex flex-col items-center justify-center h-32 text-gray-400"><Store className="w-8 h-8 mb-2 opacity-40"/><p className="text-sm">Aucun marchand trouvé</p></div>
+            : filtered.map(m=>(
+              <div key={m.id} onClick={()=>{setSelected(m);setEditing(false);setDraft({});}}
+                style={{background:selected?.id===m.id?'rgba(91,61,245,0.04)':'transparent',borderLeft:selected?.id===m.id?'3px solid #5B3DF5':'3px solid transparent',borderBottom:'1px solid #F3F4F6'}}
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                <div style={{color:'#5B3DF5',background:'rgba(91,61,245,0.08)'}} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold">{m.businessName.charAt(0).toUpperCase()}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{m.businessName}</p>
+                  <div className="flex items-center gap-2 mt-0.5"><span className="text-xs text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3"/>{m.city}</span><span className="text-xs text-gray-300">·</span><span className="text-xs text-gray-400 truncate">{m.category}</span></div>
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0"><KycBadge status={m.kycStatus}/><ActiveBadge status={m.activationStatus}/></div>
+                <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0"/>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Detail Panel */}
         {selected && (
-          <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 space-y-6 overflow-y-auto" style={{ maxHeight: '82vh' }}>
-
-            {/* Header actions */}
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">{selected.businessName}</h2>
-                <p className="text-sm text-gray-500">{selected.category}{selected.city ? ` · ${selected.city}` : ''}</p>
+          <div style={{width:'60%',background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-sm overflow-hidden flex flex-col">
+            <div style={{borderBottom:'1px solid #ECECF2'}} className="px-5 py-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div style={{background:'rgba(91,61,245,0.08)',color:'#5B3DF5'}} className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0">{selected.businessName.charAt(0)}</div>
+                  <div>
+                    <h2 className="text-base font-bold text-gray-900">{selected.businessName}</h2>
+                    <div className="flex items-center gap-2 mt-0.5"><span className="text-xs text-gray-500 flex items-center gap-1"><Tag className="w-3 h-3"/>{selected.category}</span><span className="text-xs text-gray-300">·</span><span className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3"/>{selected.city}</span></div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0"><KycBadge status={selected.kycStatus}/><ActiveBadge status={selected.activationStatus}/><button onClick={()=>setSelected(null)} className="ml-1 text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
               </div>
-              <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-                {(selected.activationStatus === 'PENDING' || selected.activationStatus === 'INACTIVE') && (<>
-                  <button onClick={() => openApprovalModal(selected)}
-                    disabled={permsLoading || !can('merchants', 'approve')}
-                    className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants', 'approve') ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Approuver</button>
-                  <button onClick={() => can('merchants', 'reject') && setRejectModal({ id: selected.id, name: selected.businessName })}
-                    disabled={permsLoading || !can('merchants', 'reject')}
-                    className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants', 'reject') ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>Rejeter</button>
-                </>)}
-                {(selected.activationStatus === 'ACTIVE' || selected.activationStatus === 'SUSPENDED') && (
-                  <button onClick={() => suspend(selected.id, selected.activationStatus)} disabled={permsLoading || !can('merchants', 'suspend')}
-                    className={`px-3 py-1.5 rounded text-sm font-medium ${selected.activationStatus === 'SUSPENDED' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-orange-500 text-white hover:bg-orange-600'} ${permsLoading || !can('merchants', 'suspend') ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    {selected.activationStatus === 'SUSPENDED' ? 'Réactiver' : 'Suspendre'}
-                  </button>
-                )}
-                {(selected.activationStatus === 'ACTIVE' || selected.activationStatus === 'SUSPENDED') && (
-                  <button onClick={() => setResetPwdModal(selected.id)}
-                    disabled={permsLoading || !can('merchants','reset-password')}
-                    className={`px-3 py-1.5 rounded text-sm font-medium ${can('merchants','reset-password') ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
-                    🔑 MDP
-                  </button>
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {editing ? (
+                  <>
+                    <button onClick={save} disabled={saving} style={{background:'#5B3DF5'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50"><Save className="w-3.5 h-3.5"/>{saving?'Enregistrement...':'Enregistrer'}</button>
+                    <button onClick={()=>{setEditing(false);setDraft({});}} style={{border:'1px solid #ECECF2'}} className="px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50">Annuler</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={()=>{setEditing(true);setDraft({});}} style={{border:'1px solid #ECECF2'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><Edit2 className="w-3.5 h-3.5"/>Modifier</button>
+                    {selected.kycStatus==='PENDING_PSP' && <>
+                      <button onClick={()=>openApprovalModal(selected)} style={{background:'#22C55E'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90"><Check className="w-3.5 h-3.5"/>Approuver</button>
+                      <button onClick={()=>setRejectModal({id:selected.id,name:selected.businessName})} style={{background:'#EF4444'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90"><X className="w-3.5 h-3.5"/>Rejeter</button>
+                    </>}
+                    {selected.kycStatus==='APPROVED' && <>
+                      {selected.activationStatus!=='ACTIVE' && <button onClick={()=>openApprovalModal(selected)} style={{background:'#22C55E'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90"><Check className="w-3.5 h-3.5"/>Activer</button>}
+                      {selected.activationStatus==='ACTIVE' && <button onClick={()=>openApprovalModal(selected)} style={{border:'1px solid #ECECF2'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><CreditCard className="w-3.5 h-3.5"/>Facturation</button>}
+                      <button onClick={()=>toggleActive(selected)} style={{background:selected.activationStatus==='ACTIVE'?'#FEF2F2':'#F0FDF4',color:selected.activationStatus==='ACTIVE'?'#EF4444':'#22C55E'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90"><Ban className="w-3.5 h-3.5"/>{selected.activationStatus==='ACTIVE'?'Suspendre':'Réactiver'}</button>
+                    </>}
+                    <button onClick={()=>setResetPwdModal(selected.id)} style={{border:'1px solid #ECECF2'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><KeyRound className="w-3.5 h-3.5"/>Mot de passe</button>
+                  </>
                 )}
               </div>
             </div>
-
-            {/* Status */}
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg text-sm">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[selected.activationStatus] ?? ''}`}>{selected.activationStatus}</span>
-              <span className="text-gray-500">Inscrit le {new Date(selected.createdAt).toLocaleDateString('fr-FR')}</span>
-            </div>
-
-            {/* Contrat & Facturation — top, active only */}
-            {selected.activationStatus === 'ACTIVE' && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-semibold text-green-700 uppercase tracking-wider">Contrat & Facturation</h3>
-                  <button onClick={() => openBillingEdit(selected)} disabled={permsLoading || !can('merchants', 'write')}
-                    className={`text-xs px-2 py-1 bg-white border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed`}>✏️ Modifier</button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-white p-3 rounded">
-                    <p className="text-xs text-gray-500 mb-1">Contrat</p>
-                    {selected.contractUrl
-                      ? <a href={selected.contractUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:underline break-all">Voir le contrat ↗</a>
-                      : <p className="text-sm text-gray-400">Non défini</p>}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {(selected.contractUrl||selected.billingType) && (
+                <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                  <SectionHeader icon={CreditCard} title="Contrat & Facturation"/>
+                  <div className="grid grid-cols-2 gap-3">
+                    {selected.contractUrl && <div className="col-span-2"><p className="text-xs text-gray-400 mb-0.5">Contrat</p><a href={selected.contractUrl} target="_blank" rel="noreferrer" className="text-sm font-medium truncate block" style={{color:'#5B3DF5'}}>{selected.contractUrl}</a></div>}
+                    {selected.billingType==='commission' && <><InfoRow label="Facturation" value="Commission / transaction"/><InfoRow label="Taux" value={selected.commissionRate!=null?`${selected.commissionRate}${selected.commissionType==='TRANSACTION_PERCENTAGE'?'%':' MAD'}`:undefined}/></>}
+                    {selected.billingType==='subscription' && <><InfoRow label="Facturation" value="Abonnement"/><InfoRow label="Offre" value={selected.planName}/><InfoRow label="Début" value={selected.subscriptionStart?new Date(selected.subscriptionStart).toLocaleDateString('fr-FR'):undefined}/><InfoRow label="Fin" value={selected.subscriptionEnd?new Date(selected.subscriptionEnd).toLocaleDateString('fr-FR'):undefined}/></>}
                   </div>
-                  <div className="bg-white p-3 rounded">
-                    <p className="text-xs text-gray-500 mb-1">Facturation</p>
-                    {selected.subscriptions?.length ? (<>
-                      <p className="text-sm font-medium">Abonnement — {selected.subscriptions[0].subscriptionPlan?.name ?? '—'}</p>
-                      {selected.subscriptions[0].subscriptionPlan && <p className="text-xs text-gray-600">{selected.subscriptions[0].subscriptionPlan.price} MAD / {selected.subscriptions[0].subscriptionPlan.durationMonths} mois</p>}
-                      {selected.subscriptions[0].endDate && <p className="text-xs text-gray-500">Expire le {new Date(selected.subscriptions[0].endDate).toLocaleDateString('fr-FR')}</p>}
-                    </>) : selected.commissionRate && selected.commissionType !== 'NONE' ? (<>
-                      <p className="text-sm font-medium">{selected.commissionType === 'TRANSACTION_PERCENTAGE' ? '% / transaction' : 'Frais fixe'}</p>
-                      <p className="text-xs text-gray-600">{selected.commissionType === 'TRANSACTION_PERCENTAGE' ? `${(parseFloat(selected.commissionRate) * 100).toFixed(2)}%` : `${selected.commissionRate} MAD`}</p>
-                    </>) : <p className="text-sm text-gray-400">Non défini</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Général */}
-            <Section title="Général" editing={editingSection === 'general'}
-              onEdit={() => startEdit('general', { businessName: selected.businessName, city: selected.city ?? '', category: selected.category ?? '', pspMerchantReference: selected.pspMerchantReference ?? '' })}
-              onSave={() => saveSection('general')} onCancel={cancelEdit} saving={sectionSaving}
-              canEdit={!permsLoading && can('merchants', 'write')}>
-              {editingSection === 'general' ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <EditField label="Nom du commerce" name="businessName" value={draft.businessName ?? ''} onChange={updateDraft} />
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Ville</label>
-                    <select value={draft.city ?? ''} onChange={e => updateDraft('city', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                      <option value="">— Sélectionner —</option>
-                      {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Catégorie</label>
-                    <select value={draft.category ?? ''} onChange={e => updateDraft('category', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                  </div>
-                  <div className="col-span-2">
-                    <EditField label="Référence PSP" name="pspMerchantReference" value={draft.pspMerchantReference ?? ''} onChange={updateDraft} />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Nom du commerce" value={selected.businessName} />
-                  <Field label="Ville" value={selected.city} />
-                  <Field label="Catégorie" value={selected.category} />
-                  <Field label="Référence PSP" value={selected.pspMerchantReference} />
                 </div>
               )}
-            </Section>
-
-            {/* Légal */}
-            <Section title="Informations légales" editing={editingSection === 'legal'}
-              onEdit={() => startEdit('legal', { registrationNumber: selected.registrationNumber ?? '', iceNumber: selected.iceNumber ?? '', taxId: selected.taxId ?? '', fiscalId: selected.fiscalId ?? '', cinRepresentant: selected.cinRepresentant ?? '' })}
-              onSave={() => saveSection('legal')} onCancel={cancelEdit} saving={sectionSaving}
-              canEdit={!permsLoading && can('merchants', 'write')}>
-              {editingSection === 'legal' ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <EditField label="RC / Reg. Number" name="registrationNumber" value={draft.registrationNumber ?? ''} onChange={updateDraft} />
-                  <EditField label="ICE" name="iceNumber" value={draft.iceNumber ?? ''} onChange={updateDraft} />
-                  <EditField label="Tax ID" name="taxId" value={draft.taxId ?? ''} onChange={updateDraft} />
-                  <EditField label="Fiscal ID" name="fiscalId" value={draft.fiscalId ?? ''} onChange={updateDraft} />
-                  <div className="col-span-2">
-                    <EditField label="CIN Représentant" name="cinRepresentant" value={draft.cinRepresentant ?? ''} onChange={updateDraft} />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="RC / Reg. Number" value={selected.registrationNumber} />
-                  <Field label="ICE" value={selected.iceNumber} />
-                  <Field label="Tax ID" value={selected.taxId} />
-                  <Field label="Fiscal ID" value={selected.fiscalId} />
-                  <Field label="CIN Représentant" value={selected.cinRepresentant} />
-                </div>
-              )}
-            </Section>
-
-            {/* Bancaire */}
-            <Section title="Informations bancaires" editing={editingSection === 'banking'}
-              onEdit={() => startEdit('banking', { rib: selected.rib ?? '', attestationBancaire: selected.attestationBancaire ?? '' })}
-              onSave={() => saveSection('banking')} onCancel={cancelEdit} saving={sectionSaving}
-              canEdit={!permsLoading && can('merchants', 'write')}>
-              {editingSection === 'banking' ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <EditField label="RIB" name="rib" value={draft.rib ?? ''} onChange={updateDraft} />
-                  <EditField label="Attestation bancaire" name="attestationBancaire" value={draft.attestationBancaire ?? ''} onChange={updateDraft} />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="RIB" value={selected.rib} />
-                  <Field label="Attestation bancaire" value={selected.attestationBancaire} />
-                </div>
-              )}
-            </Section>
-
-            {/* Localisation */}
-            <Section title="Localisation" editing={editingSection === 'location'}
-              onEdit={() => startEdit('location', { address: selected.address ?? '', gpsLat: selected.gpsLat ?? '', gpsLng: selected.gpsLng ?? '' })}
-              onSave={() => saveSection('location')} onCancel={cancelEdit} saving={sectionSaving}
-              canEdit={!permsLoading && can('merchants', 'write')}>
-              {editingSection === 'location' ? (
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-3"><EditField label="Adresse" name="address" value={draft.address ?? ''} onChange={updateDraft} /></div>
-                  <EditField label="Latitude" name="gpsLat" value={draft.gpsLat ?? ''} onChange={updateDraft} />
-                  <EditField label="Longitude" name="gpsLng" value={draft.gpsLng ?? ''} onChange={updateDraft} />
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-3"><Field label="Adresse" value={selected.address} /></div>
-                  <Field label="Latitude" value={selected.gpsLat} />
-                  <Field label="Longitude" value={selected.gpsLng} />
-                </div>
-              )}
-            </Section>
-
-            {/* Contacts */}
-            <Section title="Contacts" editing={editingSection === 'contacts'}
-              onEdit={() => startEdit('contacts', {
-                admin_nom: selected.contactAdmin?.nom ?? '', admin_phone: selected.contactAdmin?.phone ?? '', admin_email: selected.contactAdmin?.email ?? '',
-                finance_nom: selected.contactFinance?.nom ?? '', finance_phone: selected.contactFinance?.phone ?? '', finance_email: selected.contactFinance?.email ?? '',
-                ops_nom: selected.contactOps?.nom ?? '', ops_phone: selected.contactOps?.phone ?? '', ops_email: selected.contactOps?.email ?? '',
-                legal_nom: selected.contactLegal?.nom ?? '', legal_phone: selected.contactLegal?.phone ?? '', legal_email: selected.contactLegal?.email ?? '',
-              })}
-              onSave={() => saveSection('contacts')} onCancel={cancelEdit} saving={sectionSaving}
-              canEdit={!permsLoading && can('merchants', 'write')}>
-              {editingSection === 'contacts' ? (
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                <SectionHeader icon={Store} title="Informations générales"/>
                 <div className="grid grid-cols-2 gap-3">
-                  <ContactEditFields label="Administratif" prefix="admin" draft={draft} onChange={updateDraft} />
-                  <ContactEditFields label="Finance" prefix="finance" draft={draft} onChange={updateDraft} />
-                  <ContactEditFields label="Opérations" prefix="ops" draft={draft} onChange={updateDraft} />
-                  <ContactEditFields label="Juridique" prefix="legal" draft={draft} onChange={updateDraft} />
+                  {editing ? <>
+                    <EditField label="Nom du commerce" field="businessName" value={selected.businessName} draft={draft} onChange={updateDraft}/>
+                    <EditField label="Catégorie" field="category" value={selected.category} draft={draft} onChange={updateDraft}/>
+                    <EditField label="Ville" field="city" value={selected.city} draft={draft} onChange={updateDraft}/>
+                    <EditField label="Téléphone" field="phone" value={selected.phone} draft={draft} onChange={updateDraft}/>
+                    <EditField label="Email" field="email" value={selected.email} draft={draft} onChange={updateDraft}/>
+                    <div className="col-span-2"><EditField label="Adresse" field="address" value={selected.address} draft={draft} onChange={updateDraft}/></div>
+                  </> : <>
+                    <InfoRow label="Nom du commerce" value={selected.businessName}/>
+                    <InfoRow label="Catégorie" value={selected.category}/>
+                    <InfoRow label="Ville" value={selected.city}/>
+                    <InfoRow label="Téléphone" value={selected.phone}/>
+                    <InfoRow label="Email" value={selected.email}/>
+                    <div className="col-span-2"><InfoRow label="Adresse" value={selected.address}/></div>
+                  </>}
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <ContactCard label="Administratif" contact={selected.contactAdmin} />
-                  <ContactCard label="Finance" contact={selected.contactFinance} />
-                  <ContactCard label="Opérations" contact={selected.contactOps} />
-                  <ContactCard label="Juridique" contact={selected.contactLegal} />
+              </div>
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                <SectionHeader icon={FileText} title="Informations légales"/>
+                <div className="grid grid-cols-2 gap-3">
+                  {editing ? <>
+                    <EditField label="Forme juridique" field="legalForm" value={selected.legalForm} draft={draft} onChange={updateDraft}/>
+                    <EditField label="N° RC" field="registrationNumber" value={selected.registrationNumber} draft={draft} onChange={updateDraft}/>
+                    <EditField label="ICE" field="iceNumber" value={selected.iceNumber} draft={draft} onChange={updateDraft}/>
+                    <EditField label="Identifiant fiscal" field="taxId" value={selected.taxId} draft={draft} onChange={updateDraft}/>
+                  </> : <>
+                    <InfoRow label="Forme juridique" value={selected.legalForm}/>
+                    <InfoRow label="N° RC" value={selected.registrationNumber}/>
+                    <InfoRow label="ICE" value={selected.iceNumber}/>
+                    <InfoRow label="Identifiant fiscal" value={selected.taxId}/>
+                  </>}
+                </div>
+              </div>
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                <SectionHeader icon={Landmark} title="Informations bancaires"/>
+                <div className="grid grid-cols-2 gap-3">
+                  {editing ? <>
+                    <EditField label="Banque" field="bankName" value={selected.bankName} draft={draft} onChange={updateDraft}/>
+                    <EditField label="IBAN" field="iban" value={selected.iban} draft={draft} onChange={updateDraft}/>
+                    <EditField label="RIB" field="rib" value={selected.rib} draft={draft} onChange={updateDraft}/>
+                  </> : <>
+                    <InfoRow label="Banque" value={selected.bankName}/>
+                    <InfoRow label="IBAN" value={selected.iban}/>
+                    <InfoRow label="RIB" value={selected.rib}/>
+                  </>}
+                </div>
+              </div>
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                <SectionHeader icon={Users} title="Contacts"/>
+                {editing ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <ContactEditFields label="Administratif" prefix="admin" draft={draft} onChange={updateDraft}/>
+                    <ContactEditFields label="Finance" prefix="finance" draft={draft} onChange={updateDraft}/>
+                    <ContactEditFields label="Opérations" prefix="ops" draft={draft} onChange={updateDraft}/>
+                    <ContactEditFields label="Juridique" prefix="legal" draft={draft} onChange={updateDraft}/>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <ContactCard label="Administratif" contact={selected.contactAdmin}/>
+                    <ContactCard label="Finance" contact={selected.contactFinance}/>
+                    <ContactCard label="Opérations" contact={selected.contactOps}/>
+                    <ContactCard label="Juridique" contact={selected.contactLegal}/>
+                  </div>
+                )}
+              </div>
+              {selected.cguSignedAt && (
+                <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                  <SectionHeader icon={Shield} title="CGU"/>
+                  <div className="grid grid-cols-2 gap-3"><InfoRow label="Version signée" value={selected.cguVersion}/><InfoRow label="Signé le" value={new Date(selected.cguSignedAt).toLocaleDateString('fr-FR')}/></div>
                 </div>
               )}
-            </Section>
-
-            {/* CGU */}
-            {selected.cguSignedAt && (
-              <section>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">CGU</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Version signée" value={selected.cguVersion} />
-                  <Field label="Signé le" value={new Date(selected.cguSignedAt).toLocaleDateString('fr-FR')} />
-                </div>
-              </section>
-            )}
+              <p className="text-xs text-gray-400 text-center pb-2">Créé le {new Date(selected.createdAt).toLocaleDateString('fr-FR')}</p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Billing Modal */}
       {approvalModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-5 overflow-y-auto max-h-[90vh]">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">{approvalModal.isEdit ? 'Modifier la facturation' : 'Activer le marchand'}</h2>
-              <p className="text-sm text-gray-500 mt-0.5">{approvalModal.name}</p>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5 overflow-y-auto max-h-[90vh]">
+            <div className="flex items-start justify-between">
+              <div><h2 className="text-base font-bold text-gray-900">{approvalModal.isEdit?'Modifier la facturation':'Activer le marchand'}</h2><p className="text-sm text-gray-500 mt-0.5">{approvalModal.name}</p></div>
+              <button onClick={()=>setApprovalModal(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">URL du contrat <span className="text-gray-400 font-normal">(optionnel)</span></label>
-              <input type="url" placeholder="https://..." value={approvalForm.contractUrl}
-                onChange={e => setApprovalForm(f => ({ ...f, contractUrl: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">URL du contrat <span className="normal-case font-normal text-gray-400">(optionnel)</span></label>
+              <input type="url" placeholder="https://..." value={approvalForm.contractUrl} onChange={e=>setApprovalForm(f=>({...f,contractUrl:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type de facturation</label>
-              <div className="flex gap-4">
-                {([['commission', 'Commission / transaction'], ['subscription', 'Abonnement']] as const).map(([val, label]) => (
-                  <label key={val} className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="billingType" value={val}
-                      checked={approvalForm.billingType === val}
-                      onChange={() => setApprovalForm(f => ({ ...f, billingType: val }))} />
-                    <span className="text-sm">{label}</span>
+            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Type de facturation</label>
+              <div className="flex gap-3">
+                {(['commission','subscription'] as const).map(val=>(
+                  <label key={val} onClick={()=>setApprovalForm(f=>({...f,billingType:val}))} style={{border:approvalForm.billingType===val?'2px solid #5B3DF5':'1px solid #ECECF2',background:approvalForm.billingType===val?'rgba(91,61,245,0.05)':'#F8F8FC'}} className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all">
+                    <div style={{width:16,height:16,borderRadius:'50%',flexShrink:0,border:approvalForm.billingType===val?'5px solid #5B3DF5':'2px solid #D1D5DB',background:'#fff'}}/>
+                    <span className="text-sm font-medium text-gray-700">{val==='commission'?'Commission / transaction':'Abonnement'}</span>
                   </label>
                 ))}
               </div>
             </div>
-            {approvalForm.billingType === 'commission' && (
-              <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-                  <select value={approvalForm.commissionType}
-                    onChange={e => setApprovalForm(f => ({ ...f, commissionType: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-                    <option value="TRANSACTION_PERCENTAGE">% par transaction</option>
-                    <option value="FLAT_FEE">Frais fixe (MAD)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {approvalForm.commissionType === 'TRANSACTION_PERCENTAGE' ? 'Taux (%)' : 'Montant (MAD)'}
-                  </label>
-                  <input type="number" step="0.01" min="0"
-                    placeholder={approvalForm.commissionType === 'TRANSACTION_PERCENTAGE' ? '1.5' : '5'}
-                    value={approvalForm.commissionRate}
-                    onChange={e => setApprovalForm(f => ({ ...f, commissionRate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
-                </div>
+            {approvalForm.billingType==='commission' && (
+              <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl p-4 grid grid-cols-2 gap-3">
+                <div><label className="block text-xs text-gray-500 mb-1">Type</label><select value={approvalForm.commissionType} onChange={e=>setApprovalForm(f=>({...f,commissionType:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"><option value="TRANSACTION_PERCENTAGE">% par transaction</option><option value="FLAT_FEE">Frais fixe (MAD)</option></select></div>
+                <div><label className="block text-xs text-gray-500 mb-1">{approvalForm.commissionType==='TRANSACTION_PERCENTAGE'?'Taux (%)':'Montant (MAD)'}</label><input type="number" step="0.01" min="0" placeholder={approvalForm.commissionType==='TRANSACTION_PERCENTAGE'?'1.5':'5'} value={approvalForm.commissionRate} onChange={e=>setApprovalForm(f=>({...f,commissionRate:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"/></div>
               </div>
             )}
-            {approvalForm.billingType === 'subscription' && (
-              <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Offre choisie</label>
-                  <select value={approvalForm.planId} onChange={e => handlePlanChange(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-                    <option value="">— Sélectionner une offre —</option>
-                    {plans.filter(p => p.isActive).map(p => (
-                      <option key={p.id} value={p.id}>{p.name} — {p.price} MAD / {p.durationMonths} mois</option>
-                    ))}
-                  </select>
-                  {plans.filter(p => p.isActive).length === 0 && (
-                    <p className="text-xs text-orange-500 mt-1">Aucune offre active — créez des offres dans l'onglet Abonnements</p>
-                  )}
-                </div>
+            {approvalForm.billingType==='subscription' && (
+              <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl p-4 space-y-3">
+                <div><label className="block text-xs text-gray-500 mb-1">Offre choisie</label><select value={approvalForm.planId} onChange={e=>handlePlanChange(e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"><option value="">— Sélectionner une offre —</option>{plans.filter(p=>p.isActive).map(p=><option key={p.id} value={p.id}>{p.name} — {p.price} MAD / {p.durationMonths} mois</option>)}</select>{plans.filter(p=>p.isActive).length===0&&<p className="text-xs text-amber-500 mt-1">Aucune offre active disponible</p>}</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Date de début</label>
-                    <input type="date" value={approvalForm.startDate}
-                      onChange={e => handleStartDateChange(e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Date de fin {approvalForm.planId && <span className="text-green-600">(auto)</span>}
-                    </label>
-                    <input type="date" value={approvalForm.endDate}
-                      onChange={e => setApprovalForm(f => ({ ...f, endDate: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
-                  </div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Date de début</label><input type="date" value={approvalForm.startDate} onChange={e=>handleStartDateChange(e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"/></div>
+                  <div><label className="block text-xs text-gray-500 mb-1">Date de fin {approvalForm.planId&&<span style={{color:'#22C55E'}}>(auto)</span>}</label><input type="date" value={approvalForm.endDate} onChange={e=>setApprovalForm(f=>({...f,endDate:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"/></div>
                 </div>
               </div>
             )}
             <div className="flex justify-end gap-3 pt-1">
-              <button onClick={() => setApprovalModal(null)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={submitApproval}
-                disabled={saving || (approvalForm.billingType === 'subscription' && !approvalForm.planId)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
-                {saving ? 'Enregistrement...' : approvalModal.isEdit ? 'Enregistrer' : 'Confirmer & Activer'}
-              </button>
+              <button onClick={()=>setApprovalModal(null)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 font-medium">Annuler</button>
+              <button onClick={submitApproval} disabled={saving||(approvalForm.billingType==='subscription'&&!approvalForm.planId)} style={{background:'#22C55E'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{saving?'Enregistrement...':approvalModal.isEdit?'Enregistrer':'Confirmer & Activer'}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Reject Modal */}
       {rejectModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Rejeter le marchand</h2>
-            <p className="text-sm text-gray-500">{rejectModal.name}</p>
-            <textarea rows={3} value={rejectReason} onChange={e => setRejectReason(e.target.value)}
-              placeholder="Documents incomplets, informations incorrectes..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setRejectModal(null); setRejectReason(''); }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={reject} disabled={!rejectReason.trim()}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50">Rejeter</button>
-            </div>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start justify-between"><div><h2 className="text-base font-bold text-gray-900">Rejeter le marchand</h2><p className="text-sm text-gray-500 mt-0.5">{rejectModal.name}</p></div><button onClick={()=>{setRejectModal(null);setRejectReason('');}} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
+            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Motif du rejet</label><textarea rows={3} value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder="Documents incomplets, informations incorrectes..." style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(239,68,68,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
+            <div className="flex justify-end gap-3"><button onClick={()=>{setRejectModal(null);setRejectReason('');}} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 font-medium">Annuler</button><button onClick={reject} disabled={!rejectReason.trim()||saving} style={{background:'#EF4444'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{saving?'Rejet...':'Rejeter'}</button></div>
           </div>
         </div>
       )}
+
       {createModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Nouveau marchand</h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between"><div><h2 className="text-base font-bold text-gray-900">Nouveau marchand</h2><p className="text-sm text-gray-500 mt-0.5">Créer un compte marchand</p></div><button onClick={()=>setCreateModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom du commerce *</label>
-                <input type="text" value={createForm.businessName}
-                  onChange={e => setCreateForm(f => ({ ...f, businessName: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie *</label>
-                <select value={createForm.category}
-                  onChange={e => setCreateForm(f => ({ ...f, category: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  {categories.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
-                <select value={createForm.city} onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="">Sélectionner une ville…</option>
-                  {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
-                <input type="text" value={createForm.phone}
-                  onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">RC</label>
-                <input type="text" value={createForm.registrationNumber}
-                  onChange={e => setCreateForm(f => ({ ...f, registrationNumber: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ICE</label>
-                <input type="text" value={createForm.iceNumber}
-                  onChange={e => setCreateForm(f => ({ ...f, iceNumber: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-                <input type="text" value={createForm.address}
-                  onChange={e => setCreateForm(f => ({ ...f, address: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
-                <input type="password" value={createForm.password}
-                  onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
+              <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nom du commerce <span className="text-red-400">*</span></label><input type="text" value={createForm.businessName} onChange={e=>setCreateForm(f=>({...f,businessName:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
+              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Catégorie <span className="text-red-400">*</span></label><select value={createForm.category} onChange={e=>setCreateForm(f=>({...f,category:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ville <span className="text-red-400">*</span></label><select value={createForm.city} onChange={e=>setCreateForm(f=>({...f,city:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none"><option value="">Sélectionner...</option>{MOROCCAN_CITIES.map(v=><option key={v} value={v}>{v}</option>)}</select></div>
+              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Téléphone <span className="text-red-400">*</span></label><input type="text" value={createForm.phone} onChange={e=>setCreateForm(f=>({...f,phone:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
+              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">N° RC</label><input type="text" value={createForm.registrationNumber} onChange={e=>setCreateForm(f=>({...f,registrationNumber:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/></div>
+              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">ICE</label><input type="text" value={createForm.iceNumber} onChange={e=>setCreateForm(f=>({...f,iceNumber:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/></div>
+              <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Adresse</label><input type="text" value={createForm.address} onChange={e=>setCreateForm(f=>({...f,address:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/></div>
+              <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mot de passe <span className="text-red-400">*</span></label><input type="password" value={createForm.password} onChange={e=>setCreateForm(f=>({...f,password:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
             </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setCreateModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={submitCreate}
-                disabled={createSaving || !createForm.businessName || !createForm.phone || !createForm.password || !createForm.city}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-                {createSaving ? 'Création...' : 'Créer'}
-              </button>
-            </div>
+            <div className="flex justify-end gap-3"><button onClick={()=>setCreateModal(false)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 font-medium">Annuler</button><button onClick={submitCreate} disabled={createSaving||!createForm.businessName||!createForm.phone||!createForm.password||!createForm.city} style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{createSaving?'Création...':'Créer le marchand'}</button></div>
           </div>
         </div>
       )}
 
       {resetPwdModal && (
-        <PasswordResetModal
-          endpoint={`/admin/merchants/${resetPwdModal}/reset-password`}
-          name={merchants.find(m => m.id === resetPwdModal)?.businessName ?? 'Marchand'}
-          onClose={() => setResetPwdModal(null)}
-        />
+        <PasswordResetModal endpoint={`/admin/merchants/${resetPwdModal}/reset-password`} name={merchants.find(m=>m.id===resetPwdModal)?.businessName??'Marchand'} onClose={()=>setResetPwdModal(null)}/>
       )}
-</div>
+    </div>
   );
 }
