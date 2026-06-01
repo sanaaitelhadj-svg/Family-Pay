@@ -344,6 +344,7 @@ adminRouter.post('/beneficiaries', authenticate(['ADMIN']), requirePermission('b
       password:     z.string().min(8),
       sponsorId:    z.string(),
       relationship: z.string().optional(),
+      dateOfBirth:  z.string().optional(),
     });
     const bene = await AdminService.createBeneficiary(schema.parse(req.body));
     res.status(201).json(bene);

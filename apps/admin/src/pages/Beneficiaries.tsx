@@ -35,7 +35,7 @@ export default function Beneficiaries() {
   const [search, setSearch] = useState('');
 
   const [createModal, setCreateModal] = useState(false);
-  const [createForm, setCreateForm]   = useState({ firstName:'', lastName:'', phone:'', password:'', sponsorId:'', relationship:'', city:'' });
+  const [createForm, setCreateForm]   = useState({ firstName:'', lastName:'', phone:'', password:'', sponsorId:'', relationship:'', city:'', dateOfBirth:'' });
   const [sponsors, setSponsors]       = useState<{ id:string; user:{firstName:string;phone:string} }[]>([]);
   const [createSaving, setCreateSaving] = useState(false);
 
@@ -57,7 +57,7 @@ export default function Beneficiaries() {
   const submitCreate = async () => {
     if (!createForm.firstName||!createForm.phone||!createForm.password||!createForm.sponsorId) return;
     setCreateSaving(true);
-    try { await api.post('/admin/beneficiaries',{firstName:createForm.firstName,lastName:createForm.lastName||undefined,phone:createForm.phone,password:createForm.password,sponsorId:createForm.sponsorId,relationship:createForm.relationship||undefined}); setCreateModal(false); setCreateForm({firstName:'',lastName:'',phone:'',password:'',sponsorId:'',relationship:'',city:''}); load(); }
+    try { await api.post('/admin/beneficiaries',{firstName:createForm.firstName,lastName:createForm.lastName||undefined,phone:createForm.phone,password:createForm.password,sponsorId:createForm.sponsorId,relationship:createForm.relationship||undefined,dateOfBirth:createForm.dateOfBirth||undefined}); setCreateModal(false); setCreateForm({firstName:'',lastName:'',phone:'',password:'',sponsorId:'',relationship:'',city:'',dateOfBirth:''}); load(); }
     catch (err:any) { alert(err.response?.data?.message??'Erreur'); }
     finally { setCreateSaving(false); }
   };
@@ -300,6 +300,7 @@ export default function Beneficiaries() {
                   style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
               </div>
             ))}
+            <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Date de naissance <span className="normal-case font-normal text-gray-400">(détermine si mineur)</span></label><input type="date" value={createForm.dateOfBirth} onChange={e=>setCreateForm(f=>({...f,dateOfBirth:e.target.value}))} max={new Date().toISOString().split('T')[0]} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
             <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Sponsor *</label>
               <select value={createForm.sponsorId} onChange={e=>setCreateForm(f=>({...f,sponsorId:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
                 <option value="">— Sélectionner un sponsor —</option>{sponsors.map(s=><option key={s.id} value={s.id}>{s.user.firstName} ({s.user.phone})</option>)}

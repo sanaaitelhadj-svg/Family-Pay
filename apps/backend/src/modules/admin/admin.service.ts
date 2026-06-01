@@ -571,7 +571,7 @@ export class AdminService {
 
   static async createBeneficiary(data: {
     firstName: string; lastName?: string; phone: string; password: string;
-    sponsorId: string; relationship?: string;
+    sponsorId: string; relationship?: string; dateOfBirth?: string;
   }) {
     const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
     if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
@@ -585,8 +585,12 @@ export class AdminService {
           password: hashed, role: 'BENEFICIARY', isVerified: true, cndpConsentAt: new Date(),
         },
       });
+      const dob = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+      const isMinor = dob ? (new Date().getFullYear() - dob.getFullYear() < 18 ||
+        (new Date().getFullYear() - dob.getFullYear() === 18 &&
+          new Date() < new Date(dob.getFullYear() + 18, dob.getMonth(), dob.getDate()))) : false;
       const bene = await tx.beneficiary.create({
-        data: { userId: user.id, sponsorId: data.sponsorId, relationship: data.relationship, isActive: true },
+        data: { userId: user.id, sponsorId: data.sponsorId, relationship: data.relationship, isActive: true, dateOfBirth: dob, isMinor },
       });
       await tx.auditLog.create({
         data: { action: 'ADMIN_CREATED_BENEFICIARY', entityType: 'Beneficiary', entityId: bene.id, metadata: { phone: data.phone, sponsorId: data.sponsorId } },
