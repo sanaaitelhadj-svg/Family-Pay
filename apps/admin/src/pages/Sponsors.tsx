@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Users, Search, Plus, X, Edit2, Trash2, Ban, Check, KeyRound, CreditCard, TrendingUp, RefreshCw, ChevronRight, Phone, Mail, Tag, CheckCircle2, UserPlus, ShieldOff } from 'lucide-react';
 import { api } from '../api';
 import { PasswordResetModal } from '../components/PasswordResetModal';
 import { MOROCCAN_CITIES } from '../lib/moroccan-cities';
@@ -9,524 +10,507 @@ interface Sponsor {
   user: { firstName: string; lastName: string | null; phone: string; email: string | null; isActive: boolean; createdAt: string };
   _count: { allocations: number; beneficiaries: number };
 }
-
 interface SponsorDetail extends Sponsor {
-  pspCustomerReference: string | null;
-  maskedCardReference: string | null;
-  user: { firstName: string; lastName: string | null; phone: string; email: string | null; isActive: boolean; createdAt: string };
+  pspCustomerReference: string | null; maskedCardReference: string | null;
   totalVolume: number; totalTransactions: number;
   allocations: any[]; beneficiaries: any[];
 }
+
+const CAT_LABELS: Record<string,string> = {
+  GENERAL:'Général', PHARMACY:'Pharmacie', FOOD:'Alimentation',
+  CLOTHING:'Habillement', EDUCATION:'Éducation', LEISURE:'Loisirs',
+};
+const ALLOC_CATS = Object.keys(CAT_LABELS);
+
+const StatusBadge = ({ isActive }: { isActive: boolean }) => (
+  <span style={{ background: isActive ? '#F0FDF4' : '#FEF2F2', color: isActive ? '#166534' : '#991B1B' }}
+    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+    <span style={{ background: isActive ? '#22C55E' : '#EF4444' }} className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" />
+    {isActive ? 'Actif' : 'Suspendu'}
+  </span>
+);
+
+const AllocBadge = ({ status }: { status: string }) => {
+  const s: Record<string,{bg:string;color:string}> = {
+    ACTIVE:    { bg:'#F0FDF4', color:'#166534' },
+    PAUSED:    { bg:'#FFF8E6', color:'#B45309' },
+    EXPIRED:   { bg:'#F3F4F6', color:'#6B7280' },
+    EXHAUSTED: { bg:'#FEF2F2', color:'#991B1B' },
+  };
+  const st = s[status] ?? s.EXPIRED;
+  return <span style={{ background:st.bg, color:st.color }} className="text-xs px-2 py-0.5 rounded-full font-medium">{status}</span>;
+};
 
 export default function Sponsors() {
   const { can, loading: permsLoading } = usePermissions();
   const [list, setList]     = useState<Sponsor[]>([]);
   const [detail, setDetail] = useState<SponsorDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-  const [createModal, setCreateModal] = useState(false);
-  const [createForm, setCreateForm]   = useState({ firstName: '', lastName: '', phone: '', email: '', password: '', city: '' });
+  const [createModal, setCreateModal]   = useState(false);
+  const [createForm, setCreateForm]     = useState({ firstName:'', lastName:'', phone:'', email:'', password:'', city:'' });
   const [createSaving, setCreateSaving] = useState(false);
 
-  const [resetPwdModal, setResetPwdModal] = useState(false);
-  const [allocModal, setAllocModal]             = useState(false);
-  const [editAllocTarget, setEditAllocTarget]   = useState<any>(null);
-  const [addBeneModal, setAddBeneModal]         = useState(false);
-  const [beneModalTab, setBeneModalTab]         = useState<'create'|'select'>('create');
-  const [allBeneficiaries, setAllBeneficiaries] = useState<any[]>([]);
-  const [beneSearch, setBeneSearch]             = useState('');
-  const [allocForm, setAllocForm]               = useState({ beneficiaryId: '', category: 'GENERAL', limitAmount: '', expiresAt: '', status: 'ACTIVE' });
-  const [addBeneForm, setAddBeneForm]           = useState({ firstName: '', lastName: '', phone: '', password: '', relationship: '' });
-  const [modalSaving, setModalSaving]           = useState(false);
-  const [editModal, setEditModal]   = useState(false);
-  const [editForm, setEditForm]     = useState({ firstName: '', lastName: '', email: '' });
-  const [editSaving, setEditSaving] = useState(false);
-
+  const [resetPwdModal, setResetPwdModal]         = useState(false);
+  const [allocModal, setAllocModal]               = useState(false);
+  const [editAllocTarget, setEditAllocTarget]     = useState<any>(null);
+  const [addBeneModal, setAddBeneModal]           = useState(false);
+  const [beneModalTab, setBeneModalTab]           = useState<'create'|'select'>('create');
+  const [allBeneficiaries, setAllBeneficiaries]   = useState<any[]>([]);
+  const [beneSearch, setBeneSearch]               = useState('');
+  const [allocForm, setAllocForm]                 = useState({ beneficiaryId:'', category:'GENERAL', limitAmount:'', expiresAt:'', status:'ACTIVE' });
+  const [addBeneForm, setAddBeneForm]             = useState({ firstName:'', lastName:'', phone:'', password:'', relationship:'' });
+  const [modalSaving, setModalSaving]             = useState(false);
+  const [editModal, setEditModal]     = useState(false);
+  const [editForm, setEditForm]       = useState({ firstName:'', lastName:'', email:'' });
+  const [editSaving, setEditSaving]   = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [actionSaving, setActionSaving]   = useState(false);
 
-  const load = () => {
-    setLoading(true);
-    api.get(`/admin/sponsors?_t=${Date.now()}`).then(r => setList(r.data)).finally(() => setLoading(false));
-  };
+  const load = () => { setLoading(true); api.get(`/admin/sponsors?_t=${Date.now()}`).then(r => setList(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
 
-  async function openDetail(id: string) {
-    const res = await api.get(`/admin/sponsors/${id}`);
-    setDetail(res.data);
-  }
+  const openDetail = async (id: string) => { const r = await api.get(`/admin/sponsors/${id}`); setDetail(r.data); };
 
   const submitCreate = async () => {
-    if (!createForm.firstName || !createForm.phone || !createForm.password) return;
+    if (!createForm.firstName || !createForm.phone || createForm.password.length < 8) return;
     setCreateSaving(true);
     try {
-      await api.post('/admin/sponsors', {
-        firstName: createForm.firstName, lastName: createForm.lastName || undefined,
-        phone: createForm.phone, email: createForm.email || undefined, password: createForm.password,
-      });
-      setCreateModal(false);
-      setCreateForm({ firstName: '', lastName: '', phone: '', email: '', password: '', city: '' });
-      load();
+      await api.post('/admin/sponsors', { firstName:createForm.firstName, lastName:createForm.lastName||undefined, phone:createForm.phone, email:createForm.email||undefined, password:createForm.password });
+      setCreateModal(false); setCreateForm({ firstName:'', lastName:'', phone:'', email:'', password:'', city:'' }); load();
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setCreateSaving(false); }
   };
 
   const submitEdit = async () => {
-    if (!detail) return;
-    setEditSaving(true);
-    try {
-      await api.patch(`/admin/sponsors/${detail.id}`, editForm);
-      setEditModal(false);
-      const res = await api.get(`/admin/sponsors/${detail.id}`);
-      setDetail(res.data);
-      load();
-    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    if (!detail) return; setEditSaving(true);
+    try { await api.patch(`/admin/sponsors/${detail.id}`, editForm); setEditModal(false); const r = await api.get(`/admin/sponsors/${detail.id}`); setDetail(r.data); load(); }
+    catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setEditSaving(false); }
   };
 
   const toggleStatus = async () => {
-    if (!detail) return;
-    setActionSaving(true);
+    if (!detail) return; setActionSaving(true);
     try {
-      const patchRes = await api.patch(`/admin/sponsors/${detail.id}/status`);
-      const newIsActive: boolean = patchRes.data?.isActive ?? !detail.user.isActive;
+      const r = await api.patch(`/admin/sponsors/${detail.id}/status`);
+      const newIsActive: boolean = r.data?.isActive ?? !detail.user.isActive;
       setDetail(d => d ? { ...d, user: { ...d.user, isActive: newIsActive } } : null);
       setList(l => l.map(s => s.id === detail.id ? { ...s, user: { ...s.user, isActive: newIsActive } } : s));
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setActionSaving(false); }
   };
 
-
   const saveAlloc = async () => {
-    if (!detail) return;
-    setModalSaving(true);
+    if (!detail) return; setModalSaving(true);
     try {
       if (editAllocTarget) {
-        const r = await api.patch(`/admin/sponsors/${detail.id}/allocations/${editAllocTarget.id}`, { limitAmount: Number(allocForm.limitAmount), status: allocForm.status, expiresAt: allocForm.expiresAt || null });
-        setDetail(d => d ? { ...d, allocations: d.allocations.map((a: any) => a.id === editAllocTarget.id ? { ...a, ...r.data } : a) } : null);
+        const r = await api.patch(`/admin/sponsors/${detail.id}/allocations/${editAllocTarget.id}`, { limitAmount:Number(allocForm.limitAmount), status:allocForm.status, expiresAt:allocForm.expiresAt||null });
+        setDetail(d => d ? { ...d, allocations: d.allocations.map((a:any) => a.id===editAllocTarget.id ? {...a,...r.data} : a) } : null);
       } else {
-        const r = await api.post(`/admin/sponsors/${detail.id}/allocations`, { beneficiaryId: allocForm.beneficiaryId, category: allocForm.category, limitAmount: Number(allocForm.limitAmount), expiresAt: allocForm.expiresAt || null });
-        setDetail(d => d ? { ...d, allocations: [...d.allocations, r.data] } : null);
+        const r = await api.post(`/admin/sponsors/${detail.id}/allocations`, { beneficiaryId:allocForm.beneficiaryId, category:allocForm.category, limitAmount:Number(allocForm.limitAmount), expiresAt:allocForm.expiresAt||null });
+        setDetail(d => d ? { ...d, allocations:[...d.allocations, r.data] } : null);
       }
       setAllocModal(false); setEditAllocTarget(null);
-      setAllocForm({ beneficiaryId: '', category: 'GENERAL', limitAmount: '', expiresAt: '', status: 'ACTIVE' });
+      setAllocForm({ beneficiaryId:'', category:'GENERAL', limitAmount:'', expiresAt:'', status:'ACTIVE' });
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setModalSaving(false); }
   };
 
   const deleteAlloc = async (allocId: string) => {
     if (!detail || !window.confirm('Supprimer cette allocation ?')) return;
-    try {
-      await api.delete(`/admin/sponsors/${detail.id}/allocations/${allocId}`);
-      setDetail(d => d ? { ...d, allocations: d.allocations.filter((a: any) => a.id !== allocId) } : null);
-    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    try { await api.delete(`/admin/sponsors/${detail.id}/allocations/${allocId}`); setDetail(d => d ? { ...d, allocations: d.allocations.filter((a:any) => a.id !== allocId) } : null); }
+    catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
   };
 
-
   const linkBene = async (beneId: string) => {
-    if (!detail) return;
-    setModalSaving(true);
-    try {
-      await api.patch(`/admin/beneficiaries/${beneId}/link-sponsor`, { sponsorId: detail.id });
-      const refreshed = await api.get(`/admin/sponsors/${detail.id}?_t=${Date.now()}`);
-      setDetail(refreshed.data);
-      setAddBeneModal(false);
-      setBeneSearch('');
-    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    if (!detail) return; setModalSaving(true);
+    try { await api.patch(`/admin/beneficiaries/${beneId}/link-sponsor`, { sponsorId: detail.id }); const r = await api.get(`/admin/sponsors/${detail.id}?_t=${Date.now()}`); setDetail(r.data); setAddBeneModal(false); setBeneSearch(''); }
+    catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setModalSaving(false); }
   };
 
   const saveBene = async () => {
-    if (!detail) return;
-    setModalSaving(true);
-    try {
-      await api.post('/admin/beneficiaries', { ...addBeneForm, sponsorId: detail.id });
-      setAddBeneModal(false);
-      setAddBeneForm({ firstName: '', lastName: '', phone: '', password: '', relationship: '' });
-      const refreshed = await api.get(`/admin/sponsors/${detail.id}?_t=${Date.now()}`);
-      setDetail(refreshed.data);
-    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    if (!detail) return; setModalSaving(true);
+    try { await api.post('/admin/beneficiaries', { ...addBeneForm, sponsorId: detail.id }); setAddBeneModal(false); setAddBeneForm({ firstName:'', lastName:'', phone:'', password:'', relationship:'' }); const r = await api.get(`/admin/sponsors/${detail.id}?_t=${Date.now()}`); setDetail(r.data); }
+    catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setModalSaving(false); }
   };
 
   const deleteSponsor = async () => {
-    if (!detail) return;
-    setActionSaving(true);
-    try {
-      await api.delete(`/admin/sponsors/${detail.id}`);
-      setDeleteConfirm(false);
-      setDetail(null);
-      load();
-    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    if (!detail) return; setActionSaving(true);
+    try { await api.delete(`/admin/sponsors/${detail.id}`); setDeleteConfirm(false); setDetail(null); load(); }
+    catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setActionSaving(false); }
   };
 
-  if (loading) return <p className="text-gray-500 p-6">Chargement...</p>;
+  const filtered = list.filter(s => !search || `${s.user.firstName} ${s.user.lastName??''} ${s.user.phone}`.toLowerCase().includes(search.toLowerCase()));
+  const stats = { total:list.length, actifs:list.filter(s=>s.user.isActive).length, suspendus:list.filter(s=>!s.user.isActive).length };
 
   return (
     <>
-    <div className="flex gap-6 p-6">
-      <div className="flex-1">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Sponsors ({list.length})</h1>
-          <button onClick={() => setCreateModal(true)} disabled={permsLoading || !can('sponsors','add')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
-            + Nouveau sponsor
-          </button>
-      {resetPwdModal && detail && (
-        <PasswordResetModal
-          endpoint={`/admin/sponsors/${detail.id}/reset-password`}
-          name={`${detail.user.firstName} ${detail.user.lastName ?? ''}`.trim()}
-          onClose={() => setResetPwdModal(false)}
-        />
-      )}
+    <div style={{background:'#F8F8FC'}} className="min-h-screen p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div><h1 className="text-2xl font-bold text-gray-900">Sponsors</h1><p className="text-sm text-gray-500 mt-0.5">{list.length} sponsors enregistrés</p></div>
+        <button onClick={()=>setCreateModal(true)} disabled={permsLoading||!can('sponsors','add')}
+          style={{background:'#5B3DF5'}} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 shadow-sm">
+          <Plus className="w-4 h-4"/>Nouveau sponsor
+        </button>
+      </div>
 
-        </div>
-        <div className="space-y-3">
-          {list.map(s => (
-            <button key={s.id} onClick={() => openDetail(s.id)}
-              className={`w-full bg-white rounded-2xl p-5 shadow-sm text-left hover:shadow-md transition-shadow border-2 ${detail?.id === s.id ? 'border-indigo-500' : 'border-transparent'}`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900">{s.user.firstName} {s.user.lastName ?? ''}</p>
-                    {!s.user.isActive && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">Suspendu</span>}
-                  </div>
-                  <p className="text-sm text-gray-500">{s.user.phone}</p>
-                  {s.user.email && <p className="text-sm text-gray-400">{s.user.email}</p>}
-                </div>
-                <div className="text-right text-sm">
-                  <span className="text-indigo-600 font-medium">{s._count.allocations} alloc.</span>
-                  <span className="text-gray-400 ml-3">{s._count.beneficiaries} bénéf.</span>
-                </div>
-              </div>
-              <p className="text-xs text-gray-400 mt-2">Inscrit le {new Date(s.createdAt).toLocaleDateString('fr-FR')}</p>
-            </button>
-          ))}
-          {list.length === 0 && <div className="bg-white rounded-2xl p-8 text-center text-gray-500 shadow-sm">Aucun sponsor</div>}
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {[
+          { label:'Total', value:stats.total, Icon:Users, color:'#5B3DF5', bg:'rgba(91,61,245,0.08)' },
+          { label:'Actifs', value:stats.actifs, Icon:CheckCircle2, color:'#22C55E', bg:'#F0FDF4' },
+          { label:'Suspendus', value:stats.suspendus, Icon:ShieldOff, color:'#EF4444', bg:'#FEF2F2' },
+        ].map(({label,value,Icon,color,bg})=>(
+          <div key={label} style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+            <div style={{background:bg}} className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"><Icon className="w-5 h-5" style={{color}}/></div>
+            <div><p className="text-2xl font-bold text-gray-900">{value}</p><p className="text-xs text-gray-500">{label}</p></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl p-4 mb-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
+            <input type="text" placeholder="Rechercher un sponsor..." value={search} onChange={e=>setSearch(e.target.value)}
+              style={{border:'1px solid #ECECF2'}} className="w-full pl-9 pr-4 py-2 rounded-xl text-sm bg-gray-50 focus:outline-none focus:bg-white"
+              onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+          </div>
+          <button onClick={load} className="text-gray-400 hover:text-gray-600 p-1.5"><RefreshCw className="w-4 h-4"/></button>
+          <span className="text-xs text-gray-400">{filtered.length} résultat{filtered.length!==1?'s':''}</span>
         </div>
       </div>
 
-      {detail && (
-        <div className="w-96 bg-white rounded-2xl p-6 shadow-sm h-fit sticky top-0 max-h-screen overflow-y-auto">
-          <div className="flex justify-between mb-2">
-            <h2 className="text-lg font-bold text-gray-900">{detail.user.firstName} {detail.user.lastName ?? ''}</h2>
-            <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
-          </div>
-          <p className="text-sm text-gray-500 mb-1">{detail.user.phone}</p>
-          {detail.user.email && <p className="text-sm text-gray-400 mb-1">{detail.user.email}</p>}
-          <div className="mb-4">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${detail.user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-              {detail.user.isActive ? 'Actif' : 'Suspendu'}
-            </span>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2 mb-6 flex-wrap">
-            <button onClick={() => { setEditForm({ firstName: detail.user.firstName, lastName: detail.user.lastName ?? '', email: detail.user.email ?? '' }); setEditModal(true); }}
-              disabled={permsLoading || !can('sponsors','write')}
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700">
-              ✏️ Modifier
-            </button>
-            <button onClick={toggleStatus} disabled={permsLoading || !can('sponsors','suspend') || actionSaving}
-              className={`flex-1 px-3 py-1.5 text-sm rounded-lg font-medium ${detail.user.isActive ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
-              {detail.user.isActive ? '⏸ Suspendre' : '▶ Activer'}
-            </button>
-            <button onClick={() => setDeleteConfirm(true)} disabled={permsLoading || !can('sponsors','delete') || actionSaving}
-              className="px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200">
-              🗑 Supprimer
-            </button>
-            <button onClick={() => setResetPwdModal(true)} disabled={permsLoading || !can('sponsors','reset-password')}
-              className={`px-3 py-1.5 text-sm rounded-lg font-medium ${can('sponsors','reset-password') ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
-              🔑 MDP
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-indigo-50 rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold text-indigo-700">{detail.totalTransactions}</p>
-              <p className="text-xs text-indigo-500">Transactions</p>
-            </div>
-            <div className="bg-green-50 rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold text-green-700">{detail.totalVolume.toFixed(0)} MAD</p>
-              <p className="text-xs text-green-500">Volume total</p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase">Bénéficiaires ({detail.beneficiaries.length})</p>
-            {can('beneficiaries','add') && (
-              <button onClick={() => { setBeneModalTab('create'); setAddBeneModal(true); api.get(`/admin/beneficiaries?_t=${Date.now()}`).then(r => setAllBeneficiaries(r.data)); }} className="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded-lg font-medium">+ Ajouter</button>
-            )}
-          </div>
-          <div className="space-y-2 mb-4">
-            {detail.beneficiaries.map((b: any) => (
-              <div key={b.id} className="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
-                <span>{b.user.firstName}</span>
-                <span className="text-gray-400">{b.user.phone}</span>
+      {/* List + Detail */}
+      <div className="flex gap-4" style={{minHeight:480}}>
+        {/* List */}
+        <div style={{width:detail?'40%':'100%',background:'#fff',border:'1px solid #ECECF2',transition:'width 0.2s ease'}} className="rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div style={{borderBottom:'1px solid #ECECF2'}} className="px-4 py-3"><span className="text-sm font-semibold text-gray-700">Liste des sponsors</span></div>
+          <div className="overflow-y-auto flex-1" style={{maxHeight:600}}>
+            {loading ? <div className="flex items-center justify-center h-32"><div style={{borderColor:'#5B3DF5',borderTopColor:'transparent'}} className="w-6 h-6 border-2 rounded-full animate-spin"/></div>
+            : filtered.length===0 ? <div className="flex flex-col items-center justify-center h-32 text-gray-400"><Users className="w-8 h-8 mb-2 opacity-40"/><p className="text-sm">Aucun sponsor trouvé</p></div>
+            : filtered.map(s=>(
+              <div key={s.id} onClick={()=>openDetail(s.id)}
+                style={{background:detail?.id===s.id?'rgba(91,61,245,0.04)':'transparent',borderLeft:detail?.id===s.id?'3px solid #5B3DF5':'3px solid transparent',borderBottom:'1px solid #F3F4F6'}}
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                <div style={{color:'#5B3DF5',background:'rgba(91,61,245,0.08)'}} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                  {s.user.firstName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{s.user.firstName} {s.user.lastName??''}</p>
+                  <p className="text-xs text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3"/>{s.user.phone}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <StatusBadge isActive={s.user.isActive}/>
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span>{s._count.allocations} alloc.</span>
+                    <span>·</span>
+                    <span>{s._count.beneficiaries} bénéf.</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0"/>
               </div>
             ))}
-            {detail.beneficiaries.length === 0 && <p className="text-xs text-gray-400 text-center py-2">Aucun bénéficiaire</p>}
           </div>
+        </div>
 
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase">Allocations ({detail.allocations.length})</p>
-            {can('sponsors','write') && detail.beneficiaries.length > 0 && (
-              <button onClick={() => { setEditAllocTarget(null); setAllocForm({ beneficiaryId: '', category: 'GENERAL', limitAmount: '', expiresAt: '', status: 'ACTIVE' }); setAllocModal(true); }}
-                className="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-2 py-1 rounded-lg font-medium">+ Ajouter</button>
-            )}
-          </div>
-          <div className="space-y-2">
-            {detail.allocations.map((a: any) => (
-              <div key={a.id} className="text-sm bg-gray-50 rounded-lg px-3 py-2">
-                <div className="flex justify-between items-start">
+        {/* Detail */}
+        {detail && (
+          <div style={{width:'60%',background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-sm overflow-hidden flex flex-col">
+            {/* Header */}
+            <div style={{borderBottom:'1px solid #ECECF2'}} className="px-5 py-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div style={{background:'rgba(91,61,245,0.08)',color:'#5B3DF5'}} className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0">
+                    {detail.user.firstName.charAt(0)}
+                  </div>
                   <div>
-                    <span className="font-medium">{a.category}</span>
-                    <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${a.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{a.status}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {can('sponsors','write') && (
-                      <button onClick={() => { setEditAllocTarget(a); setAllocForm({ beneficiaryId: a.beneficiaryId, category: a.category, limitAmount: String(Number(a.limitAmount)), expiresAt: a.expiresAt ? a.expiresAt.slice(0,10) : '', status: a.status }); setAllocModal(true); }}
-                        className="text-blue-500 hover:text-blue-700 text-xs">✏️</button>
-                    )}
-                    {can('sponsors','delete') && (
-                      <button onClick={() => deleteAlloc(a.id)} className="text-red-400 hover:text-red-600 text-xs">🗑</button>
-                    )}
+                    <h2 className="text-base font-bold text-gray-900">{detail.user.firstName} {detail.user.lastName??''}</h2>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-gray-500 flex items-center gap-1"><Phone className="w-3 h-3"/>{detail.user.phone}</span>
+                      {detail.user.email && <><span className="text-xs text-gray-300">·</span><span className="text-xs text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3"/>{detail.user.email}</span></>}
+                    </div>
                   </div>
                 </div>
-                <div className="text-gray-500 mt-1">{Number(a.remainingAmount).toFixed(0)} / {Number(a.limitAmount).toFixed(0)} MAD</div>
-              </div>
-            ))}
-            {detail.allocations.length === 0 && <p className="text-xs text-gray-400 text-center py-2">Aucune allocation</p>}
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {editModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Modifier le sponsor</h2>
-            {([['Prénom *', 'firstName'], ['Nom', 'lastName'], ['Email', 'email']] as const).map(([label, key]) => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                <input type="text" value={editForm[key]}
-                  onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-              </div>
-            ))}
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setEditModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">Annuler</button>
-              <button onClick={submitEdit} disabled={editSaving || !editForm.firstName}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-                {editSaving ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirm */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Confirmer la suppression</h2>
-            <p className="text-sm text-gray-600 mb-6">Le compte sera désactivé. Cette action est réversible.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">Annuler</button>
-              <button onClick={deleteSponsor} disabled={actionSaving}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50">
-                {actionSaving ? '...' : 'Confirmer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Modal */}
-      {createModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Nouveau sponsor</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {([['Prénom *', 'firstName'], ['Nom', 'lastName'], ['Téléphone *', 'phone'], ['Email', 'email']] as const).map(([label, key]) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <input type={key === 'email' ? 'email' : 'text'} value={createForm[key]}
-                    onChange={e => setCreateForm(f => ({ ...f, [key]: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                <div className="flex items-center gap-2">
+                  <StatusBadge isActive={detail.user.isActive}/>
+                  <button onClick={()=>setDetail(null)} className="ml-1 text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
                 </div>
-              ))}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
-                <input type="password" value={createForm.password}
-                  onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-                <select value={createForm.city} onChange={e => setCreateForm(f => ({ ...f, city: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="">Sélectionner une ville…</option>
-                  {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setCreateModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">Annuler</button>
-              <button onClick={submitCreate} disabled={createSaving || !createForm.firstName || !createForm.phone || !createForm.password}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-                {createSaving ? 'Création...' : 'Créer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-
-      {/* Allocation modal */}
-      {allocModal && detail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">{editAllocTarget ? 'Modifier l\'allocation' : 'Nouvelle allocation'}</h2>
-            {!editAllocTarget && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bénéficiaire *</label>
-                <select value={allocForm.beneficiaryId} onChange={e => setAllocForm(f => ({...f, beneficiaryId: e.target.value}))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="">Sélectionner…</option>
-                  {detail.beneficiaries.map((b: any) => (
-                    <option key={b.id} value={b.id}>{b.user.firstName} — {b.user.phone}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {!editAllocTarget && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie *</label>
-                <select value={allocForm.category} onChange={e => setAllocForm(f => ({...f, category: e.target.value}))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  {['GENERAL','PHARMACY','FOOD','CLOTHING','EDUCATION','LEISURE'].map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {editAllocTarget && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-                <select value={allocForm.status} onChange={e => setAllocForm(f => ({...f, status: e.target.value}))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  {['ACTIVE','PAUSED','EXPIRED','EXHAUSTED'].map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Montant limite (MAD) *</label>
-              <input type="number" min="0" value={allocForm.limitAmount} onChange={e => setAllocForm(f => ({...f, limitAmount: e.target.value}))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="ex: 500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expiration (optionnel)</label>
-              <input type="date" value={allocForm.expiresAt} onChange={e => setAllocForm(f => ({...f, expiresAt: e.target.value}))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <button onClick={() => { setAllocModal(false); setEditAllocTarget(null); }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-              <button onClick={saveAlloc} disabled={modalSaving || !allocForm.limitAmount || (!editAllocTarget && !allocForm.beneficiaryId)}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
-                {modalSaving ? 'Enregistrement…' : editAllocTarget ? 'Modifier' : 'Créer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add beneficiary modal */}
-      {addBeneModal && detail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Ajouter un bénéficiaire</h2>
-            <p className="text-sm text-gray-500">Sponsor : {detail.user.firstName}</p>
-
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200">
-              {(['select','create'] as const).map(tab => (
-                <button key={tab} onClick={() => setBeneModalTab(tab)}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${beneModalTab === tab ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                  {tab === 'select' ? '🔍 Sélectionner existant' : '➕ Créer nouveau'}
+              {/* Actions */}
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <button onClick={()=>{setEditForm({firstName:detail.user.firstName,lastName:detail.user.lastName??'',email:detail.user.email??''});setEditModal(true);}}
+                  disabled={permsLoading||!can('sponsors','write')} style={{border:'1px solid #ECECF2'}}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                  <Edit2 className="w-3.5 h-3.5"/>Modifier
                 </button>
-              ))}
+                <button onClick={toggleStatus} disabled={permsLoading||!can('sponsors','suspend')||actionSaving}
+                  style={{background:detail.user.isActive?'#FEF2F2':'#F0FDF4',color:detail.user.isActive?'#EF4444':'#22C55E'}}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40">
+                  {detail.user.isActive ? <><Ban className="w-3.5 h-3.5"/>Suspendre</> : <><Check className="w-3.5 h-3.5"/>Activer</>}
+                </button>
+                <button onClick={()=>setResetPwdModal(true)} disabled={permsLoading||!can('sponsors','reset-password')} style={{border:'1px solid #ECECF2'}}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                  <KeyRound className="w-3.5 h-3.5"/>MDP
+                </button>
+                <button onClick={()=>setDeleteConfirm(true)} disabled={permsLoading||!can('sponsors','delete')||actionSaving}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:'#EF4444'}}>
+                  <Trash2 className="w-3.5 h-3.5"/>Supprimer
+                </button>
+              </div>
             </div>
 
-            {beneModalTab === 'select' ? (
-              <div className="space-y-3">
-                <input type="text" placeholder="Rechercher par nom ou téléphone…"
-                  value={beneSearch} onChange={e => setBeneSearch(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {allBeneficiaries
-                    .filter(b => !detail.beneficiaries.some((db: any) => db.id === b.id))
-                    .filter(b => !beneSearch || `${b.user.firstName} ${b.user.phone}`.toLowerCase().includes(beneSearch.toLowerCase()))
-                    .map(b => (
-                      <button key={b.id} onClick={() => linkBene(b.id)} disabled={modalSaving}
-                        className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition-colors">
-                        <p className="text-sm font-medium text-gray-900">{b.user.firstName} {b.user.lastName ?? ''}</p>
-                        <p className="text-xs text-gray-500">{b.user.phone} · Sponsor actuel : {b.sponsor?.user?.firstName ?? '—'}</p>
-                      </button>
-                    ))}
-                  {allBeneficiaries.filter(b => !detail.beneficiaries.some((db: any) => db.id === b.id)).length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-4">Aucun bénéficiaire disponible</p>
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div style={{background:'rgba(91,61,245,0.05)',border:'1px solid rgba(91,61,245,0.1)'}} className="rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold" style={{color:'#5B3DF5'}}>{detail.totalTransactions}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1"><CreditCard className="w-3 h-3"/>Transactions</p>
+                </div>
+                <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0'}} className="rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-green-700">{Number(detail.totalVolume).toFixed(0)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1"><TrendingUp className="w-3 h-3"/>MAD volume</p>
+                </div>
+              </div>
+
+              {/* Bénéficiaires */}
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div style={{background:'rgba(91,61,245,0.08)'}} className="w-7 h-7 rounded-lg flex items-center justify-center"><Users className="w-4 h-4" style={{color:'#5B3DF5'}}/></div>
+                    <h3 className="text-sm font-semibold text-gray-700">Bénéficiaires ({detail.beneficiaries.length})</h3>
+                  </div>
+                  {can('beneficiaries','add') && (
+                    <button onClick={()=>{setBeneModalTab('create');setAddBeneModal(true);api.get(`/admin/beneficiaries?_t=${Date.now()}`).then(r=>setAllBeneficiaries(r.data));}}
+                      style={{background:'rgba(91,61,245,0.08)',color:'#5B3DF5'}} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-80">
+                      <UserPlus className="w-3.5 h-3.5"/>Ajouter
+                    </button>
                   )}
                 </div>
-                <button onClick={() => setAddBeneModal(false)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
+                <div className="space-y-2">
+                  {detail.beneficiaries.map((b:any)=>(
+                    <div key={b.id} style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="flex items-center justify-between px-3 py-2 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <div style={{color:'#5B3DF5',background:'rgba(91,61,245,0.08)'}} className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">{b.user.firstName.charAt(0)}</div>
+                        <span className="text-sm font-medium text-gray-800">{b.user.firstName} {b.user.lastName??''}</span>
+                      </div>
+                      <span className="text-xs text-gray-400">{b.user.phone}</span>
+                    </div>
+                  ))}
+                  {detail.beneficiaries.length===0 && <p className="text-xs text-gray-400 text-center py-3">Aucun bénéficiaire</p>}
+                </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {[
-                  { label: 'Prénom *', key: 'firstName', type: 'text', placeholder: 'Prénom' },
-                  { label: 'Nom', key: 'lastName', type: 'text', placeholder: 'Nom (optionnel)' },
-                  { label: 'Téléphone *', key: 'phone', type: 'tel', placeholder: '06XXXXXXXX' },
-                  { label: 'Mot de passe *', key: 'password', type: 'password', placeholder: '8 caractères min' },
-                  { label: 'Lien', key: 'relationship', type: 'text', placeholder: 'ex: Fils, Épouse…' },
-                ].map(({ label, key, type, placeholder }) => (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                    <input type={type} placeholder={placeholder}
-                      value={(addBeneForm as any)[key]}
-                      onChange={e => setAddBeneForm(f => ({...f, [key]: e.target.value}))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+
+              {/* Allocations */}
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div style={{background:'rgba(91,61,245,0.08)'}} className="w-7 h-7 rounded-lg flex items-center justify-center"><Tag className="w-4 h-4" style={{color:'#5B3DF5'}}/></div>
+                    <h3 className="text-sm font-semibold text-gray-700">Allocations ({detail.allocations.length})</h3>
                   </div>
-                ))}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-                  <select value={(addBeneForm as any).city ?? ''} onChange={e => setAddBeneForm(f => ({...f, city: e.target.value}))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                    <option value="">Sélectionner une ville…</option>
-                    {MOROCCAN_CITIES.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
+                  {can('sponsors','write') && detail.beneficiaries.length>0 && (
+                    <button onClick={()=>{setEditAllocTarget(null);setAllocForm({beneficiaryId:'',category:'GENERAL',limitAmount:'',expiresAt:'',status:'ACTIVE'});setAllocModal(true);}}
+                      style={{background:'rgba(91,61,245,0.08)',color:'#5B3DF5'}} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-80">
+                      <Plus className="w-3.5 h-3.5"/>Ajouter
+                    </button>
+                  )}
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <button onClick={() => setAddBeneModal(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Annuler</button>
-                  <button onClick={saveBene} disabled={modalSaving || !addBeneForm.firstName || !addBeneForm.phone || !addBeneForm.password}
-                    className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
-                    {modalSaving ? 'Création…' : 'Créer'}
-                  </button>
+                <div className="space-y-2">
+                  {detail.allocations.map((a:any)=>(
+                    <div key={a.id} style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl px-3 py-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-800">{CAT_LABELS[a.category]??a.category}</span>
+                          <AllocBadge status={a.status}/>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {can('sponsors','write') && <button onClick={()=>{setEditAllocTarget(a);setAllocForm({beneficiaryId:a.beneficiaryId,category:a.category,limitAmount:String(Number(a.limitAmount)),expiresAt:a.expiresAt?a.expiresAt.slice(0,10):'',status:a.status});setAllocModal(true);}} className="text-gray-400 hover:text-indigo-500"><Edit2 className="w-3.5 h-3.5"/></button>}
+                          {can('sponsors','delete') && <button onClick={()=>deleteAlloc(a.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>}
+                        </div>
+                      </div>
+                      <div className="mt-1.5">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>{Number(a.remainingAmount).toFixed(0)} MAD restant</span>
+                          <span>{Number(a.limitAmount).toFixed(0)} MAD limite</span>
+                        </div>
+                        <div style={{background:'#ECECF2'}} className="h-1.5 rounded-full overflow-hidden">
+                          <div style={{background:'#5B3DF5',width:`${Math.min(100,(Number(a.remainingAmount)/Number(a.limitAmount))*100)}%`}} className="h-full rounded-full transition-all"/>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {detail.allocations.length===0 && <p className="text-xs text-gray-400 text-center py-3">Aucune allocation</p>}
                 </div>
               </div>
-            )}
+
+              <p className="text-xs text-gray-400 text-center pb-2">Inscrit le {new Date(detail.createdAt).toLocaleDateString('fr-FR')}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Password Reset */}
+    {resetPwdModal && detail && (
+      <PasswordResetModal endpoint={`/admin/sponsors/${detail.id}/reset-password`} name={`${detail.user.firstName} ${detail.user.lastName??''}`.trim()} onClose={()=>setResetPwdModal(false)}/>
+    )}
+
+    {/* Edit Modal */}
+    {editModal && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="flex items-start justify-between"><h2 className="text-base font-bold text-gray-900">Modifier le sponsor</h2><button onClick={()=>setEditModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
+          {([['Prénom *','firstName'],['Nom','lastName'],['Email','email']] as const).map(([label,key])=>(
+            <div key={key}><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
+              <input type={key==='email'?'email':'text'} value={editForm[key]} onChange={e=>setEditForm(f=>({...f,[key]:e.target.value}))}
+                style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+            </div>
+          ))}
+          <div className="flex justify-end gap-3">
+            <button onClick={()=>setEditModal(false)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Annuler</button>
+            <button onClick={submitEdit} disabled={editSaving||!editForm.firstName} style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{editSaving?'Enregistrement...':'Enregistrer'}</button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
+    {/* Delete Confirm */}
+    {deleteConfirm && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <h2 className="text-base font-bold text-gray-900 mb-2">Confirmer la suppression</h2>
+          <p className="text-sm text-gray-500 mb-6">Le compte sera désactivé. Cette action est réversible.</p>
+          <div className="flex justify-end gap-3">
+            <button onClick={()=>setDeleteConfirm(false)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Annuler</button>
+            <button onClick={deleteSponsor} disabled={actionSaving} style={{background:'#EF4444'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{actionSaving?'...':'Confirmer'}</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Create Modal */}
+    {createModal && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="flex items-start justify-between"><div><h2 className="text-base font-bold text-gray-900">Nouveau sponsor</h2><p className="text-sm text-gray-500 mt-0.5">Créer un compte sponsor</p></div><button onClick={()=>setCreateModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
+          <div className="grid grid-cols-2 gap-3">
+            {([['Prénom *','firstName','text'],['Nom','lastName','text'],['Téléphone *','phone','text'],['Email','email','email']] as const).map(([label,key,type])=>(
+              <div key={key}><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
+                <input type={type} value={createForm[key]} onChange={e=>setCreateForm(f=>({...f,[key]:e.target.value}))}
+                  style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+              </div>
+            ))}
+            <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mot de passe * <span className="normal-case font-normal text-gray-400">(8 car. min)</span></label>
+              <input type="password" value={createForm.password} onChange={e=>setCreateForm(f=>({...f,password:e.target.value}))}
+                style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+            </div>
+            <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ville</label>
+              <select value={createForm.city} onChange={e=>setCreateForm(f=>({...f,city:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
+                <option value="">Sélectionner...</option>{MOROCCAN_CITIES.map(v=><option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button onClick={()=>setCreateModal(false)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Annuler</button>
+            <button onClick={submitCreate} disabled={createSaving||!createForm.firstName||!createForm.phone||createForm.password.length<8}
+              style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{createSaving?'Création...':'Créer le sponsor'}</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Allocation Modal */}
+    {allocModal && detail && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="flex items-start justify-between"><h2 className="text-base font-bold text-gray-900">{editAllocTarget?'Modifier l\'allocation':'Nouvelle allocation'}</h2><button onClick={()=>{setAllocModal(false);setEditAllocTarget(null);}} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
+          {!editAllocTarget && <>
+            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Bénéficiaire *</label>
+              <select value={allocForm.beneficiaryId} onChange={e=>setAllocForm(f=>({...f,beneficiaryId:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
+                <option value="">Sélectionner...</option>{detail.beneficiaries.map((b:any)=><option key={b.id} value={b.id}>{b.user.firstName} — {b.user.phone}</option>)}
+              </select>
+            </div>
+            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Catégorie *</label>
+              <select value={allocForm.category} onChange={e=>setAllocForm(f=>({...f,category:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
+                {ALLOC_CATS.map(cat=><option key={cat} value={cat}>{CAT_LABELS[cat]}</option>)}
+              </select>
+            </div>
+          </>}
+          {editAllocTarget && <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Statut</label>
+            <select value={allocForm.status} onChange={e=>setAllocForm(f=>({...f,status:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
+              {['ACTIVE','PAUSED','EXPIRED','EXHAUSTED'].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>}
+          <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Montant limite (MAD) *</label>
+            <input type="number" min="0" value={allocForm.limitAmount} onChange={e=>setAllocForm(f=>({...f,limitAmount:e.target.value}))} placeholder="ex: 500"
+              style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+          </div>
+          <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Expiration (optionnel)</label>
+            <input type="date" value={allocForm.expiresAt} onChange={e=>setAllocForm(f=>({...f,expiresAt:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button onClick={()=>{setAllocModal(false);setEditAllocTarget(null);}} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Annuler</button>
+            <button onClick={saveAlloc} disabled={modalSaving||!allocForm.limitAmount||(!editAllocTarget&&!allocForm.beneficiaryId)}
+              style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{modalSaving?'Enregistrement...':editAllocTarget?'Modifier':'Créer'}</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Add Beneficiary Modal */}
+    {addBeneModal && detail && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="flex items-start justify-between"><div><h2 className="text-base font-bold text-gray-900">Ajouter un bénéficiaire</h2><p className="text-sm text-gray-500 mt-0.5">Sponsor : {detail.user.firstName}</p></div><button onClick={()=>setAddBeneModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
+          <div style={{borderBottom:'1px solid #ECECF2'}} className="flex">
+            {(['select','create'] as const).map(tab=>(
+              <button key={tab} onClick={()=>setBeneModalTab(tab)}
+                style={{borderBottom:beneModalTab===tab?'2px solid #5B3DF5':'2px solid transparent',color:beneModalTab===tab?'#5B3DF5':'#6B7280'}}
+                className="px-4 py-2 text-sm font-medium -mb-px">
+                {tab==='select'?'Sélectionner existant':'Créer nouveau'}
+              </button>
+            ))}
+          </div>
+          {beneModalTab==='select' ? (
+            <div className="space-y-3">
+              <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
+                <input type="text" placeholder="Rechercher par nom ou téléphone..." value={beneSearch} onChange={e=>setBeneSearch(e.target.value)}
+                  style={{border:'1px solid #ECECF2'}} className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none bg-gray-50"/>
+              </div>
+              <div className="max-h-56 overflow-y-auto space-y-2">
+                {allBeneficiaries.filter(b=>!detail.beneficiaries.some((db:any)=>db.id===b.id)).filter(b=>!beneSearch||`${b.user.firstName} ${b.user.phone}`.toLowerCase().includes(beneSearch.toLowerCase())).map(b=>(
+                  <button key={b.id} onClick={()=>linkBene(b.id)} disabled={modalSaving}
+                    style={{border:'1px solid #ECECF2'}} className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 hover:bg-indigo-50 transition-colors">
+                    <p className="text-sm font-medium text-gray-900">{b.user.firstName} {b.user.lastName??''}</p>
+                    <p className="text-xs text-gray-400">{b.user.phone}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {[{label:'Prénom *',key:'firstName',type:'text'},{label:'Nom',key:'lastName',type:'text'},{label:'Téléphone *',key:'phone',type:'tel'},{label:'Mot de passe *',key:'password',type:'password'},{label:'Lien',key:'relationship',type:'text'}].map(({label,key,type})=>(
+                <div key={key}><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</label>
+                  <input type={type} value={(addBeneForm as any)[key]} onChange={e=>setAddBeneForm(f=>({...f,[key]:e.target.value}))}
+                    style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/>
+                </div>
+              ))}
+              <div className="flex justify-end gap-3 pt-1">
+                <button onClick={()=>setAddBeneModal(false)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Annuler</button>
+                <button onClick={saveBene} disabled={modalSaving||!addBeneForm.firstName||!addBeneForm.phone||!addBeneForm.password}
+                  style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{modalSaving?'Création...':'Créer'}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
     </>
   );
 }
