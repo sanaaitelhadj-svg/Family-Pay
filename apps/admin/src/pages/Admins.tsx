@@ -4,7 +4,7 @@ import { Users, Shield, Plus, RefreshCw, CheckCircle2, XCircle, X, ChevronRight,
 
 interface Role {
   id: string; name: string; description?: string;
-  permissions: Record<string,{read:boolean;write:boolean;actions:string[]}>;
+  permissions: Record<string,{read:boolean;write:boolean}>;
   isActive: boolean;
 }
 interface Admin {
@@ -18,62 +18,64 @@ const PAGE_LABELS: Record<string,string> = {
   commissions:'Commissions', transactions:'Transactions', fraud:'Revue de fraude',
   sponsors:'Sponsors', beneficiaries:'Bénéficiaires', admins:'Administrateurs',
 };
-const ACTIONS = ['approve','add','reject','delete','suspend','reset-password'];
-const ACTION_LABELS: Record<string,string> = {
-  approve:'Approuver', add:'Ajouter', reject:'Rejeter',
-  delete:'Supprimer', suspend:'Suspendre', 'reset-password':'Réinit. MDP',
-};
 
-function emptyPerms(): Record<string,{read:boolean;write:boolean;actions:string[]}> {
-  return Object.fromEntries(PAGES.map(p=>[p,{read:false,write:false,actions:[] as string[]}]));
+
+function emptyPerms(): Record<string,{read:boolean;write:boolean}> {
+  return Object.fromEntries(PAGES.map(p=>[p,{read:false,write:false}]));
 }
 
 function PermMatrix({ perms, onChange, disabled }: {
-  perms: Record<string,{read:boolean;write:boolean;actions:string[]}>;
+  perms: Record<string,{read:boolean;write:boolean}>;
   onChange: (p: typeof perms) => void; disabled?: boolean;
 }) {
   const toggle = (page:string, field:'read'|'write') => {
     if(disabled) return;
-    const cur = perms[page]??{read:false,write:false,actions:[]};
+    const cur = perms[page]??{read:false,write:false};
     onChange({...perms,[page]:{...cur,[field]:!cur[field]}});
   };
-  const toggleAction = (page:string, action:string) => {
+  const allRead  = PAGES.every(p=>(perms[p]??{read:false}).read);
+  const allWrite = PAGES.every(p=>(perms[p]??{write:false}).write);
+  const toggleAll = (field:'read'|'write', val:boolean) => {
     if(disabled) return;
-    const cur = perms[page]??{read:false,write:false,actions:[]};
-    const actions = cur.actions.includes(action)?cur.actions.filter(a=>a!==action):[...cur.actions,action];
-    onChange({...perms,[page]:{...cur,actions}});
+    const next = {...perms};
+    PAGES.forEach(p=>{ next[p]={...(next[p]??{read:false,write:false}),[field]:val}; });
+    onChange(next);
   };
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs border-collapse">
         <thead>
           <tr style={{background:'#F8F8FC'}}>
-            <th className="text-left px-3 py-2 font-semibold text-gray-500 rounded-tl-lg">Page</th>
-            <th className="px-3 py-2 font-semibold text-gray-500 text-center">Lecture</th>
-            <th className="px-3 py-2 font-semibold text-gray-500 text-center">Écriture</th>
-            {ACTIONS.map(a=><th key={a} className="px-2 py-2 font-semibold text-gray-500 text-center">{ACTION_LABELS[a]}</th>)}
+            <th className="text-left px-3 py-2 font-semibold text-gray-500">Page</th>
+            <th className="px-6 py-2 font-semibold text-gray-500 text-center">Lecture</th>
+            <th className="px-6 py-2 font-semibold text-gray-500 text-center">Écriture</th>
+          </tr>
+          <tr style={{background:'#F0EDFF',borderBottom:'2px solid #ECECF2'}}>
+            <td className="px-3 py-2 text-xs font-bold" style={{color:'#5B3DF5'}}>Tout sélectionner</td>
+            <td className="px-6 py-2 text-center">
+              <input type="checkbox" checked={allRead} onChange={e=>toggleAll('read',e.target.checked)} disabled={disabled}
+                className="w-4 h-4 rounded cursor-pointer" style={{accentColor:'#5B3DF5'}}/>
+            </td>
+            <td className="px-6 py-2 text-center">
+              <input type="checkbox" checked={allWrite} onChange={e=>toggleAll('write',e.target.checked)} disabled={disabled}
+                className="w-4 h-4 rounded cursor-pointer" style={{accentColor:'#5B3DF5'}}/>
+            </td>
           </tr>
         </thead>
         <tbody>
           {PAGES.map((page,i)=>{
-            const p = perms[page]??{read:false,write:false,actions:[]};
+            const p = perms[page]??{read:false,write:false};
             return (
               <tr key={page} style={{background:i%2===0?'#fff':'#FAFAFA',borderBottom:'1px solid #ECECF2'}}>
                 <td className="px-3 py-2 font-medium text-gray-700">{PAGE_LABELS[page]}</td>
-                <td className="px-3 py-2 text-center">
+                <td className="px-6 py-2 text-center">
                   <input type="checkbox" checked={p.read} onChange={()=>toggle(page,'read')} disabled={disabled}
                     className="w-4 h-4 rounded cursor-pointer" style={{accentColor:'#5B3DF5'}}/>
                 </td>
-                <td className="px-3 py-2 text-center">
+                <td className="px-6 py-2 text-center">
                   <input type="checkbox" checked={p.write} onChange={()=>toggle(page,'write')} disabled={disabled}
                     className="w-4 h-4 rounded cursor-pointer" style={{accentColor:'#5B3DF5'}}/>
                 </td>
-                {ACTIONS.map(a=>(
-                  <td key={a} className="px-2 py-2 text-center">
-                    <input type="checkbox" checked={p.actions.includes(a)} onChange={()=>toggleAction(page,a)} disabled={disabled}
-                      className="w-4 h-4 rounded cursor-pointer" style={{accentColor:'#5B3DF5'}}/>
-                  </td>
-                ))}
               </tr>
             );
           })}
@@ -99,7 +101,7 @@ export default function Admins() {
 
   // Forms
   const [adminForm, setAdminForm] = useState({firstName:'',lastName:'',phone:'',email:'',password:''});
-  const [roleForm,  setRoleForm]  = useState({name:'',description:'',permissions:emptyPerms()});
+  const [roleForm,  setRoleForm]  = useState<{name:string;description:string;permissions:Record<string,{read:boolean;write:boolean}>}>({name:'',description:'',permissions:emptyPerms()});
   const [newPwd,    setNewPwd]    = useState('');
 
   const loadAll = useCallback(()=>{
