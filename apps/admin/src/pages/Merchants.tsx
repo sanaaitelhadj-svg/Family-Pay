@@ -120,7 +120,7 @@ export default function Merchants() {
   };
   const reject = async () => { if(!rejectModal||!rejectReason.trim()) return; setSaving(true); try { await api.post(`/admin/merchants/${rejectModal.id}/reject`,{reason:rejectReason}); await fetchMerchants(); if(selected?.id===rejectModal.id)setSelected(null); setRejectModal(null); setRejectReason(''); } catch(e){console.error(e);} finally{setSaving(false);} };
   const toggleActive = async (m: Merchant) => { try { await api.post(m.activationStatus==='ACTIVE'?`/admin/merchants/${m.id}/suspend`:`/admin/merchants/${m.id}/activate`,{}); await fetchMerchants(); } catch(e){console.error(e);} };
-  const submitCreate = async () => { if(!createForm.businessName||!createForm.phone||!createForm.password||!createForm.city) return; setCreateSaving(true); try { await api.post('/admin/merchants',createForm); await fetchMerchants(); setCreateModal(false); setCreateForm(defaultCreateForm); } catch(e){console.error(e);} finally{setCreateSaving(false);} };
+  const submitCreate = async () => { if(!createForm.businessName||!createForm.phone||!createForm.password||!createForm.city) return; setCreateSaving(true); try { await api.post('/admin/merchants/create',createForm); await fetchMerchants(); setCreateModal(false); setCreateForm(defaultCreateForm); } catch(e){console.error(e);} finally{setCreateSaving(false);} };
 
   const filtered = merchants.filter(m => {
     const q=search.toLowerCase();
