@@ -121,7 +121,9 @@ export default function Layout() {
 
       {/* ── Main ── */}
       <main className="flex-1 overflow-auto ml-56" style={{ background: '#F8F8FC' }}>
-        <Outlet />
+        <div className="h-full p-6">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
