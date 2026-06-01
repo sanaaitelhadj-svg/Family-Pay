@@ -1,7 +1,22 @@
-/* Global: visually disable all disabled buttons */
-button:disabled,
-button[disabled] {
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  background-color: #F8F8FC;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button:disabled, button[disabled] {
   opacity: 0.4 !important;
   cursor: not-allowed !important;
   pointer-events: none !important;
 }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+::selection { background: rgba(91,61,245,0.15); }
