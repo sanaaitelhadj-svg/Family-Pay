@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "Merchant" ADD COLUMN IF NOT EXISTS "email" TEXT;
+ALTER TABLE "merchants" ADD COLUMN IF NOT EXISTS "email" TEXT;
