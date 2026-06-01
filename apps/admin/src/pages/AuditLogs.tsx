@@ -1,407 +1,231 @@
 import { useEffect, useState, useCallback } from 'react';
+import { api } from '../api';
+import { Search, RefreshCw, FileText, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, User, Clock, Shield, AlertTriangle } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL ?? '';
-
-interface AdminInfo {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  adminRole?: { name: string } | null;
+interface AdminInfo { id: string; firstName: string; lastName: string; email: string; adminRole?: { name: string } | null; }
+interface AuditLog {
+  id: string; action: string; result: string; entityType: string; entityId: string;
+  actorId: string | null; actorRole: string | null; admin?: AdminInfo | null;
+  previousData: Record<string,unknown> | null; newData: Record<string,unknown> | null;
+  metadata: Record<string,unknown> | null; ipAddress: string | null; deviceInfo: string | null; createdAt: string;
 }
 
-interface AuditLogEntry {
-  id: string;
-  action: string;
-  result: string;
-  entityType: string;
-  entityId: string;
-  actorId: string | null;
-  actorRole: string | null;
-  admin?: AdminInfo | null;
-  previousData: Record<string, unknown> | null;
-  newData: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-  ipAddress: string | null;
-  deviceInfo: string | null;
-  createdAt: string;
-}
-
-const ACTION_COLORS: Record<string, string> = {
-  MERCHANT_ACTIVATED:       'bg-green-100  text-green-800',
-  MERCHANT_REJECTED:        'bg-red-100    text-red-800',
-  MERCHANT_KYC_APPROVED:    'bg-green-100  text-green-800',
-  MERCHANT_KYC_REJECTED:    'bg-red-100    text-red-800',
-  MERCHANT_SUSPENDED:       'bg-yellow-100 text-yellow-800',
-  MERCHANT_REGISTERED:      'bg-blue-100   text-blue-800',
-  ADMIN_CREATED:            'bg-purple-100 text-purple-800',
-  ADMIN_DELETED:            'bg-red-100    text-red-800',
-  USER_LOGGED_IN:           'bg-gray-100   text-gray-600',
-  USER_VERIFIED:            'bg-teal-100   text-teal-800',
-  TRANSACTION_COMPLETED:    'bg-green-100  text-green-800',
-  AUTHORIZATION_APPROVED:   'bg-green-100  text-green-800',
-  AUTHORIZATION_REJECTED:   'bg-red-100    text-red-800',
-  AUTHORIZATION_PENDING_REVIEW: 'bg-yellow-100 text-yellow-800',
+const ACTION_COLOR: Record<string,{color:string;bg:string}> = {
+  MERCHANT_ACTIVATED:     {color:'#16A34A',bg:'#DCFCE7'},
+  MERCHANT_KYC_APPROVED:  {color:'#16A34A',bg:'#DCFCE7'},
+  MERCHANT_SUSPENDED:     {color:'#D97706',bg:'#FEF3C7'},
+  MERCHANT_REJECTED:      {color:'#DC2626',bg:'#FEE2E2'},
+  MERCHANT_KYC_REJECTED:  {color:'#DC2626',bg:'#FEE2E2'},
+  SPONSOR_ACTIVATED:      {color:'#16A34A',bg:'#DCFCE7'},
+  SPONSOR_SUSPENDED:      {color:'#D97706',bg:'#FEF3C7'},
+  SPONSOR_DELETED:        {color:'#DC2626',bg:'#FEE2E2'},
+  SPONSOR_UPDATED:        {color:'#0EA5E9',bg:'#E0F2FE'},
+  BENEFICIARY_ACTIVATED:  {color:'#16A34A',bg:'#DCFCE7'},
+  BENEFICIARY_SUSPENDED:  {color:'#D97706',bg:'#FEF3C7'},
+  BENEFICIARY_DELETED:    {color:'#DC2626',bg:'#FEE2E2'},
+  BENEFICIARY_UPDATED:    {color:'#0EA5E9',bg:'#E0F2FE'},
+  FRAUD_REVIEW_APPROVED:  {color:'#16A34A',bg:'#DCFCE7'},
+  FRAUD_REVIEW_REJECTED:  {color:'#DC2626',bg:'#FEE2E2'},
+  ADMIN_CREATED:          {color:'#7C3AED',bg:'#EDE9FF'},
+  ADMIN_DELETED:          {color:'#DC2626',bg:'#FEE2E2'},
+  USER_LOGGED_IN:         {color:'#6B7280',bg:'#F3F4F6'},
 };
 
+const ENTITY_TYPES = ['Merchant','Sponsor','Beneficiary','Authorization','Transaction','Admin','User'];
+
 function ActionBadge({ action }: { action: string }) {
-  const cls = ACTION_COLORS[action] ?? 'bg-gray-100 text-gray-600';
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${cls}`}>
-      {action.replace(/_/g, ' ')}
-    </span>
-  );
+  const cfg = ACTION_COLOR[action] || {color:'#5B3DF5',bg:'#EDE9FF'};
+  const label = action.replace(/_/g,' ').toLowerCase().replace(/^\w/,c=>c.toUpperCase());
+  return <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold truncate max-w-[180px]" style={{color:cfg.color,background:cfg.bg}} title={label}>{label}</span>;
 }
 
 function ResultBadge({ result }: { result: string }) {
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-      result === 'SUCCESS' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-    }`}>
-      {result === 'SUCCESS' ? '✓ Succès' : '✗ Échec'}
-    </span>
-  );
+  if (result === 'SUCCESS') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold" style={{color:'#16A34A',background:'#DCFCE7'}}><CheckCircle2 className="w-3 h-3"/>OK</span>;
+  if (result === 'FAILURE') return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold" style={{color:'#DC2626',background:'#FEE2E2'}}><XCircle className="w-3 h-3"/>Échec</span>;
+  return <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">{result}</span>;
 }
 
-function JsonBlock({ data, label }: { data: Record<string, unknown> | null; label: string }) {
-  if (!data || Object.keys(data).length === 0) return <span className="text-gray-400 italic">—</span>;
+function JsonBlock({ data, label }: { data: Record<string,unknown>|null; label: string }) {
+  if (!data || Object.keys(data).length === 0) return null;
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
-      <pre className="bg-gray-50 border rounded p-2 text-xs overflow-auto max-h-40 text-gray-700">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{label}</p>
+      <pre className="text-xs rounded-xl p-3 overflow-x-auto" style={{background:'#F8F8FC',border:'1px solid #ECECF2',color:'#374151',fontFamily:'monospace'}}>
         {JSON.stringify(data, null, 2)}
       </pre>
     </div>
   );
 }
 
-
-const FIELD_LABELS: Record<string, string> = {
-  firstName: 'Prénom', lastName: 'Nom', email: 'Email', phone: 'Téléphone',
-  city: 'Ville', category: 'Catégorie', businessName: 'Raison sociale',
-  isActive: 'Actif', status: 'Statut', amount: 'Montant', limitAmount: 'Limite',
-  reason: 'Raison', billingType: 'Facturation',
-};
-
-const META_LABELS: Record<string, string> = {
-  entityName: 'Nom entité', sponsorName: 'Sponsor', beneficiaryName: 'Bénéficiaire',
-  businessName: 'Raison sociale', category: 'Catégorie', limitAmount: 'Montant alloué',
-  fraudScore: 'Score fraude', adminReason: 'Raison admin', reason: 'Raison',
-  phone: 'Téléphone', pspTransactionId: 'ID PSP',
-};
-
-function MetadataDisplay({ data }: { data: Record<string, unknown> | null }) {
-  if (!data) return null;
-  const entries = Object.entries(data).filter(([, v]) => typeof v !== 'object' || v === null);
-  if (entries.length === 0) return null;
-  return (
-    <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Contexte</p>
-      <div className="grid grid-cols-2 gap-2">
-        {entries.map(([key, value]) => (
-          <div key={key} className="bg-indigo-50 rounded-lg px-3 py-2">
-            <p className="text-xs text-indigo-400 mb-0.5">{META_LABELS[key] ?? key}</p>
-            <p className="text-sm font-semibold text-indigo-900 break-all">{String(value)}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function DiffView({ previous, next, meta }: { previous: Record<string, unknown> | null; next: Record<string, unknown> | null; meta?: Record<string, unknown> | null }) {
-  const prev = previous ?? (meta?.['before'] as Record<string, unknown> | null ?? null);
-  const nxt  = next  ?? (meta?.['after']  as Record<string, unknown> | null ?? null);
-  if (!prev && !nxt) return null;
-  const allKeys = [...new Set([...Object.keys(prev ?? {}), ...Object.keys(nxt ?? {})])];
-  if (allKeys.length === 0) return null;
-  return (
-    <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Modifications</p>
-      <div className="rounded-xl overflow-hidden border border-gray-200">
-        <div className="grid grid-cols-2 divide-x divide-gray-200">
-          <div className="bg-red-50 px-3 py-3">
-            <p className="text-xs font-bold text-red-500 mb-2">Avant</p>
-            <div className="space-y-2">
-              {allKeys.map(key => (prev ?? {})[key] !== undefined ? (
-                <div key={key}>
-                  <p className="text-xs text-red-400">{FIELD_LABELS[key] ?? key}</p>
-                  <p className="text-sm font-semibold text-red-800 break-all">
-                    {typeof (prev ?? {})[key] === 'boolean' ? ((prev ?? {})[key] ? 'Oui' : 'Non') : String((prev ?? {})[key])}
-                  </p>
-                </div>
-              ) : <div key={key} className="opacity-0 h-8" />)}
-            </div>
-          </div>
-          <div className="bg-green-50 px-3 py-3">
-            <p className="text-xs font-bold text-green-500 mb-2">Après</p>
-            <div className="space-y-2">
-              {allKeys.map(key => (nxt ?? {})[key] !== undefined ? (
-                <div key={key}>
-                  <p className="text-xs text-green-400">{FIELD_LABELS[key] ?? key}</p>
-                  <p className="text-sm font-semibold text-green-800 break-all">
-                    {typeof (nxt ?? {})[key] === 'boolean' ? ((nxt ?? {})[key] ? 'Oui' : 'Non') : String((nxt ?? {})[key])}
-                  </p>
-                </div>
-              ) : <div key={key} className="opacity-0 h-8" />)}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DetailModal({ log, onClose }: { log: AuditLogEntry; onClose: () => void }) {
-  const adminName = log.admin
-    ? (log.admin.firstName ? `${log.admin.firstName} ${log.admin.lastName ?? ''}` : log.admin.email)
-    : log.actorId ? `ID: ${log.actorId.slice(0, 8)}…` : null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-           onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Détail de l'événement</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {new Date(log.createdAt).toLocaleString('fr-FR', {
-                day: '2-digit', month: 'long', year: 'numeric',
-                hour: '2-digit', minute: '2-digit', second: '2-digit',
-              })}
-            </p>
-          </div>
-          <button onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
-        </div>
-
-        <div className="px-6 py-4 space-y-5">
-          {/* Action + Result */}
-          <div className="flex flex-wrap gap-3 items-center">
-            <ActionBadge action={log.action} />
-            <ResultBadge result={log.result} />
-          </div>
-
-          {/* Grid info */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Entité concernée</p>
-              <p className="text-gray-700 font-medium">
-                {log.entityType}
-                {(log.metadata as Record<string,unknown> | null)?.entityName
-                  ? <span className="ml-1 text-gray-500">— {String((log.metadata as Record<string,unknown>).entityName)}</span>
-                  : null}
-              </p>
-              <p className="text-gray-400 font-mono text-xs break-all">{log.entityId}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Auteur de l'action</p>
-              {adminName ? (
-                <>
-                  <p className="text-gray-700 font-medium">{adminName}</p>
-                  {log.admin?.email && <p className="text-gray-400 text-xs">{log.admin.email}</p>}
-                  {log.admin?.adminRole && (
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium">
-                      {log.admin.adminRole.name}
-                    </span>
-                  )}
-                  {!log.admin?.adminRole && (
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-orange-100 text-orange-700 text-xs font-medium">
-                      ⭐ Super Admin
-                    </span>
-                  )}
-                </>
-              ) : (
-                <p className="text-gray-400 italic text-sm">Système (automatique)</p>
-              )}
-            </div>
-            {log.ipAddress && (
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Adresse IP</p>
-                <p className="text-gray-700 font-mono text-sm">{log.ipAddress}</p>
-              </div>
-            )}
-            {log.deviceInfo && (
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Appareil</p>
-                <p className="text-gray-600 text-xs">{log.deviceInfo}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Context + Diff */}
-          <div className="space-y-4">
-            <MetadataDisplay data={log.metadata as Record<string, unknown> | null} />
-            <DiffView previous={log.previousData} next={log.newData} meta={log.metadata as Record<string, unknown> | null} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+function fmtDate(d: string) { return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
 export default function AuditLogs() {
-  const [logs,    setLogs]    = useState<AuditLogEntry[]>([]);
-  const [total,   setTotal]   = useState(0);
-  const [page,    setPage]    = useState(1);
+  const [logs, setLogs]       = useState<AuditLog[]>([]);
+  const [total, setTotal]     = useState(0);
+  const [page, setPage]       = useState(1);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
-  const [search,  setSearch]  = useState('');
-  const [entity,  setEntity]  = useState('');
-  const [result,  setResult]  = useState('');
-  const [selected, setSelected] = useState<AuditLogEntry | null>(null);
-  const limit = 50;
+  const [detail, setDetail]   = useState<AuditLog|null>(null);
+  const [search, setSearch]   = useState('');
+  const [entity, setEntity]   = useState('');
+  const [result, setResult]   = useState('');
+  const LIMIT = 50;
 
-  const fetchLogs = useCallback(async () => {
+  const load = useCallback(() => {
     setLoading(true);
-    setError('');
-    try {
-      const token = localStorage.getItem('admin_token');
-      const params = new URLSearchParams({
-        page: String(page), limit: String(limit), _t: String(Date.now()),
-        ...(search ? { action: search } : {}),
-        ...(entity ? { entity }         : {}),
-        ...(result ? { result }         : {}),
-      });
-      const res = await fetch(`${API}/admin/audit-logs?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
-      const data = await res.json();
-      setLogs(data.logs ?? []);
-      setTotal(data.total ?? 0);
-    } catch (e: unknown) {
-      setError((e as Error).message ?? 'Erreur inconnue');
-    } finally {
-      setLoading(false);
-    }
+    const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
+    if (search) params.set('action', search);
+    if (entity) params.set('entity', entity);
+    if (result) params.set('result', result);
+    api.get(`/admin/audit-logs?${params}`).then(r => {
+      setLogs(r.data.logs); setTotal(r.data.total);
+    }).finally(() => setLoading(false));
   }, [page, search, entity, result]);
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  useEffect(() => { setPage(1); }, [search, entity, result]);
+  useEffect(() => { load(); }, [load]);
 
-  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const pages = Math.ceil(total / LIMIT);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {selected && <DetailModal log={selected} onClose={() => setSelected(null)} />}
-
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {total} entrée{total !== 1 ? 's' : ''} • Journaux immuables
-        </p>
+    <div className="h-full flex flex-col" style={{fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold" style={{color:'#1A1040'}}>Logs d'audit</h1>
+          <p className="text-sm text-gray-400 mt-0.5">{total.toLocaleString('fr-FR')} entrées enregistrées</p>
+        </div>
+        <button onClick={load} style={{border:'1px solid #ECECF2'}} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-50">
+          <RefreshCw className="w-4 h-4"/><span>Actualiser</span>
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <input type="text" placeholder="Action (ex: MERCHANT_ACTIVATED)"
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="border rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-orange-400"
-        />
-        <select value={entity} onChange={e => { setEntity(e.target.value); setPage(1); }}
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-          <option value="">Toutes les entités</option>
-          <option value="Merchant">Marchand</option>
-          <option value="User">Utilisateur</option>
-          <option value="Transaction">Transaction</option>
-          <option value="Authorization">Autorisation</option>
-          <option value="Allocation">Allocation</option>
-          <option value="Sponsor">Sponsor</option>
+      <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl p-3 mb-4 flex items-center gap-3 shadow-sm">
+        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:'#F8F8FC'}}>
+          <Search className="w-4 h-4 text-gray-400 flex-shrink-0"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher une action (ex: MERCHANT, FRAUD…)"
+            className="flex-1 bg-transparent text-sm outline-none text-gray-700 placeholder-gray-400"/>
+          {search && <button onClick={()=>setSearch('')}><X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600"/></button>}
+        </div>
+        <select value={entity} onChange={e=>setEntity(e.target.value)} style={{border:'1px solid #ECECF2'}} className="rounded-xl px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none">
+          <option value="">Toutes entités</option>
+          {ENTITY_TYPES.map(e=><option key={e} value={e}>{e}</option>)}
         </select>
-        <select value={result} onChange={e => { setResult(e.target.value); setPage(1); }}
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+        <select value={result} onChange={e=>setResult(e.target.value)} style={{border:'1px solid #ECECF2'}} className="rounded-xl px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none">
           <option value="">Tous résultats</option>
           <option value="SUCCESS">Succès</option>
           <option value="FAILURE">Échec</option>
         </select>
-        <button onClick={() => { setSearch(''); setEntity(''); setResult(''); setPage(1); }}
-          className="text-sm text-gray-500 hover:text-gray-700 underline">
-          Réinitialiser
-        </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : logs.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">📋</p>
-          <p className="text-lg font-medium">Aucun log trouvé</p>
-          <p className="text-sm mt-1">Les actions admin apparaîtront ici automatiquement.</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Date</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Action</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Résultat</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Entité</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Admin</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Rôle</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">IP</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {logs.map(log => (
-                <tr key={log.id}
-                  className="hover:bg-orange-50 cursor-pointer transition-colors"
-                  onClick={() => setSelected(log)}
-                  title="Cliquer pour voir les détails">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
-                    {new Date(log.createdAt).toLocaleString('fr-FR', {
-                      day: '2-digit', month: '2-digit', year: '2-digit',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </td>
-                  <td className="px-4 py-3"><ActionBadge action={log.action} /></td>
-                  <td className="px-4 py-3"><ResultBadge result={log.result} /></td>
-                  <td className="px-4 py-3 text-gray-600">{log.entityType}</td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {log.admin
-                      ? (log.admin.firstName ? `${log.admin.firstName} ${log.admin.lastName ?? ''}` : log.admin.email)
-                      : log.actorId
-                        ? <span className="text-gray-400 font-mono text-xs">{log.actorId.slice(0, 8)}…</span>
-                        : <span className="text-gray-400 italic text-xs">Système</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    {log.admin?.adminRole
-                      ? <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium">{log.admin.adminRole.name}</span>
-                      : log.admin
-                        ? <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700 text-xs font-medium">⭐ Super Admin</span>
-                        : <span className="text-gray-400 text-xs">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 font-mono text-xs">
-                    {log.ipAddress ?? '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1.5 text-sm rounded border disabled:opacity-40 hover:bg-white">
-                ← Précédent
+      {/* Main */}
+      <div className="flex-1 flex gap-4 min-h-0">
+        {/* List */}
+        <div style={{background:'#fff',border:'1px solid #ECECF2',flex:detail?'0 0 55%':'1'}} className="rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="grid gap-3 px-4 py-3 border-b text-xs font-semibold text-gray-400 uppercase tracking-wide" style={{gridTemplateColumns:'2fr 1fr 1fr 1fr',borderColor:'#ECECF2'}}>
+            <span>Action</span><span>Entité</span><span>Résultat</span><span>Date</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center h-32 text-gray-400"><RefreshCw className="w-5 h-5 animate-spin mr-2"/>Chargement…</div>
+            ) : logs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                <FileText className="w-8 h-8 mb-2 opacity-40"/><p className="text-sm">Aucun log trouvé</p>
+              </div>
+            ) : logs.map(log => (
+              <button key={log.id} onClick={()=>setDetail(detail?.id===log.id?null:log)} className="w-full text-left border-b hover:bg-gray-50 transition-colors"
+                style={{borderColor:'#ECECF2',background:detail?.id===log.id?'#F5F3FF':undefined}}>
+                <div className="grid gap-3 px-4 py-3 items-center" style={{gridTemplateColumns:'2fr 1fr 1fr 1fr'}}>
+                  <div className="flex flex-col gap-1">
+                    <ActionBadge action={log.action}/>
+                    {log.admin && <span className="text-xs text-gray-400">{log.admin.firstName} {log.admin.lastName||''}</span>}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700">{log.entityType}</p>
+                    <p className="text-xs text-gray-400 font-mono truncate">{log.entityId.slice(0,8)}…</p>
+                  </div>
+                  <ResultBadge result={log.result}/>
+                  <div>
+                    <p className="text-xs text-gray-600">{new Date(log.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</p>
+                    <p className="text-xs text-gray-400">{new Date(log.createdAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</p>
+                  </div>
+                </div>
               </button>
-              <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="px-3 py-1.5 text-sm rounded border disabled:opacity-40 hover:bg-white">
-                Suivant →
+            ))}
+          </div>
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-t" style={{borderColor:'#ECECF2'}}>
+            <span className="text-xs text-gray-400">{total.toLocaleString('fr-FR')} entrées · page {page}/{pages||1}</span>
+            <div className="flex items-center gap-1">
+              <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1}
+                style={{border:'1px solid #ECECF2'}} className="p-1.5 rounded-lg disabled:opacity-40 hover:bg-gray-50">
+                <ChevronLeft className="w-4 h-4 text-gray-600"/>
+              </button>
+              <button onClick={()=>setPage(p=>Math.min(pages,p+1))} disabled={page>=pages}
+                style={{border:'1px solid #ECECF2'}} className="p-1.5 rounded-lg disabled:opacity-40 hover:bg-gray-50">
+                <ChevronRight className="w-4 h-4 text-gray-600"/>
               </button>
             </div>
-          )}
+          </div>
         </div>
-      )}
+
+        {/* Detail */}
+        {detail && (
+          <div style={{background:'#fff',border:'1px solid #ECECF2',flex:'0 0 45%'}} className="rounded-2xl shadow-sm flex flex-col overflow-hidden">
+            <div className="flex items-start justify-between p-5 border-b" style={{borderColor:'#ECECF2'}}>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Détail entrée</p>
+                <ActionBadge action={detail.action}/>
+              </div>
+              <button onClick={()=>setDetail(null)} className="text-gray-400 hover:text-gray-600 p-1 ml-2"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Header info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-1">Résultat</p>
+                  <ResultBadge result={detail.result}/>
+                </div>
+                <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-1">Entité</p>
+                  <p className="text-sm font-semibold text-gray-800">{detail.entityType}</p>
+                </div>
+              </div>
+
+              {/* Actor */}
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-2xl p-4">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><User className="w-3.5 h-3.5"/>Acteur</p>
+                {detail.admin ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{background:'#5B3DF5'}}>
+                      {detail.admin.firstName[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{detail.admin.firstName} {detail.admin.lastName||''}</p>
+                      <p className="text-xs text-gray-400">{detail.admin.email} {detail.admin.adminRole?`· ${detail.admin.adminRole.name}`:''}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Système {detail.actorRole ? `(${detail.actorRole})` : ''}</p>
+                )}
+              </div>
+
+              {/* Date + IP */}
+              <div style={{border:'1px solid #ECECF2'}} className="rounded-2xl p-4 space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5"/>Contexte</p>
+                <div className="flex justify-between"><span className="text-xs text-gray-400">Date</span><span className="text-xs font-semibold text-gray-800">{fmtDate(detail.createdAt)}</span></div>
+                <div className="flex justify-between"><span className="text-xs text-gray-400">Entity ID</span><span className="text-xs font-mono text-gray-600">{detail.entityId.slice(0,20)}…</span></div>
+                {detail.ipAddress && <div className="flex justify-between"><span className="text-xs text-gray-400">IP</span><span className="text-xs font-mono text-gray-600">{detail.ipAddress}</span></div>}
+              </div>
+
+              {/* JSON data */}
+              <JsonBlock data={detail.metadata} label="Métadonnées"/>
+              <JsonBlock data={detail.previousData} label="Données précédentes"/>
+              <JsonBlock data={detail.newData} label="Nouvelles données"/>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
