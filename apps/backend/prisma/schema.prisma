@@ -104,12 +104,13 @@ model User {
 // ═══════════════════════════════════════════════════════════════════════════
 
 model Sponsor {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id])
   pspCustomerReference String?
   maskedCardReference  String?
-  createdAt            DateTime @default(now())
+  phoneVerifiedAt      DateTime?
+  createdAt            DateTime  @default(now())
 
   beneficiaries Beneficiary[]
   allocations   Allocation[]
