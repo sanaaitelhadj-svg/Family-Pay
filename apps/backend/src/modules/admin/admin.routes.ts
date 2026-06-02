@@ -289,10 +289,10 @@ adminRouter.patch('/merchants/:id/info', authenticate(['ADMIN']), async (req, re
       cinRepresentant:       z.string().optional(),
       rib:                   z.string().optional(),
       attestationBancaire:   z.string().optional(),
-      contactAdmin:          z.any().optional(),
-      contactFinance:        z.any().optional(),
-      contactOps:            z.any().optional(),
-      contactLegal:          z.any().optional(),
+      contactAdmin:    z.object({ firstName:z.string(), lastName:z.string(), phone:z.string(), email:z.string().email() }),
+      contactFinance:  z.object({ firstName:z.string(), lastName:z.string(), phone:z.string(), email:z.string().email() }),
+      contactOps:      z.object({ firstName:z.string(), lastName:z.string(), phone:z.string(), email:z.string().email() }),
+      contactLegal:    z.object({ firstName:z.string(), lastName:z.string(), phone:z.string(), email:z.string().email() }),
       contractUrl:           z.string().url().optional(),
     });
     const _u = (req as any).user; const _actorId = _u?.userId ?? _u?.id ?? _u?.sub;

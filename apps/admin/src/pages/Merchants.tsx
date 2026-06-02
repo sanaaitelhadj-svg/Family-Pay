@@ -3,13 +3,15 @@ import { Store, Search, Plus, X, Check, Ban, Edit2, Save, ChevronRight, MapPin, 
 import { api } from '../api';
 import { PasswordResetModal } from '../components/PasswordResetModal';
 
-interface Contact { name?: string; phone?: string; email?: string; }
+interface MerchantContact { name?: string; phone?: string; email?: string; }
+type Contact = MerchantContact;
+interface CreateContact { firstName: string; lastName: string; phone: string; email: string; }
 interface Merchant {
   id: string; businessName: string; category: string; city: string; phone: string; email?: string; address?: string;
   kycStatus: 'PENDING_PSP' | 'APPROVED' | 'REJECTED'; activationStatus: 'PENDING' | 'ACTIVE' | 'SUSPENDED';
   registrationNumber?: string; iceNumber?: string; taxId?: string; legalForm?: string;
   bankName?: string; iban?: string; rib?: string;
-  contactAdmin?: Contact; contactFinance?: Contact; contactOps?: Contact; contactLegal?: Contact;
+  contactAdmin?: MerchantContact; contactFinance?: MerchantContact; contactOps?: MerchantContact; contactLegal?: MerchantContact;
   contractUrl?: string; billingType?: 'commission' | 'subscription'; commissionType?: string; commissionRate?: number;
   planId?: string; planName?: string; subscriptionStart?: string; subscriptionEnd?: string;
   cguVersion?: string; cguSignedAt?: string; createdAt: string;
@@ -23,6 +25,7 @@ interface CreateForm {
   rib: string; iban: string;
   commissionType: string; commissionRate: string; commissionStartDate: string; commissionEndDate: string;
   contractUrl: string; activationStatus: 'ACTIVE'|'INACTIVE';
+  contactAdmin: CreateContact; contactFinance: CreateContact; contactOps: CreateContact; contactLegal: CreateContact;
 }
 
 const CATEGORY_OPTIONS = [
@@ -37,7 +40,8 @@ const CATEGORIES = CATEGORY_OPTIONS.map(o => o.value);
 const catLabel = (v: string) => CATEGORY_OPTIONS.find(o => o.value === v)?.label ?? v;
 const MOROCCAN_CITIES = ['Casablanca','Rabat','Marrakech','Fès','Tanger','Agadir','Meknès','Oujda','Kénitra','Tétouan','Safi','Mohammedia','El Jadida','Beni Mellal','Nador','Settat','Khémisset','Laâyoune','Taza','Berrechid'];
 const defaultApprovalForm: ApprovalForm = { contractUrl:'', billingType:'commission', commissionType:'TRANSACTION_PERCENTAGE', commissionRate:'', planId:'', startDate:'', endDate:'' };
-const defaultCreateForm: CreateForm = { businessName:'', category:CATEGORY_OPTIONS[0].value, city:'', address:'', phone:'', email:'', password:'', registrationNumber:'', iceNumber:'', taxId:'', fiscalId:'', cinRepresentant:'', rib:'', iban:'', commissionType:'TRANSACTION_PERCENTAGE', commissionRate:'', commissionStartDate:'', commissionEndDate:'', contractUrl:'', activationStatus:'INACTIVE' };
+const emptyContact: CreateContact = { firstName:'', lastName:'', phone:'', email:'' };
+const defaultCreateForm: CreateForm = { businessName:'', category:CATEGORY_OPTIONS[0].value, city:'', address:'', phone:'', email:'', password:'', registrationNumber:'', iceNumber:'', taxId:'', fiscalId:'', cinRepresentant:'', rib:'', iban:'', commissionType:'TRANSACTION_PERCENTAGE', commissionRate:'', commissionStartDate:'', commissionEndDate:'', contractUrl:'', activationStatus:'INACTIVE', contactAdmin:{...emptyContact}, contactFinance:{...emptyContact}, contactOps:{...emptyContact}, contactLegal:{...emptyContact} };
 
 const KycBadge = ({ status }: { status: Merchant['kycStatus'] }) => {
   const s = { PENDING_PSP:{label:'En attente KYC',bg:'#FFF8E6',color:'#B45309',dot:'#F59E0B'}, APPROVED:{label:'KYC Approuvé',bg:'#F0FDF4',color:'#166534',dot:'#22C55E'}, REJECTED:{label:'KYC Rejeté',bg:'#FEF2F2',color:'#991B1B',dot:'#EF4444'} }[status] ?? {label:status,bg:'#F3F4F6',color:'#6B7280',dot:'#9CA3AF'};
@@ -446,7 +450,7 @@ export default function Merchants() {
       )}
 
       {createModal && (() => {
-        const TABS = ['Général','Légal','Bancaire','Commission'];
+        const TABS = ['Général','Légal','Bancaire','Commission','Contacts','Contrat'];
         const f = createForm;
         const set = (k: keyof CreateForm, v: string) => setCreateForm(p=>({...p,[k]:v}));
         const inp = (key: keyof CreateForm, label: string, hint: string, type='text', validate?: (v:string)=>boolean) => {
@@ -471,6 +475,7 @@ export default function Merchants() {
         const isIBANValid  = (v:string)=>/^MA\d{26}$/.test(v);
         const isURLValid   = (v:string)=>/^https?:\/\/.+/.test(v);
         const isRateValid  = (v:string)=>!isNaN(Number(v))&&Number(v)>=0&&Number(v)<=100;
+        const isContactValid = (c: CreateContact) => c.firstName.length>=2 && c.lastName.length>=2 && isPhoneValid(c.phone) && c.email.includes('@');
         const allValid =
           f.businessName.length>=2 && f.category && f.city && f.address.length>=5 &&
           isPhoneValid(f.phone) && f.email.includes('@') && f.password.length>=8 &&
@@ -478,7 +483,10 @@ export default function Merchants() {
           isTaxValid(f.taxId) && isTaxValid(f.fiscalId) && isCINValid(f.cinRepresentant) &&
           isRIBValid(f.rib) && isIBANValid(f.iban) &&
           f.commissionType && isRateValid(f.commissionRate) &&
-          f.commissionStartDate && f.commissionEndDate;
+          f.commissionStartDate && f.commissionEndDate &&
+          isContactValid(f.contactAdmin) && isContactValid(f.contactFinance) &&
+          isContactValid(f.contactOps) && isContactValid(f.contactLegal) &&
+          isURLValid(f.contractUrl);
         return (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
@@ -586,6 +594,57 @@ export default function Merchants() {
                   </div>
                 )}
 
+                {createTab===4 && (() => {
+                  const setContact = (role: 'contactAdmin'|'contactFinance'|'contactOps'|'contactLegal', k: keyof CreateContact, v: string) =>
+                    setCreateForm(p=>({...p,[role]:{...p[role],[k]:v}}));
+                  const contactInp = (role: 'contactAdmin'|'contactFinance'|'contactOps'|'contactLegal', k: keyof CreateContact, label: string, hint: string, validate?: (v:string)=>boolean) => {
+                    const val = (f[role][k] as string) ?? '';
+                    const invalid = val.length>0 && validate && !validate(val as string);
+                    return (
+                      <div key={`${role}-${k}`}>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label} <span className="text-red-400">*</span></label>
+                        <input type="text" value={val as string} onChange={e=>setContact(role,k,e.target.value)} placeholder={hint}
+                          style={{border:`1px solid ${invalid?'#FCA5A5':'#ECECF2'}`}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+                          onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+                        {invalid && <p className="text-xs text-red-500 mt-1">{hint}</p>}
+                      </div>
+                    );
+                  };
+                  return (
+                    <div className="space-y-5">
+                      {([
+                        ['contactAdmin',   '👤 Contact Administratif'],
+                        ['contactFinance', '💰 Contact Financier'],
+                        ['contactOps',     '⚙️ Contact Opérationnel'],
+                        ['contactLegal',   '⚖️ Contact Légal'],
+                      ] as const).map(([role, title])=>(
+                        <div key={role} style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                          <p className="text-sm font-bold text-gray-800 mb-3">{title}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {contactInp(role,'firstName','Prénom','Mohammed')}
+                            {contactInp(role,'lastName','Nom','Alami')}
+                            {contactInp(role,'phone','Téléphone','06XXXXXXXX',isPhoneValid)}
+                            {contactInp(role,'email','Email','contact@entreprise.ma',(v)=>v.includes('@')&&v.includes('.'))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+                {createTab===5 && (
+                  <div className="space-y-4">
+                    <div className="p-3 rounded-xl text-xs text-gray-600" style={{background:'#F5F3FF',border:'1px solid #EDE9FF'}}>
+                      📋 Le contrat doit être signé et validé par l'administrateur avant le lancement du KYC. Uploadez-le sur votre hébergeur (Drive, Dropbox…) et collez le lien ici.
+                    </div>
+                    {inp('contractUrl','URL du contrat signé','https://drive.google.com/file/...','url',isURLValid)}
+                    {f.contractUrl && isURLValid(f.contractUrl) && (
+                      <a href={f.contractUrl} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-2 text-sm font-medium hover:opacity-70" style={{color:'#5B3DF5'}}>
+                        ↗ Prévisualiser le contrat
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
               {/* Footer */}
               <div className="flex items-center justify-between px-6 py-4 border-t" style={{borderColor:'#ECECF2'}}>
@@ -597,7 +656,7 @@ export default function Merchants() {
                     style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40">
                     Précédent
                   </button>
-                  {createTab < 3
+                  {createTab < 5
                     ? <button onClick={()=>setCreateTab(t=>t+1)} style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90">
                         Suivant
                       </button>
