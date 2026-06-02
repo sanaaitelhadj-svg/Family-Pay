@@ -11,7 +11,7 @@ interface Sponsor {
   _count: { allocations: number; beneficiaries: number };
 }
 interface SponsorDetail extends Sponsor {
-  pspCustomerReference: string | null; maskedCardReference: string | null;
+  pspCustomerReference: string | null; maskedCardReference: string | null; phoneVerifiedAt: string | null;
   totalVolume: number; totalTransactions: number;
   allocations: any[]; beneficiaries: any[];
 }
@@ -74,10 +74,11 @@ export default function Sponsors() {
   const openDetail = async (id: string) => { const r = await api.get(`/admin/sponsors/${id}`); setDetail(r.data); };
 
   const submitCreate = async () => {
-    if (!createForm.firstName || !createForm.phone || createForm.password.length < 8) return;
+    if (!createForm.firstName || !createForm.lastName || !createForm.phone || !createForm.email || createForm.password.length < 8) return;
+    if (!/^(\+212|00212|0)[5-7]\d{8}$/.test(createForm.phone)) { alert('Téléphone marocain invalide (ex: 0612345678)'); return; }
     setCreateSaving(true);
     try {
-      await api.post('/admin/sponsors', { firstName:createForm.firstName, lastName:createForm.lastName||undefined, phone:createForm.phone, email:createForm.email||undefined, password:createForm.password });
+      await api.post('/admin/sponsors', { firstName:createForm.firstName, lastName:createForm.lastName, phone:createForm.phone, email:createForm.email, password:createForm.password });
       setCreateModal(false); setCreateForm({ firstName:'', lastName:'', phone:'', email:'', password:'', city:'' }); load();
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setCreateSaving(false); }
@@ -279,6 +280,50 @@ export default function Sponsors() {
                 </div>
               </div>
 
+                {/* PSP / Carte */}
+                <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div style={{background:'rgba(91,61,245,0.08)'}} className="w-7 h-7 rounded-lg flex items-center justify-center"><CreditCard className="w-4 h-4" style={{color:'#5B3DF5'}}/></div>
+                    <h3 className="text-sm font-semibold text-gray-700">Paiement &amp; PSP</h3>
+                  </div>
+                  <div className="space-y-2.5">
+                    <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl px-3 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-gray-400"/>
+                        <span className="text-xs text-gray-500">Téléphone vérifié</span>
+                      </div>
+                      {detail.phoneVerifiedAt
+                        ? <span style={{background:'#F0FDF4',color:'#166534'}} className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"><Check className="w-3 h-3"/>Vérifié le {new Date(detail.phoneVerifiedAt).toLocaleDateString('fr-FR')}</span>
+                        : <span style={{background:'#FEF2F2',color:'#991B1B'}} className="text-xs font-medium px-2 py-0.5 rounded-full">Non vérifié</span>
+                      }
+                    </div>
+                    <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl px-3 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5 text-gray-400"/>
+                        <span className="text-xs text-gray-500">Référence PSP client</span>
+                      </div>
+                      {detail.pspCustomerReference
+                        ? <span className="text-xs font-mono font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-lg">{detail.pspCustomerReference}</span>
+                        : <span className="text-xs text-gray-400 italic">Non renseigné</span>
+                      }
+                    </div>
+                    <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl px-3 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-3.5 h-3.5 text-gray-400"/>
+                        <span className="text-xs text-gray-500">Référence carte (masquée)</span>
+                      </div>
+                      {detail.maskedCardReference
+                        ? <span className="text-xs font-mono font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-lg tracking-widest">{detail.maskedCardReference}</span>
+                        : <span className="text-xs text-gray-400 italic">Aucune carte enregistrée</span>
+                      }
+                    </div>
+                    <div style={{background:'rgba(91,61,245,0.04)',border:'1px solid rgba(91,61,245,0.15)'}} className="rounded-xl px-3 py-2.5 flex items-start gap-2">
+                      <span className="text-sm flex-shrink-0">🔒</span>
+                      <p className="text-xs text-gray-500 leading-relaxed"><span className="font-semibold text-gray-700">Sécurité :</span> Les cartes sont tokenisées par le PSP. La plateforme FamilyPay ne stocke <span className="font-semibold text-red-600">JAMAIS</span> les données carte complètes.</p>
+                    </div>
+                  </div>
+                </div>
+
               {/* Bénéficiaires */}
               <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -366,7 +411,7 @@ export default function Sponsors() {
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
           <div className="flex items-start justify-between"><h2 className="text-base font-bold text-gray-900">Modifier le sponsor</h2><button onClick={()=>setEditModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
-          {([['Prénom *','firstName'],['Nom','lastName'],['Email','email']] as const).map(([label,key])=>(
+          {([['Prénom *','firstName'],['Nom *','lastName'],['Email *','email']] as const).map(([label,key])=>(
             <div key={key}><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
               <input type={key==='email'?'email':'text'} value={editForm[key]} onChange={e=>setEditForm(f=>({...f,[key]:e.target.value}))}
                 style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
