@@ -649,7 +649,8 @@ adminRouter.post('/sponsors/:id/send-phone-otp',
   authenticate(['ADMIN']), requirePermission('sponsors','write'),
   async (req, res, next) => {
     try {
-      const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] }, include: { user: true } });
+      const id = req.params['id'] as string;
+      const sponsor = await prisma.sponsor.findUnique({ where: { id }, include: { user: true } });
       if (!sponsor) return res.status(404).json({ error: 'Sponsor non trouvé' });
       if (sponsor.phoneVerifiedAt) return res.status(400).json({ error: 'Téléphone déjà vérifié' });
       await OtpService.requestOtp(sponsor.user.phone, 'VERIFY_PHONE');
@@ -669,7 +670,8 @@ adminRouter.post('/sponsors/:id/verify-phone-otp',
     try {
       const { code } = req.body as { code: string };
       if (!code || !/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Code OTP invalide (6 chiffres attendus)' });
-      const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] }, include: { user: true } });
+      const id = req.params['id'] as string;
+      const sponsor = await prisma.sponsor.findUnique({ where: { id }, include: { user: true } });
       if (!sponsor) return res.status(404).json({ error: 'Sponsor non trouvé' });
       if (sponsor.phoneVerifiedAt) return res.status(400).json({ error: 'Téléphone déjà vérifié' });
       await OtpService.verifyOtp(sponsor.user.phone, code, 'VERIFY_PHONE');
