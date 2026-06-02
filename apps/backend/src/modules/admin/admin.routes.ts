@@ -320,15 +320,25 @@ adminRouter.post('/sponsors', authenticate(['ADMIN']), requirePermission('sponso
 adminRouter.post('/merchants/create', authenticate(['ADMIN']), requirePermission('merchants', 'add'), async (req, res, next) => {
   try {
     const schema = z.object({
-      businessName:       z.string().min(2),
-      category:          z.string(),
-      city:              z.string(),
-      phone:             z.string().min(8),
-      password:          z.string().min(8),
-      address:           z.string().optional(),
-      registrationNumber: z.string().optional(),
-      iceNumber:         z.string().optional(),
-      activationStatus:  z.enum(['ACTIVE','INACTIVE']).default('INACTIVE'),
+      businessName:          z.string().min(2),
+      category:              z.string(),
+      city:                  z.string(),
+      phone:                 z.string().min(8),
+      email:                 z.string().email().optional(),
+      password:              z.string().min(8),
+      address:               z.string().optional(),
+      registrationNumber:    z.string().optional(),
+      iceNumber:             z.string().optional(),
+      taxId:                 z.string().optional(),
+      fiscalId:              z.string().optional(),
+      rib:                   z.string().optional(),
+      iban:                  z.string().optional(),
+      contractUrl:           z.string().optional(),
+      commissionType:        z.enum(['FIXED_PERCENTAGE','TRANSACTION_PERCENTAGE','SUBSCRIPTION']).optional(),
+      commissionRate:        z.number().min(0).max(1).optional(),
+      commissionStartDate:   z.string().optional(),
+      commissionEndDate:     z.string().optional(),
+      activationStatus:      z.enum(['ACTIVE','INACTIVE']).default('INACTIVE'),
     });
     const merchant = await AdminService.createMerchantManual(schema.parse(req.body));
     res.status(201).json(merchant);

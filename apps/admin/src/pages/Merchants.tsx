@@ -16,7 +16,14 @@ interface Merchant {
 }
 interface Plan { id: string; name: string; price: number; durationMonths: number; isActive: boolean; }
 interface ApprovalForm { contractUrl: string; billingType: 'commission' | 'subscription'; commissionType: string; commissionRate: string; planId: string; startDate: string; endDate: string; }
-interface CreateForm { businessName: string; category: string; city: string; phone: string; registrationNumber: string; iceNumber: string; address: string; password: string; }
+interface CreateForm {
+  businessName: string; category: string; city: string; address: string;
+  phone: string; email: string; password: string;
+  registrationNumber: string; iceNumber: string; taxId: string; fiscalId: string; cinRepresentant: string;
+  rib: string; iban: string;
+  commissionType: string; commissionRate: string; commissionStartDate: string; commissionEndDate: string;
+  contractUrl: string; activationStatus: 'ACTIVE'|'INACTIVE';
+}
 
 const CATEGORY_OPTIONS = [
   { value:'FOOD',      label:'Alimentation / Restauration' },
@@ -30,7 +37,7 @@ const CATEGORIES = CATEGORY_OPTIONS.map(o => o.value);
 const catLabel = (v: string) => CATEGORY_OPTIONS.find(o => o.value === v)?.label ?? v;
 const MOROCCAN_CITIES = ['Casablanca','Rabat','Marrakech','Fès','Tanger','Agadir','Meknès','Oujda','Kénitra','Tétouan','Safi','Mohammedia','El Jadida','Beni Mellal','Nador','Settat','Khémisset','Laâyoune','Taza','Berrechid'];
 const defaultApprovalForm: ApprovalForm = { contractUrl:'', billingType:'commission', commissionType:'TRANSACTION_PERCENTAGE', commissionRate:'', planId:'', startDate:'', endDate:'' };
-const defaultCreateForm: CreateForm = { businessName:'', category:CATEGORY_OPTIONS[0].value, city:'', phone:'', registrationNumber:'', iceNumber:'', address:'', password:'' };
+const defaultCreateForm: CreateForm = { businessName:'', category:CATEGORY_OPTIONS[0].value, city:'', address:'', phone:'', email:'', password:'', registrationNumber:'', iceNumber:'', taxId:'', fiscalId:'', cinRepresentant:'', rib:'', iban:'', commissionType:'TRANSACTION_PERCENTAGE', commissionRate:'', commissionStartDate:'', commissionEndDate:'', contractUrl:'', activationStatus:'INACTIVE' };
 
 const KycBadge = ({ status }: { status: Merchant['kycStatus'] }) => {
   const s = { PENDING_PSP:{label:'En attente KYC',bg:'#FFF8E6',color:'#B45309',dot:'#F59E0B'}, APPROVED:{label:'KYC Approuvé',bg:'#F0FDF4',color:'#166534',dot:'#22C55E'}, REJECTED:{label:'KYC Rejeté',bg:'#FEF2F2',color:'#991B1B',dot:'#EF4444'} }[status] ?? {label:status,bg:'#F3F4F6',color:'#6B7280',dot:'#9CA3AF'};
@@ -97,6 +104,7 @@ export default function Merchants() {
   const [rejectModal, setRejectModal] = useState<{id:string;name:string}|null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [createModal, setCreateModal] = useState(false);
+  const [createTab, setCreateTab] = useState(0);
   const [createForm, setCreateForm] = useState<CreateForm>(defaultCreateForm);
   const [createSaving, setCreateSaving] = useState(false);
   const [resetPwdModal, setResetPwdModal] = useState<string|null>(null);
@@ -129,7 +137,20 @@ export default function Merchants() {
   };
   const reject = async () => { if(!rejectModal||!rejectReason.trim()) return; setSaving(true); try { await api.post(`/admin/merchants/${rejectModal.id}/reject`,{reason:rejectReason}); await fetchMerchants(); if(selected?.id===rejectModal.id)setSelected(null); setRejectModal(null); setRejectReason(''); } catch(e){console.error(e);} finally{setSaving(false);} };
   const toggleActive = async (m: Merchant) => { try { await api.post(m.activationStatus==='ACTIVE'?`/admin/merchants/${m.id}/suspend`:`/admin/merchants/${m.id}/activate`,{}); await fetchMerchants(); } catch(e){console.error(e);} };
-  const submitCreate = async () => { if(!createForm.businessName||!createForm.phone||!createForm.password||!createForm.city) return; setCreateSaving(true); try { await api.post('/admin/merchants/create',createForm); await fetchMerchants(); setCreateModal(false); setCreateForm(defaultCreateForm); } catch(e){console.error(e);} finally{setCreateSaving(false);} };
+  const submitCreate = async () => {
+    setCreateSaving(true);
+    try {
+      const payload = {
+        ...createForm,
+        commissionRate: createForm.commissionRate ? Number(createForm.commissionRate)/100 : undefined,
+      };
+      await api.post('/admin/merchants/create', payload);
+      await fetchMerchants(); setCreateModal(false); setCreateForm(defaultCreateForm); setCreateTab(0);
+    } catch(e:any) {
+      const msg = e.response?.data?.message || e.response?.data?.errors?.[0]?.message || 'Erreur de création';
+      alert(msg);
+    } finally { setCreateSaving(false); }
+  };
 
   const filtered = merchants.filter(m => {
     const q=search.toLowerCase();
@@ -367,24 +388,181 @@ export default function Merchants() {
         </div>
       )}
 
-      {createModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between"><div><h2 className="text-base font-bold text-gray-900">Nouveau marchand</h2><p className="text-sm text-gray-500 mt-0.5">Créer un compte marchand</p></div><button onClick={()=>setCreateModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nom du commerce <span className="text-red-400">*</span></label><input type="text" value={createForm.businessName} onChange={e=>setCreateForm(f=>({...f,businessName:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Catégorie <span className="text-red-400">*</span></label><select value={createForm.category} onChange={e=>setCreateForm(f=>({...f,category:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">{CATEGORY_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ville <span className="text-red-400">*</span></label><select value={createForm.city} onChange={e=>setCreateForm(f=>({...f,city:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none"><option value="">Sélectionner...</option>{MOROCCAN_CITIES.map(v=><option key={v} value={v}>{v}</option>)}</select></div>
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Téléphone <span className="text-red-400">*</span></label><input type="text" value={createForm.phone} onChange={e=>setCreateForm(f=>({...f,phone:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">N° RC</label><input type="text" value={createForm.registrationNumber} onChange={e=>setCreateForm(f=>({...f,registrationNumber:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/></div>
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">ICE</label><input type="text" value={createForm.iceNumber} onChange={e=>setCreateForm(f=>({...f,iceNumber:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/></div>
-              <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Adresse</label><input type="text" value={createForm.address} onChange={e=>setCreateForm(f=>({...f,address:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/></div>
-              <div className="col-span-2"><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mot de passe <span className="text-red-400">*</span></label><input type="password" value={createForm.password} onChange={e=>setCreateForm(f=>({...f,password:e.target.value}))} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/></div>
+      {createModal && (() => {
+        const TABS = ['Général','Légal','Bancaire','Commission','Contrat'];
+        const f = createForm;
+        const set = (k: keyof CreateForm, v: string) => setCreateForm(p=>({...p,[k]:v}));
+        const inp = (key: keyof CreateForm, label: string, hint: string, type='text', validate?: (v:string)=>boolean) => {
+          const val = f[key] as string;
+          const invalid = val.length > 0 && validate && !validate(val);
+          return (
+            <div key={key}>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label} <span className="text-red-400">*</span></label>
+              <input type={type} value={val} onChange={e=>set(key,e.target.value)} placeholder={hint}
+                style={{border:`1px solid ${invalid?'#FCA5A5':'#ECECF2'}`}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+                onFocus={e=>(e.currentTarget.style.boxShadow=`0 0 0 2px ${invalid?'rgba(239,68,68,0.2)':'rgba(91,61,245,0.2)'}`)}
+                onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+              {invalid && <p className="text-xs text-red-500 mt-1">{hint}</p>}
             </div>
-            <div className="flex justify-end gap-3"><button onClick={()=>setCreateModal(false)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 font-medium">Annuler</button><button onClick={submitCreate} disabled={createSaving||!createForm.businessName||!createForm.phone||createForm.password.length<8||!createForm.city} style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{createSaving?'Création...':'Créer le marchand'}</button></div>
+          );
+        };
+        const isPhoneValid = (v:string)=>/^(\+212|00212|0)[5-7]\d{8}$/.test(v);
+        const isICEValid   = (v:string)=>/^\d{15}$/.test(v);
+        const isTaxValid   = (v:string)=>/^\d{8}$/.test(v);
+        const isCINValid   = (v:string)=>/^[A-Z]{1,2}\d{5,6}$/.test(v);
+        const isRIBValid   = (v:string)=>/^\d{24}$/.test(v);
+        const isIBANValid  = (v:string)=>/^MA\d{26}$/.test(v);
+        const isURLValid   = (v:string)=>/^https?:\/\/.+/.test(v);
+        const isRateValid  = (v:string)=>!isNaN(Number(v))&&Number(v)>=0&&Number(v)<=100;
+        const allValid =
+          f.businessName.length>=2 && f.category && f.city && f.address.length>=5 &&
+          isPhoneValid(f.phone) && f.email.includes('@') && f.password.length>=8 &&
+          f.registrationNumber.length>=2 && isICEValid(f.iceNumber) &&
+          isTaxValid(f.taxId) && isTaxValid(f.fiscalId) && isCINValid(f.cinRepresentant) &&
+          isRIBValid(f.rib) && isIBANValid(f.iban) &&
+          f.commissionType && isRateValid(f.commissionRate) &&
+          f.commissionStartDate && f.commissionEndDate &&
+          isURLValid(f.contractUrl);
+        return (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
+              {/* Header */}
+              <div className="flex items-start justify-between p-6 border-b" style={{borderColor:'#ECECF2'}}>
+                <div><h2 className="text-base font-bold text-gray-900">Nouveau marchand</h2><p className="text-sm text-gray-400 mt-0.5">Maroc — tous les champs sont obligatoires</p></div>
+                <button onClick={()=>{setCreateModal(false);setCreateTab(0);}} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
+              </div>
+              {/* Tabs */}
+              <div className="flex border-b px-6" style={{borderColor:'#ECECF2'}}>
+                {TABS.map((t,i)=>(
+                  <button key={t} onClick={()=>setCreateTab(i)}
+                    className="px-4 py-3 text-sm font-semibold border-b-2 transition-colors mr-1"
+                    style={{borderColor:createTab===i?'#5B3DF5':'transparent',color:createTab===i?'#5B3DF5':'#6B7280'}}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {createTab===0 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">{inp('businessName','Raison sociale','Ex: Pharmacie Al Amal')}</div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Catégorie <span className="text-red-400">*</span></label>
+                      <select value={f.category} onChange={e=>set('category',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
+                        {CATEGORY_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ville <span className="text-red-400">*</span></label>
+                      <select value={f.city} onChange={e=>set('city',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
+                        <option value="">Sélectionner...</option>{MOROCCAN_CITIES.map(v=><option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-span-2">{inp('address','Adresse','Ex: 12 Rue Mohammed V, Casablanca')}</div>
+                    {inp('phone','Téléphone','06XXXXXXXX ou +212XXXXXXXXX','text',isPhoneValid)}
+                    {inp('email','Email','contact@commerce.ma','email',(v)=>v.includes('@')&&v.includes('.'))}
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Mot de passe <span className="text-red-400">*</span> <span className="normal-case font-normal text-gray-400">(8 car. min)</span></label>
+                      <input type="password" value={f.password} onChange={e=>set('password',e.target.value)}
+                        style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+                        onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Statut initial</label>
+                      <select value={f.activationStatus} onChange={e=>set('activationStatus',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm bg-white focus:outline-none">
+                        <option value="INACTIVE">Inactif</option>
+                        <option value="ACTIVE">Actif</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {createTab===1 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 p-3 rounded-xl text-xs text-gray-500" style={{background:'#F8F8FC',border:'1px solid #ECECF2'}}>
+                      🇲🇦 Formats Maroc — RC: libre · ICE: 15 chiffres · IF: 8 chiffres · Patente: 8 chiffres · CIN: 1-2 lettres + 5-6 chiffres
+                    </div>
+                    {inp('registrationNumber','N° RC (Registre Commerce)','Ex: 123456 ou CS 12345')}
+                    {inp('iceNumber','ICE','000012345678901 (15 chiffres)','text',isICEValid)}
+                    {inp('taxId','Identifiant Fiscal (IF)','12345678 (8 chiffres)','text',isTaxValid)}
+                    {inp('fiscalId','Patente','12345678 (8 chiffres)','text',isTaxValid)}
+                    <div className="col-span-2">{inp('cinRepresentant','CIN Représentant légal','A123456 ou BE123456','text',isCINValid)}</div>
+                  </div>
+                )}
+                {createTab===2 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 p-3 rounded-xl text-xs text-gray-500" style={{background:'#F8F8FC',border:'1px solid #ECECF2'}}>
+                      🇲🇦 RIB: 24 chiffres (3 banque + 3 ville + 16 compte + 2 clé) · IBAN: MA + 26 chiffres = 28 caractères
+                    </div>
+                    <div className="col-span-2">{inp('rib','RIB','011780000012345678901234 (24 chiffres)','text',isRIBValid)}</div>
+                    <div className="col-span-2">{inp('iban','IBAN','MA64011780000012345678901234 (28 caractères)','text',isIBANValid)}</div>
+                  </div>
+                )}
+                {createTab===3 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Type de commission <span className="text-red-400">*</span></label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          {value:'TRANSACTION_PERCENTAGE',label:'% par transaction',desc:'Pourcentage sur chaque paiement'},
+                          {value:'FIXED_PERCENTAGE',      label:'% fixe',           desc:'Taux fixe mensuel'},
+                          {value:'SUBSCRIPTION',          label:'Abonnement',        desc:'Forfait avec dates'},
+                        ].map(opt=>(
+                          <button key={opt.value} onClick={()=>set('commissionType',opt.value)}
+                            className="p-3 rounded-xl text-left border transition-all"
+                            style={{border:`1px solid ${f.commissionType===opt.value?'#5B3DF5':'#ECECF2'}`,background:f.commissionType===opt.value?'#F5F3FF':'#fff'}}>
+                            <p className="text-xs font-semibold" style={{color:f.commissionType===opt.value?'#5B3DF5':'#374151'}}>{opt.label}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{opt.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="col-span-2">{inp('commissionRate','Taux (%)','Ex: 2.5 pour 2.5%','text',isRateValid)}</div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Date début <span className="text-red-400">*</span></label>
+                      <input type="date" value={f.commissionStartDate} onChange={e=>set('commissionStartDate',e.target.value)}
+                        style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Date fin <span className="text-red-400">*</span></label>
+                      <input type="date" value={f.commissionEndDate} onChange={e=>set('commissionEndDate',e.target.value)}
+                        min={f.commissionStartDate} style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"/>
+                    </div>
+                  </div>
+                )}
+                {createTab===4 && (
+                  <div className="space-y-4">
+                    <div className="p-3 rounded-xl text-xs text-gray-500" style={{background:'#F8F8FC',border:'1px solid #ECECF2'}}>
+                      Lien vers le contrat signé (PDF hébergé, ex: Google Drive, Dropbox, SharePoint…)
+                    </div>
+                    {inp('contractUrl','URL du contrat signé','https://drive.google.com/file/...','url',isURLValid)}
+                  </div>
+                )}
+              </div>
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t" style={{borderColor:'#ECECF2'}}>
+                <div className="flex gap-1">
+                  {TABS.map((_,i)=><div key={i} className="w-2 h-2 rounded-full transition-all" style={{background:createTab===i?'#5B3DF5':'#ECECF2'}}/>)}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={()=>setCreateTab(t=>Math.max(0,t-1))} disabled={createTab===0}
+                    style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                    Précédent
+                  </button>
+                  {createTab < 4
+                    ? <button onClick={()=>setCreateTab(t=>t+1)} style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90">
+                        Suivant
+                      </button>
+                    : <button onClick={submitCreate} disabled={createSaving||!allValid}
+                        style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">
+                        {createSaving?'Création...':'Créer le marchand'}
+                      </button>
+                  }
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {resetPwdModal && (
         <PasswordResetModal endpoint={`/admin/merchants/${resetPwdModal}/reset-password`} name={merchants.find(m=>m.id===resetPwdModal)?.businessName??'Marchand'} onClose={()=>setResetPwdModal(null)}/>

@@ -1,0 +1,3 @@
+ALTER TABLE "merchants" ADD COLUMN IF NOT EXISTS "iban" TEXT;
+ALTER TABLE "merchants" ADD COLUMN IF NOT EXISTS "commissionStartDate" TIMESTAMP(3);
+ALTER TABLE "merchants" ADD COLUMN IF NOT EXISTS "commissionEndDate" TIMESTAMP(3);

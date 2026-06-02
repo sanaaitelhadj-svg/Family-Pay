@@ -185,8 +185,11 @@ model Merchant {
   businessHours        Json?
   // Commission
   contractUrl          String?
+  iban                 String?
   commissionType       String    @default("TRANSACTION_PERCENTAGE")
   commissionRate       Decimal?  @db.Decimal(6, 4)
+  commissionStartDate  DateTime?
+  commissionEndDate    DateTime?
   // Contractuel
   cguSignedAt          DateTime?
   cguVersion           String?
