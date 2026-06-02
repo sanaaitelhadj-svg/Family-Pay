@@ -5,6 +5,7 @@ import { requirePermission } from '../../middleware/requirePermission.js';
 import { AdminService } from './admin.service.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { prisma } from '../../lib/prisma.js';
+import { OtpService } from '../auth/otp.service.js';
 import { sessionMiddleware } from '../../middleware/sessionMiddleware.js';
 
 export const adminRouter = Router();
@@ -306,11 +307,11 @@ adminRouter.patch('/merchants/:id/info', authenticate(['ADMIN']), async (req, re
 adminRouter.post('/sponsors', authenticate(['ADMIN']), requirePermission('sponsors', 'add'), async (req, res, next) => {
   try {
     const schema = z.object({
-      firstName:   z.string().min(2),
-      lastName:    z.string().optional(),
-      phone:       z.string().min(8),
-      email:       z.string().email().optional(),
-      password:    z.string().min(8),
+      firstName:   z.string().min(2, 'Prénom requis'),
+      lastName:    z.string().min(1, 'Nom requis'),
+      phone:       z.string().regex(/^(\+212|00212|0)[5-7]\d{8}$/, 'Téléphone marocain invalide'),
+      email:       z.string().email('Email invalide'),
+      password:    z.string().min(8, 'Mot de passe: 8 caractères min'),
     });
     const sponsor = await AdminService.createSponsor(schema.parse(req.body));
     res.status(201).json(sponsor);
@@ -641,6 +642,50 @@ adminRouter.patch('/sponsors/:id/reset-password',
     } catch (err) { next(err); return; }
   }
 )
+
+// ── Sponsor Phone OTP ────────────────────────────────────────────────────────
+
+adminRouter.post('/sponsors/:id/send-phone-otp',
+  authenticate(['ADMIN']), requirePermission('sponsors','write'),
+  async (req, res, next) => {
+    try {
+      const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] }, include: { user: true } });
+      if (!sponsor) return res.status(404).json({ error: 'Sponsor non trouvé' });
+      if (sponsor.phoneVerifiedAt) return res.status(400).json({ error: 'Téléphone déjà vérifié' });
+      await OtpService.requestOtp(sponsor.user.phone, 'VERIFY_PHONE');
+      await prisma.auditLog.create({ data: {
+        action: 'PHONE_OTP_SENT', entityType: 'Sponsor', entityId: sponsor.id,
+        actorId: (req as any).user?.userId ?? (req as any).user?.id,
+        metadata: { phone: sponsor.user.phone } as any,
+      }});
+      return res.json({ success: true, phone: sponsor.user.phone });
+    } catch (err) { next(err); return; }
+  }
+);
+
+adminRouter.post('/sponsors/:id/verify-phone-otp',
+  authenticate(['ADMIN']), requirePermission('sponsors','write'),
+  async (req, res, next) => {
+    try {
+      const { code } = req.body as { code: string };
+      if (!code || !/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Code OTP invalide (6 chiffres attendus)' });
+      const sponsor = await prisma.sponsor.findUnique({ where: { id: req.params['id'] }, include: { user: true } });
+      if (!sponsor) return res.status(404).json({ error: 'Sponsor non trouvé' });
+      if (sponsor.phoneVerifiedAt) return res.status(400).json({ error: 'Téléphone déjà vérifié' });
+      await OtpService.verifyOtp(sponsor.user.phone, code, 'VERIFY_PHONE');
+      const updated = await prisma.sponsor.update({
+        where: { id: sponsor.id },
+        data: { phoneVerifiedAt: new Date() },
+      });
+      await prisma.auditLog.create({ data: {
+        action: 'PHONE_VERIFIED', entityType: 'Sponsor', entityId: sponsor.id,
+        actorId: (req as any).user?.userId ?? (req as any).user?.id,
+        metadata: { phone: sponsor.user.phone } as any,
+      }});
+      return res.json({ success: true, phoneVerifiedAt: updated.phoneVerifiedAt });
+    } catch (err) { next(err); return; }
+  }
+);
 
 // ── Sponsor Allocations CRUD ───────────────────────────────────────────────
 adminRouter.post('/sponsors/:id/allocations', authenticate(['ADMIN']), requirePermission('sponsors','write'), async (req, res, next) => {

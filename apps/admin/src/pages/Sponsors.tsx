@@ -49,8 +49,13 @@ export default function Sponsors() {
   const [search, setSearch] = useState('');
 
   const [createModal, setCreateModal]   = useState(false);
-  const [createForm, setCreateForm]     = useState({ firstName:'', lastName:'', phone:'', email:'', password:'', city:'', pspCustomerReference:'', maskedCardReference:'' });
+  const [createForm, setCreateForm]     = useState({ firstName:'', lastName:'', phone:'', email:'', password:'', city:'' });
   const [createSaving, setCreateSaving] = useState(false);
+  const [phoneOtpModal, setPhoneOtpModal] = useState(false);
+  const [otpCode, setOtpCode]             = useState('');
+  const [otpStep, setOtpStep]             = useState<'send'|'verify'>('send');
+  const [otpLoading, setOtpLoading]       = useState(false);
+  const [otpPhone, setOtpPhone]           = useState('');
 
   const [resetPwdModal, setResetPwdModal]         = useState(false);
   const [allocModal, setAllocModal]               = useState(false);
@@ -75,16 +80,33 @@ export default function Sponsors() {
 
   const submitCreate = async () => {
     if (!createForm.firstName || !createForm.lastName || !createForm.phone || !createForm.email || createForm.password.length < 8) return;
-    if (!createForm.pspCustomerReference || !createForm.maskedCardReference) { alert('Référence PSP et référence carte sont obligatoires'); return; }
     if (!/^(\+212|00212|0)[5-7]\d{8}$/.test(createForm.phone)) { alert('Téléphone marocain invalide (ex: 0612345678)'); return; }
-    if (!/^[\*\d]{4} [\*\d]{4} [\*\d]{4} \d{4}$/.test(createForm.maskedCardReference)) { alert('Format carte invalide (ex: **** **** **** 1234)'); return; }
-    if (!/^[A-Za-z0-9\-_]{4,64}$/.test(createForm.pspCustomerReference)) { alert('Référence PSP invalide (alphanumérique, 4-64 caractères)'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email)) { alert('Format email invalide'); return; }
     setCreateSaving(true);
     try {
-      await api.post('/admin/sponsors', { firstName:createForm.firstName, lastName:createForm.lastName, phone:createForm.phone, email:createForm.email, password:createForm.password, pspCustomerReference:createForm.pspCustomerReference, maskedCardReference:createForm.maskedCardReference });
-      setCreateModal(false); setCreateForm({ firstName:'', lastName:'', phone:'', email:'', password:'', city:'', pspCustomerReference:'', maskedCardReference:'' }); load();
+      await api.post('/admin/sponsors', { firstName:createForm.firstName, lastName:createForm.lastName, phone:createForm.phone, email:createForm.email, password:createForm.password });
+      setCreateModal(false); setCreateForm({ firstName:'', lastName:'', phone:'', email:'', password:'', city:'' }); load();
     } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
     finally { setCreateSaving(false); }
+  };
+
+  const sendPhoneOtp = async () => {
+    if (!detail) return; setOtpLoading(true);
+    try {
+      const r = await api.post(`/admin/sponsors/${detail.id}/send-phone-otp`);
+      setOtpPhone(r.data.phone); setOtpStep('verify'); setOtpCode(''); setPhoneOtpModal(true);
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setOtpLoading(false); }
+  };
+
+  const verifyPhoneOtp = async () => {
+    if (!detail) return; setOtpLoading(true);
+    try {
+      await api.post(`/admin/sponsors/${detail.id}/verify-phone-otp`, { code: otpCode });
+      setPhoneOtpModal(false); setOtpCode(''); setOtpStep('send');
+      const r = await api.get(`/admin/sponsors/${detail.id}`); setDetail(r.data);
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Erreur'); }
+    finally { setOtpLoading(false); }
   };
 
   const submitEdit = async () => {
@@ -262,6 +284,11 @@ export default function Sponsors() {
                 <button onClick={()=>setResetPwdModal(true)} disabled={permsLoading||!can('sponsors','reset-password')} style={{border:'1px solid #ECECF2'}}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">
                   <KeyRound className="w-3.5 h-3.5"/>MDP
+                </button>
+                <button onClick={sendPhoneOtp} disabled={otpLoading||!!detail.phoneVerifiedAt}
+                  style={{background:detail.phoneVerifiedAt?'#F0FDF4':'#FFF8E6',color:detail.phoneVerifiedAt?'#166534':'#B45309'}}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50">
+                  <Phone className="w-3.5 h-3.5"/>{detail.phoneVerifiedAt?'Tél. vérifié':'Vérifier par SMS'}
                 </button>
                 <button onClick={()=>setDeleteConfirm(true)} disabled={permsLoading||!can('sponsors','delete')||actionSaving}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40" style={{background:'#EF4444'}}>
@@ -464,27 +491,9 @@ export default function Sponsors() {
               </select>
             </div>
           </div>
-          {/* Section PSP / Carte */}
-          <div style={{background:'rgba(91,61,245,0.04)',border:'1px solid rgba(91,61,245,0.15)'}} className="rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <CreditCard className="w-4 h-4" style={{color:'#5B3DF5'}}/>
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Paiement PSP</span>
-            </div>
-            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Référence PSP client *</label>
-              <input type="text" value={createForm.pspCustomerReference} onChange={e=>setCreateForm(f=>({...f,pspCustomerReference:e.target.value}))}
-                placeholder="ex: PSP-MA-123456"
-                style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none font-mono" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
-            </div>
-            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Référence carte masquée * <span className="normal-case font-normal text-gray-400">(ex: **** **** **** 1234)</span></label>
-              <input type="text" value={createForm.maskedCardReference} onChange={e=>setCreateForm(f=>({...f,maskedCardReference:e.target.value}))}
-                placeholder="**** **** **** 1234" maxLength={19}
-                style={{border:'1px solid #ECECF2'}} className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none font-mono tracking-widest" onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')} onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
-            </div>
-            <p className="text-xs text-gray-400 flex items-start gap-1.5"><span>🔒</span>La plateforme ne stocke JAMAIS les données carte complètes — tokenisation PSP uniquement.</p>
-          </div>
           <div className="flex justify-end gap-3">
             <button onClick={()=>setCreateModal(false)} style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Annuler</button>
-            <button onClick={submitCreate} disabled={createSaving||!createForm.firstName||!createForm.lastName||!createForm.phone||!createForm.email||createForm.password.length<8||!createForm.pspCustomerReference||!createForm.maskedCardReference}
+            <button onClick={submitCreate} disabled={createSaving||!createForm.firstName||!createForm.lastName||!createForm.phone||!createForm.email||createForm.password.length<8}
               style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90 disabled:opacity-50">{createSaving?'Création...':'Créer le sponsor'}</button>
           </div>
         </div>
