@@ -105,6 +105,8 @@ export default function Merchants() {
   const [rejectReason, setRejectReason] = useState('');
   const [createModal, setCreateModal] = useState(false);
   const [createTab, setCreateTab] = useState(0);
+  const [contractInput, setContractInput] = useState('');
+  const [contractSaving, setContractSaving] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(defaultCreateForm);
   const [createSaving, setCreateSaving] = useState(false);
   const [resetPwdModal, setResetPwdModal] = useState<string|null>(null);
@@ -137,6 +139,17 @@ export default function Merchants() {
   };
   const reject = async () => { if(!rejectModal||!rejectReason.trim()) return; setSaving(true); try { await api.post(`/admin/merchants/${rejectModal.id}/reject`,{reason:rejectReason}); await fetchMerchants(); if(selected?.id===rejectModal.id)setSelected(null); setRejectModal(null); setRejectReason(''); } catch(e){console.error(e);} finally{setSaving(false);} };
   const toggleActive = async (m: Merchant) => { try { await api.post(m.activationStatus==='ACTIVE'?`/admin/merchants/${m.id}/suspend`:`/admin/merchants/${m.id}/activate`,{}); await fetchMerchants(); } catch(e){console.error(e);} };
+  const saveContract = async (merchantId: string) => {
+    if (!contractInput.trim()) return;
+    setContractSaving(true);
+    try {
+      await api.patch(`/admin/merchants/${merchantId}/contract`, { contractUrl: contractInput.trim() });
+      await fetchMerchants();
+      setContractInput('');
+    } catch(e:any) { alert(e.response?.data?.message || 'Erreur'); }
+    finally { setContractSaving(false); }
+  };
+
   const submitCreate = async () => {
     setCreateSaving(true);
     try {
@@ -245,13 +258,57 @@ export default function Merchants() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {(selected.contractUrl||selected.billingType) && (
+              {/* Contract section - only after KYC approved */}
+              <div style={{border:`1px solid ${selected.kycStatus==='APPROVED'?'#ECECF2':'#FDE68A'}`}} className="rounded-xl p-4">
+                <SectionHeader icon={CreditCard} title="Contrat signé"/>
+                {selected.kycStatus !== 'APPROVED' ? (
+                  <p className="text-xs text-amber-600 mt-2 p-2 rounded-lg" style={{background:'#FFFBEB'}}>
+                    ⚠️ Le contrat peut être ajouté uniquement après validation KYC du marchand.
+                  </p>
+                ) : (
+                  <div className="space-y-3 mt-2">
+                    {selected.contractUrl ? (
+                      <div className="flex items-center justify-between p-3 rounded-xl" style={{background:'#F5F3FF',border:'1px solid #EDE9FF'}}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:'#5B3DF5'}}>
+                            <span className="text-white text-xs font-bold">PDF</span>
+                          </div>
+                          <a href={selected.contractUrl} target="_blank" rel="noreferrer"
+                            className="text-sm font-medium truncate hover:underline" style={{color:'#5B3DF5'}}>
+                            Voir le contrat
+                          </a>
+                        </div>
+                        <span className="text-xs text-gray-400 flex-shrink-0 ml-2">✓ Signé</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">Aucun contrat uploadé</p>
+                    )}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        {selected.contractUrl ? 'Remplacer le contrat' : 'Uploader le contrat'} <span className="normal-case font-normal text-gray-400">(URL du PDF)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input type="url" value={contractInput} onChange={e=>setContractInput(e.target.value)}
+                          placeholder="https://drive.google.com/file/..."
+                          style={{border:'1px solid #ECECF2'}} className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                          onFocus={e=>(e.currentTarget.style.boxShadow='0 0 0 2px rgba(91,61,245,0.2)')}
+                          onBlur={e=>(e.currentTarget.style.boxShadow='')}/>
+                        <button onClick={()=>saveContract(selected.id)} disabled={contractSaving||!contractInput.trim()}
+                          style={{background:'#5B3DF5'}} className="px-3 py-2 rounded-xl text-xs text-white font-semibold hover:opacity-90 disabled:opacity-40 flex-shrink-0">
+                          {contractSaving?'…':'Enregistrer'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Billing info */}
+              {selected.billingType && (
                 <div style={{border:'1px solid #ECECF2'}} className="rounded-xl p-4">
-                  <SectionHeader icon={CreditCard} title="Contrat & Facturation"/>
+                  <SectionHeader icon={CreditCard} title="Facturation"/>
                   <div className="grid grid-cols-2 gap-3">
-                    {selected.contractUrl && <div className="col-span-2"><p className="text-xs text-gray-400 mb-0.5">Contrat</p><a href={selected.contractUrl} target="_blank" rel="noreferrer" className="text-sm font-medium truncate block" style={{color:'#5B3DF5'}}>{selected.contractUrl}</a></div>}
-                    {selected.billingType==='commission' && <><InfoRow label="Facturation" value="Commission / transaction"/><InfoRow label="Taux" value={selected.commissionRate!=null?`${selected.commissionRate}${selected.commissionType==='TRANSACTION_PERCENTAGE'?'%':' MAD'}`:undefined}/></>}
-                    {selected.billingType==='subscription' && <><InfoRow label="Facturation" value="Abonnement"/><InfoRow label="Offre" value={selected.planName}/><InfoRow label="Début" value={selected.subscriptionStart?new Date(selected.subscriptionStart).toLocaleDateString('fr-FR'):undefined}/><InfoRow label="Fin" value={selected.subscriptionEnd?new Date(selected.subscriptionEnd).toLocaleDateString('fr-FR'):undefined}/></>}
+                    {selected.billingType==='commission' && <><InfoRow label="Type" value="Commission / transaction"/><InfoRow label="Taux" value={selected.commissionRate!=null?`${selected.commissionRate}${selected.commissionType==='TRANSACTION_PERCENTAGE'?'%':' MAD'}`:undefined}/></>}
+                    {selected.billingType==='subscription' && <><InfoRow label="Type" value="Abonnement"/><InfoRow label="Offre" value={selected.planName}/><InfoRow label="Début" value={selected.subscriptionStart?new Date(selected.subscriptionStart).toLocaleDateString('fr-FR'):undefined}/><InfoRow label="Fin" value={selected.subscriptionEnd?new Date(selected.subscriptionEnd).toLocaleDateString('fr-FR'):undefined}/></>}
                   </div>
                 </div>
               )}
@@ -389,7 +446,7 @@ export default function Merchants() {
       )}
 
       {createModal && (() => {
-        const TABS = ['Général','Légal','Bancaire','Commission','Contrat'];
+        const TABS = ['Général','Légal','Bancaire','Commission'];
         const f = createForm;
         const set = (k: keyof CreateForm, v: string) => setCreateForm(p=>({...p,[k]:v}));
         const inp = (key: keyof CreateForm, label: string, hint: string, type='text', validate?: (v:string)=>boolean) => {
@@ -421,8 +478,7 @@ export default function Merchants() {
           isTaxValid(f.taxId) && isTaxValid(f.fiscalId) && isCINValid(f.cinRepresentant) &&
           isRIBValid(f.rib) && isIBANValid(f.iban) &&
           f.commissionType && isRateValid(f.commissionRate) &&
-          f.commissionStartDate && f.commissionEndDate &&
-          isURLValid(f.contractUrl);
+          f.commissionStartDate && f.commissionEndDate;
         return (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div style={{background:'#fff',border:'1px solid #ECECF2'}} className="rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
@@ -529,14 +585,7 @@ export default function Merchants() {
                     </div>
                   </div>
                 )}
-                {createTab===4 && (
-                  <div className="space-y-4">
-                    <div className="p-3 rounded-xl text-xs text-gray-500" style={{background:'#F8F8FC',border:'1px solid #ECECF2'}}>
-                      Lien vers le contrat signé (PDF hébergé, ex: Google Drive, Dropbox, SharePoint…)
-                    </div>
-                    {inp('contractUrl','URL du contrat signé','https://drive.google.com/file/...','url',isURLValid)}
-                  </div>
-                )}
+
               </div>
               {/* Footer */}
               <div className="flex items-center justify-between px-6 py-4 border-t" style={{borderColor:'#ECECF2'}}>
@@ -548,7 +597,7 @@ export default function Merchants() {
                     style={{border:'1px solid #ECECF2'}} className="px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40">
                     Précédent
                   </button>
-                  {createTab < 4
+                  {createTab < 3
                     ? <button onClick={()=>setCreateTab(t=>t+1)} style={{background:'#5B3DF5'}} className="px-4 py-2.5 rounded-xl text-sm text-white font-semibold hover:opacity-90">
                         Suivant
                       </button>
