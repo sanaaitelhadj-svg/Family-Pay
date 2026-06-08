@@ -110,35 +110,53 @@ const InviteSchema = z.object({
 mobileRouter.post('/sponsor/invite-beneficiary', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const { firstName, lastName, phone, email } = InviteSchema.parse(req.body);
 
-  // Vérifier si l'utilisateur existe déjà
-  let user = await prisma.user.findUnique({ where: { phone } });
+  let user = await prisma.user.findUnique({
+    where: { phone },
+    include: { beneficiary: true },
+  });
 
   if (user) {
-    // Déjà bénéficiaire de ce sponsor ?
-    const existing = await prisma.beneficiary.findFirst({
-      where: { userId: user.id, sponsorId: req.user!.profileId },
-    });
-    if (existing) { res.status(409).json({ error: 'Ce bénéficiaire est déjà lié à votre compte.' }); return; }
+    if (user.role !== 'BENEFICIARY') {
+      res.status(409).json({ error: 'Ce numéro est déjà utilisé par un autre rôle (sponsor ou marchand).' }); return;
+    }
+    const bene = user.beneficiary;
+    if (bene) {
+      if (bene.sponsorId === req.user!.profileId) {
+        res.status(409).json({ error: 'Ce bénéficiaire est déjà dans votre liste.' }); return;
+      }
+      if (bene.sponsorId !== null) {
+        res.status(409).json({ error: 'Ce bénéficiaire est déjà lié à un autre sponsor.' }); return;
+      }
+      // Bénéficiaire sans sponsor → le rattacher
+      await prisma.beneficiary.update({
+        where: { id: bene.id },
+        data: { sponsorId: req.user!.profileId },
+      });
+      try {
+        const { OtpService } = await import('../auth/otp.service.js');
+        await OtpService.requestOtp(phone, 'LOGIN');
+      } catch { /* Twilio non configuré */ }
+      res.status(200).json({ message: 'Bénéficiaire existant rattaché à votre compte.', beneficiaryId: bene.id });
+      return;
+    }
   } else {
-    // Créer l'utilisateur
+    // Créer le compte utilisateur
     const bcrypt = await import('bcryptjs');
     const tempPwd = Math.random().toString(36).slice(-8);
     user = await prisma.user.create({
       data: {
-        phone,
-        firstName,
-        lastName,
-        email,
+        phone, firstName, lastName, email,
         role: 'BENEFICIARY',
         password: await bcrypt.hash(tempPwd, 10),
         cndpConsentAt: new Date(),
       },
-    });
+      include: { beneficiary: true },
+    }) as any;
   }
 
   // Créer le profil bénéficiaire lié au sponsor
   const beneficiary = await prisma.beneficiary.create({
-    data: { userId: user.id, sponsorId: req.user!.profileId },
+    data: { userId: user!.id, sponsorId: req.user!.profileId },
   });
 
   // Envoyer SMS (OTP d'activation)

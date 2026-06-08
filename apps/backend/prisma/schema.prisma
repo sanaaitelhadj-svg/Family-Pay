@@ -128,8 +128,8 @@ model Beneficiary {
   id                String    @id @default(uuid())
   userId            String    @unique
   user              User      @relation(fields: [userId], references: [id])
-  sponsorId         String
-  sponsor           Sponsor   @relation(fields: [sponsorId], references: [id])
+  sponsorId         String?
+  sponsor           Sponsor?  @relation(fields: [sponsorId], references: [id])
   dateOfBirth       DateTime?
   isMinor           Boolean   @default(false)
   parentalConsentAt DateTime?

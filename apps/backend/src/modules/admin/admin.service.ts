@@ -518,10 +518,12 @@ export class AdminService {
   // ── Manual creation ────────────────────────────────────────────────────────
 
   static async createSponsor(data: {
-    firstName: string; lastName?: string; phone: string; email?: string; password: string;
+    firstName: string; lastName: string; phone: string; email: string; password: string;
   }) {
     const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
     if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
+    const emailExists = await prisma.user.findUnique({ where: { email: data.email } });
+    if (emailExists) throw new AppError('Cet email est déjà utilisé', 409, 'EMAIL_ALREADY_EXISTS');
     const hashed = await bcrypt.hash(data.password, 12);
     return prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -531,9 +533,14 @@ export class AdminService {
           password: hashed, role: 'SPONSOR', isVerified: true, cndpConsentAt: new Date(),
         },
       });
-      const sponsor = await tx.sponsor.create({ data: { userId: user.id } });
+      const sponsor = await tx.sponsor.create({
+        data: {
+          userId: user.id,
+          phoneVerifiedAt: new Date(),  // Admin-created = phone verified
+        },
+      });
       await tx.auditLog.create({
-        data: { action: 'ADMIN_CREATED_SPONSOR', entityType: 'User', entityId: user.id, metadata: { phone: data.phone } },
+        data: { action: 'ADMIN_CREATED_SPONSOR', entityType: 'User', entityId: user.id, metadata: { phone: data.phone, email: data.email } },
       });
       return { userId: user.id, sponsorId: sponsor.id };
     });

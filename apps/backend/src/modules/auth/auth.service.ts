@@ -13,24 +13,21 @@ import type {
 export class AuthService {
   static async registerSponsor(input: RegisterSponsorInput): Promise<{ message: string; devOtp?: string }> {
     const existing = await prisma.user.findUnique({ where: { phone: input.phone } });
-    if (existing) {
-      throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
-    }
+    if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
 
     await prisma.user.create({
       data: {
-        phone: input.phone,
-        email: input.email,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        role: 'SPONSOR',
+        phone:        input.phone,
+        email:        input.email,
+        firstName:    input.firstName,
+        lastName:     input.lastName,
+        role:         'SPONSOR',
         cndpConsentAt: new Date(),
         sponsor: { create: {} },
       },
     });
 
     await AuthService.createAuditLog(null, 'SPONSOR_REGISTERED', 'User', input.phone);
-
     const otp = await OtpService.requestOtp(input.phone, 'SIGNUP');
     return {
       message: 'Inscription en attente de vérification OTP',
@@ -52,38 +49,50 @@ export class AuthService {
   }
 
   static async registerBeneficiary(input: RegisterBeneficiaryInput): Promise<{ message: string; devOtp?: string }> {
-    const sponsorId = await TokenService.validateInvitationToken(input.invitationToken);
+    // Calcul de l'âge
+    const birthDate = new Date(input.dateOfBirth);
+    const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 3600 * 1000));
+    const isMinor = age < 18;
 
-    const sponsor = await prisma.sponsor.findUnique({ where: { id: sponsorId } });
-    if (!sponsor) {
-      throw new AppError("Sponsor introuvable", 400, 'SPONSOR_NOT_FOUND');
+    // Mineur → token d'invitation + consentement parental obligatoires
+    if (isMinor) {
+      if (!input.invitationToken) throw new AppError("Token d'invitation obligatoire pour un mineur", 400, "INVITATION_REQUIRED");
+      if (!input.parentalConsent) throw new AppError('Consentement parental obligatoire pour un mineur', 400, 'PARENTAL_CONSENT_REQUIRED');
+    }
+
+    // Résoudre le sponsor (via token si fourni)
+    let sponsorId: string | null = null;
+    if (input.invitationToken) {
+      sponsorId = await TokenService.validateInvitationToken(input.invitationToken);
+      const sponsor = await prisma.sponsor.findUnique({ where: { id: sponsorId } });
+      if (!sponsor) throw new AppError('Sponsor introuvable', 400, 'SPONSOR_NOT_FOUND');
     }
 
     const existing = await prisma.user.findUnique({ where: { phone: input.phone } });
-    if (existing) {
-      throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
-    }
+    if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
 
     await prisma.user.create({
       data: {
-        phone: input.phone,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        role: 'BENEFICIARY',
+        phone:         input.phone,
+        firstName:     input.firstName,
+        lastName:      input.lastName,
+        role:          'BENEFICIARY',
         cndpConsentAt: new Date(),
         beneficiary: {
           create: {
-            sponsorId,
-            isMinor: input.isMinor,
-            parentalConsentAt: input.isMinor ? new Date() : null,
-            relationship: input.relationship,
-            profilePhoto: input.profilePhoto,
+            sponsorId: sponsorId ?? null,
+            dateOfBirth:      birthDate,
+            isMinor,
+            parentalConsentAt: isMinor ? new Date() : null,
+            relationship:     input.relationship,
           },
         },
       },
     });
 
-    await TokenService.consumeInvitationToken(input.invitationToken);
+    if (input.invitationToken) {
+      await TokenService.consumeInvitationToken(input.invitationToken);
+    }
     await AuthService.createAuditLog(sponsorId, 'BENEFICIARY_REGISTERED', 'User', input.phone);
 
     const otp = await OtpService.requestOtp(input.phone, 'SIGNUP');
@@ -118,20 +127,12 @@ export class AuthService {
             fiscalId: input.fiscalId,
             cinRepresentant: input.cinRepresentant,
             rib: input.rib,
-            attestationBancaire: input.attestationBancaire ?? false,
             gpsLat: input.gpsLat,
             gpsLng: input.gpsLng,
             photos: input.photos,
             contactAdmin: input.contactAdmin,
             contactFinance: input.contactFinance,
-            contactOps: input.contactOps,
-            cguSignedAt: input.cguSignedAt ? new Date(input.cguSignedAt) : undefined,
-            cguVersion: input.cguVersion,
-            cguClauses: input.cguClauses,
-            contactLegal: input.contactLegal,
-            riskLevel: input.riskLevel,
-            allowedProducts: input.allowedProducts,
-            businessHours: input.businessHours,
+            contactOps: input.contactOps,            contactLegal: input.contactLegal,            businessHours: input.businessHours,
           },
         },
       },

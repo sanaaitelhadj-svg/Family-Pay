@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { AuthService } from './auth.service.js';
 import { authenticate } from '../../middleware/authenticate.js';
-import {
+import { AddCardSchema,
   RegisterSponsorSchema,
   RegisterBeneficiarySchema,
   RegisterMerchantSchema,
@@ -54,6 +54,19 @@ authRouter.post('/refresh', wrap(async (req, res) => {
 authRouter.post('/sponsor/invite', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const result = await AuthService.createInvitation(req.user!.profileId);
   res.status(201).json(result);
+}));
+
+authRouter.post('/sponsor/add-card', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const input = AddCardSchema.parse(req.body);
+  const { prisma } = await import('../../lib/prisma.js');
+  await prisma.sponsor.update({
+    where: { id: req.user!.profileId },
+    data: {
+      maskedCardReference:  input.maskedCardReference,
+      pspCustomerReference: input.pspCustomerReference,
+    },
+  });
+  res.json({ message: 'Carte enregistrée avec succès.' });
 }));
 
 authRouter.post('/logout', authenticate(), wrap(async (req, res) => {
