@@ -25,7 +25,7 @@ export default function MerchantHomeScreen() {
   const { data, isLoading, refetch, isRefetching } = useQuery<MerchantStats>({
     queryKey: ['merchant-stats'],
     queryFn: async () => {
-      const res = await apiClient.get('/merchant/stats');
+      const res = await apiClient.get('/mobile/merchant/stats');
       return res.data;
     },
   });
@@ -41,9 +41,20 @@ export default function MerchantHomeScreen() {
     amount: amount ? parseFloat(amount) : undefined,
   });
 
-  const handleGenerate = () => {
+  const [qrToken, setQrToken] = useState('');
+
+  const handleGenerate = async () => {
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) return;
-    setShowQR(true);
+    try {
+      const res = await apiClient.post('/qr/generate', {
+        category: data?.merchant?.category ?? 'GENERAL',
+        amount: parseFloat(amount),
+      });
+      setQrToken(res.data.token ?? JSON.stringify(res.data));
+      setShowQR(true);
+    } catch (err: any) {
+      Alert.alert('Erreur', err?.response?.data?.error ?? 'Impossible de générer le QR');
+    }
   };
 
   const handleShare = async () => {
@@ -118,7 +129,7 @@ export default function MerchantHomeScreen() {
           <>
             <View style={styles.qrWrapper}>
               <QRCode
-                value={qrData}
+                value={qrToken || qrData}
                 size={200}
                 color={Colors.textPrimary}
                 backgroundColor="#fff"

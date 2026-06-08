@@ -13,6 +13,7 @@ import { authorizationRouter } from './modules/authorization/authorization.route
 import { qrRouter } from './modules/qr/qr.routes.js';
 import { transactionRouter } from './modules/transaction/transaction.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
+import { mobileRouter } from './modules/mobile/mobile.routes.js';
 
 export function createApp() {
   const app = express();
@@ -42,6 +43,7 @@ export function createApp() {
   app.use('/qr', qrRouter);
   app.use('/transactions', transactionRouter);
   app.use('/admin', adminRouter);
+  app.use('/mobile', mobileRouter);
 
   app.use(errorHandler);
 

@@ -28,7 +28,7 @@ export default function MerchantProfileScreen() {
   const { data, isLoading } = useQuery<MerchantProfile>({
     queryKey: ['merchant-profile'],
     queryFn: async () => {
-      const res = await apiClient.get('/merchant/profile');
+      const res = await apiClient.get('/mobile/merchant/profile');
       return res.data;
     },
   });

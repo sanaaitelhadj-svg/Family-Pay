@@ -26,7 +26,7 @@ export default function ProfileScreen() {
   const { data, isLoading } = useQuery<SponsorProfile>({
     queryKey: ['sponsor-profile'],
     queryFn: async () => {
-      const res = await apiClient.get('/sponsor/profile');
+      const res = await apiClient.get('/mobile/sponsor/profile');
       return res.data;
     },
   });

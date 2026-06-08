@@ -22,7 +22,7 @@ export default function BeneficiaryProfileScreen() {
   const { data, isLoading } = useQuery<BeneficiaryProfile>({
     queryKey: ['beneficiary-profile'],
     queryFn: async () => {
-      const res = await apiClient.get('/beneficiary/profile');
+      const res = await apiClient.get('/mobile/beneficiary/profile');
       return res.data;
     },
   });

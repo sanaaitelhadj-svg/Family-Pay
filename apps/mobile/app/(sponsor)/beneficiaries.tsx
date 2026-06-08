@@ -25,7 +25,7 @@ export default function BeneficiariesScreen() {
   const { data, isLoading, refetch, isRefetching } = useQuery<Beneficiary[]>({
     queryKey: ['sponsor-beneficiaries'],
     queryFn: async () => {
-      const res = await apiClient.get('/sponsor/beneficiaries');
+      const res = await apiClient.get('/mobile/sponsor/beneficiaries');
       return res.data;
     },
   });

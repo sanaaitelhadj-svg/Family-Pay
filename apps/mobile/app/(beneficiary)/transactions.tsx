@@ -27,7 +27,7 @@ export default function TransactionsScreen() {
   const { data, isLoading, refetch, isRefetching } = useQuery<Transaction[]>({
     queryKey: ['beneficiary-transactions'],
     queryFn: async () => {
-      const res = await apiClient.get('/beneficiary/transactions');
+      const res = await apiClient.get('/mobile/beneficiary/transactions');
       return res.data;
     },
   });

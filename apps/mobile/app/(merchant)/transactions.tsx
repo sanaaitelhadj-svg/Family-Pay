@@ -27,7 +27,7 @@ export default function MerchantTransactionsScreen() {
   const { data, isLoading, refetch, isRefetching } = useQuery<Transaction[]>({
     queryKey: ['merchant-transactions'],
     queryFn: async () => {
-      const res = await apiClient.get('/merchant/transactions');
+      const res = await apiClient.get('/mobile/merchant/transactions');
       return res.data;
     },
   });
