@@ -15,17 +15,27 @@
       "bundleIdentifier": "com.altivax.familypay"
     },
     "android": {
-      "adaptiveIcon": { "backgroundColor": "#1B4FD8" },
+      "adaptiveIcon": {
+        "backgroundColor": "#1B4FD8"
+      },
       "package": "com.altivax.familypay",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "plugins": [
       "expo-router",
-      ["expo-camera", {
-        "cameraPermission": "FamilyPay utilise la caméra pour scanner les QR codes de paiement."
-      }]
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "FamilyPay utilise la caméra pour scanner les QR codes de paiement."
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "scheme": "familypay",
-    "experiments": { "typedRoutes": true }
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

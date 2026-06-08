@@ -23,6 +23,7 @@ export default function SponsorLayout() {
       <Tabs.Screen name="beneficiaries" options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👥" label="Bénéficiaires" focused={focused} /> }} />
       <Tabs.Screen name="profile" options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👤" label="Profil" focused={focused} /> }} />
       <Tabs.Screen name="create-allocation" options={{ href: null }} />
+      <Tabs.Screen name="add-card"  options={{ href: null, title: "Carte" }} />
       <Tabs.Screen name="invite" options={{ href: null }} />
     </Tabs>
   );

@@ -17,6 +17,13 @@ const CATEGORIES = [
 ];
 
 export default function CreateAllocationScreen() {
+  // Gate : vérifier si le sponsor a une carte enregistrée
+  const { data: profile } = useQuery({
+    queryKey: ['sponsor-profile'],
+    queryFn: async () => { const r = await api.get('/mobile/sponsor/profile'); return r.data; },
+  });
+
+  const hasCard = !!(profile?.maskedCardReference);
   const router  = useRouter();
   const qc      = useQueryClient();
   const [category,    setCategory]    = useState('GENERAL');

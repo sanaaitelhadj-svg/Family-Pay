@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Share, RefreshControl,
+  TextInput, ActivityIndicator, Share, RefreshControl, Alert,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import QRCode from 'react-native-qrcode-svg';
@@ -14,7 +14,7 @@ type MerchantStats = {
   weekRevenue: number;
   monthRevenue: number;
   todayCount: number;
-  merchant: { id: string; businessName?: string; user: { firstName: string; lastName: string } };
+  merchant: { id: string; businessName?: string; category: string; user: { firstName: string; lastName: string } };
 };
 
 export default function MerchantHomeScreen() {
