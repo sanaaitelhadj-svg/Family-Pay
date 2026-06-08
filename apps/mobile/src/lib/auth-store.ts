@@ -1,5 +1,32 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+
+// SecureStore ne fonctionne pas sur web → fallback localStorage
+const storage = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    const SecureStore = await import('expo-secure-store');
+    return SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+      return;
+    }
+    const SecureStore = await import('expo-secure-store');
+    await storage.setItem(key, value);
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+      return;
+    }
+    const SecureStore = await import('expo-secure-store');
+    await storage.removeItem(key);
+  },
+};
 
 export type UserRole = 'SPONSOR' | 'BENEFICIARY' | 'MERCHANT' | 'ADMIN';
 
@@ -28,16 +55,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   setAuth: async (user, accessToken, refreshToken) => {
-    await SecureStore.setItemAsync('access_token', accessToken);
-    await SecureStore.setItemAsync('refresh_token', refreshToken);
-    await SecureStore.setItemAsync('user', JSON.stringify(user));
+    await storage.setItem('access_token', accessToken);
+    await storage.setItem('refresh_token', refreshToken);
+    await storage.setItem('user', JSON.stringify(user));
     set({ user, accessToken, refreshToken });
   },
 
   clearAuth: async () => {
-    await SecureStore.deleteItemAsync('access_token');
-    await SecureStore.deleteItemAsync('refresh_token');
-    await SecureStore.deleteItemAsync('user');
+    await storage.removeItem('access_token');
+    await storage.removeItem('refresh_token');
+    await storage.removeItem('user');
     set({ user: null, accessToken: null, refreshToken: null });
   },
 

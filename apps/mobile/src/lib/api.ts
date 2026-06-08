@@ -1,12 +1,23 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+
+const getToken = async (key: string) => {
+  if (Platform.OS === 'web') return localStorage.getItem(key);
+  const SecureStore = await import('expo-secure-store');
+  return SecureStore.getItemAsync(key);
+};
+const removeToken = async (key: string) => {
+  if (Platform.OS === 'web') { localStorage.removeItem(key); return; }
+  const SecureStore = await import('expo-secure-store');
+  await SecureStore.deleteItemAsync(key);
+};
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export const api = axios.create({ baseURL: BASE_URL, timeout: 10_000 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('access_token');
+  const token = await getToken('access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -26,8 +37,8 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return axios(original);
       } catch {
-        await SecureStore.deleteItemAsync('access_token');
-        await SecureStore.deleteItemAsync('refresh_token');
+        await removeToken('access_token');
+        await removeToken('refresh_token');
       }
     }
     return Promise.reject(error);
