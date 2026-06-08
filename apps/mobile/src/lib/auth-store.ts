@@ -1,33 +1,6 @@
 import { create } from 'zustand';
 import { Platform } from 'react-native';
 
-// SecureStore ne fonctionne pas sur web → fallback localStorage
-const storage = {
-  getItem: async (key: string): Promise<string | null> => {
-    if (Platform.OS === 'web') {
-      return localStorage.getItem(key);
-    }
-    const SecureStore = await import('expo-secure-store');
-    return SecureStore.getItemAsync(key);
-  },
-  setItem: async (key: string, value: string): Promise<void> => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(key, value);
-      return;
-    }
-    const SecureStore = await import('expo-secure-store');
-    await storage.setItem(key, value);
-  },
-  removeItem: async (key: string): Promise<void> => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem(key);
-      return;
-    }
-    const SecureStore = await import('expo-secure-store');
-    await storage.removeItem(key);
-  },
-};
-
 export type UserRole = 'SPONSOR' | 'BENEFICIARY' | 'MERCHANT' | 'ADMIN';
 
 interface User {
@@ -37,6 +10,25 @@ interface User {
   role: UserRole;
   profileId: string;
 }
+
+// Storage adapter : localStorage sur web, SecureStore sur native
+const storage = {
+  get: async (key: string): Promise<string | null> => {
+    if (Platform.OS === 'web') return localStorage.getItem(key);
+    const SS = require('expo-secure-store');
+    return SS.getItemAsync(key);
+  },
+  set: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') { localStorage.setItem(key, value); return; }
+    const SS = require('expo-secure-store');
+    await SS.setItemAsync(key, value);
+  },
+  del: async (key: string): Promise<void> => {
+    if (Platform.OS === 'web') { localStorage.removeItem(key); return; }
+    const SS = require('expo-secure-store');
+    await SS.deleteItemAsync(key);
+  },
+};
 
 interface AuthState {
   user: User | null;
@@ -55,25 +47,25 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   setAuth: async (user, accessToken, refreshToken) => {
-    await storage.setItem('access_token', accessToken);
-    await storage.setItem('refresh_token', refreshToken);
-    await storage.setItem('user', JSON.stringify(user));
+    await storage.set('access_token', accessToken);
+    await storage.set('refresh_token', refreshToken);
+    await storage.set('user', JSON.stringify(user));
     set({ user, accessToken, refreshToken });
   },
 
   clearAuth: async () => {
-    await storage.removeItem('access_token');
-    await storage.removeItem('refresh_token');
-    await storage.removeItem('user');
+    await storage.del('access_token');
+    await storage.del('refresh_token');
+    await storage.del('user');
     set({ user: null, accessToken: null, refreshToken: null });
   },
 
   loadFromStorage: async () => {
     try {
       const [token, refresh, userJson] = await Promise.all([
-        SecureStore.getItemAsync('access_token'),
-        SecureStore.getItemAsync('refresh_token'),
-        SecureStore.getItemAsync('user'),
+        storage.get('access_token'),
+        storage.get('refresh_token'),
+        storage.get('user'),
       ]);
       if (token && userJson) {
         set({ accessToken: token, refreshToken: refresh, user: JSON.parse(userJson) });
