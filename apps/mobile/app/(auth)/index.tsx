@@ -90,6 +90,15 @@ export default function WelcomeScreen() {
         <Button label="Recevoir le code SMS" onPress={handleContinue} loading={loading}
           disabled={phone.length < 9} style={{ marginTop: 8 }} />
 
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/register' as any)}
+          style={{ alignItems: 'center', paddingVertical: 14 }}
+        >
+          <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 15 }}>
+            Pas encore de compte ? Créer un compte →
+          </Text>
+        </TouchableOpacity>
+
         <Text style={styles.legal}>En continuant, vous acceptez les{' '}
           <Text style={styles.legalLink}>CGU FamilyPay</Text>
         </Text>
