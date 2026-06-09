@@ -551,7 +551,10 @@ mobileRouter.post('/sponsor/phone/change-request', authenticate(['SPONSOR']), wr
   if (existing) { res.status(409).json({ message: 'Ce numéro est déjà utilisé par un autre compte' }); return; }
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-  await prisma.otp.create({ data: { phone: newPhone, code: otp, purpose: 'PHONE_CHANGE', expiresAt } });
+  const bcryptModule = await import('bcryptjs');
+  const bcrypt = (bcryptModule as any).default ?? bcryptModule;
+  const codeHash = await bcrypt.hash(otp, 10);
+  await prisma.otpCode.create({ data: { phone: newPhone, codeHash, purpose: 'PHONE_CHANGE', expiresAt } });
   const { smsProvider } = await import('../../lib/sms.js');
   await smsProvider.send(newPhone, `FamilyPay : votre code de vérification est ${otp}`);
   res.json({ message: 'OTP envoyé' });
@@ -561,12 +564,16 @@ mobileRouter.post('/sponsor/phone/change-request', authenticate(['SPONSOR']), wr
 mobileRouter.post('/sponsor/phone/change-confirm', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const { newPhone, code } = req.body;
   if (!newPhone || !code) { res.status(400).json({ message: 'Numéro et code requis' }); return; }
-  const otp = await prisma.otp.findFirst({
-    where: { phone: newPhone, code, purpose: 'PHONE_CHANGE', usedAt: null, expiresAt: { gt: new Date() } },
+  const otpRecords = await prisma.otpCode.findMany({
+    where: { phone: newPhone, purpose: 'PHONE_CHANGE', usedAt: null, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
+    take: 5,
   });
+  const bcryptModule2 = await import('bcryptjs');
+  const bcrypt2 = (bcryptModule2 as any).default ?? bcryptModule2;
+  const otp = await (async () => { for (const r of otpRecords) { if (await bcrypt2.compare(code, r.codeHash)) return r; } return null; })();
   if (!otp) { res.status(400).json({ message: 'Code invalide ou expiré' }); return; }
-  await prisma.otp.update({ where: { id: otp.id }, data: { usedAt: new Date() } });
+  await prisma.otpCode.update({ where: { id: otp.id }, data: { usedAt: new Date() } });
   const sponsor = await prisma.sponsor.findUnique({ where: { id: req.user!.profileId } });
   if (!sponsor) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
   await prisma.user.update({ where: { id: sponsor.userId }, data: { phone: newPhone } });
