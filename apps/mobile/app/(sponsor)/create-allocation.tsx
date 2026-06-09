@@ -110,8 +110,16 @@ export default function CreateAllocationScreen() {
         {/* Date expiration */}
         <Text style={styles.label}>Date d'expiration <Text style={styles.optional}>(optionnel)</Text></Text>
         <View style={styles.inputWrap}>
-          <TextInput style={styles.input} placeholder="AAAA-MM-JJ"
-            value={expiresAt} onChangeText={setExpiresAt} placeholderTextColor={Colors.textMuted} />
+          {Platform.OS === 'web' ? (
+            <input
+              type="date"
+              style={{ flex: 1, backgroundColor: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#1a1a2e', padding: '2px 0' } as any}
+              onChange={e => setExpiresAt(e.target.value)}
+            />
+          ) : (
+            <TextInput style={styles.input} placeholder="AAAA-MM-JJ"
+              value={expiresAt} onChangeText={setExpiresAt} placeholderTextColor={Colors.textMuted} />
+          )}
         </View>
 
         <Button label="Créer l'allocation" onPress={() => mutation.mutate()}

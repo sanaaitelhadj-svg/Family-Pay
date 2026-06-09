@@ -113,13 +113,27 @@ export default function RegisterBeneficiaryScreen() {
           {/* Date de naissance */}
           <View style={styles.field}>
             <Text style={styles.label}>Date de naissance *</Text>
-            <View style={styles.dobRow}>
-              <TextInput style={[styles.dobInput, errors.dob && styles.inputErr]} placeholder="JJ" placeholderTextColor={Colors.textMuted} value={form.dobDay} onChangeText={v => set('dobDay', v)} keyboardType="number-pad" maxLength={2} />
-              <Text style={styles.dobSep}>/</Text>
-              <TextInput style={[styles.dobInput, errors.dob && styles.inputErr]} placeholder="MM" placeholderTextColor={Colors.textMuted} value={form.dobMonth} onChangeText={v => set('dobMonth', v)} keyboardType="number-pad" maxLength={2} />
-              <Text style={styles.dobSep}>/</Text>
-              <TextInput style={[styles.dobInputYear, errors.dob && styles.inputErr]} placeholder="AAAA" placeholderTextColor={Colors.textMuted} value={form.dobYear} onChangeText={v => set('dobYear', v)} keyboardType="number-pad" maxLength={4} />
-            </View>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                style={{ backgroundColor: '#F8F8FC', border: errors.dob ? '1px solid #ef4444' : '1px solid #E5E7EB', borderRadius: 10, padding: '13px 14px', fontSize: 15, color: '#1a1a2e', width: '100%', boxSizing: 'border-box' } as any}
+                onChange={e => {
+                  const d = e.target.value; // YYYY-MM-DD
+                  if (d) {
+                    const [y, m, day] = d.split('-');
+                    set('dobDay', day); set('dobMonth', m); set('dobYear', y);
+                  }
+                }}
+              />
+            ) : (
+              <View style={styles.dobRow}>
+                <TextInput style={[styles.dobInput, errors.dob && styles.inputErr]} placeholder="JJ" placeholderTextColor={Colors.textMuted} value={form.dobDay} onChangeText={v => set('dobDay', v)} keyboardType="number-pad" maxLength={2} />
+                <Text style={styles.dobSep}>/</Text>
+                <TextInput style={[styles.dobInput, errors.dob && styles.inputErr]} placeholder="MM" placeholderTextColor={Colors.textMuted} value={form.dobMonth} onChangeText={v => set('dobMonth', v)} keyboardType="number-pad" maxLength={2} />
+                <Text style={styles.dobSep}>/</Text>
+                <TextInput style={[styles.dobInputYear, errors.dob && styles.inputErr]} placeholder="AAAA" placeholderTextColor={Colors.textMuted} value={form.dobYear} onChangeText={v => set('dobYear', v)} keyboardType="number-pad" maxLength={4} />
+              </View>
+            )}
             {errors.dob && <Text style={styles.err}>{errors.dob}</Text>}
             {age !== null && age >= 0 && age <= 120 && (
               <View style={[styles.ageBadge, minor ? styles.ageBadgeMinor : styles.ageBadgeAdult]}>
