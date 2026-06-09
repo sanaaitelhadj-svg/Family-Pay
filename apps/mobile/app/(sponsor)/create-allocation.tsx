@@ -41,13 +41,16 @@ export default function CreateAllocationScreen() {
       beneficiaryId: beneficiary,
       category,
       limitAmount: Number(amount),
-      expiresAt: expiresAt || null,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sponsor-allocations'] });
       if (typeof window !== 'undefined') { window.alert('✅ Allocation créée avec succès !'); router.back(); } else { Alert.alert('✅ Allocation créée', "L'allocation a été créée avec succès.", [{ text: 'OK', onPress: () => router.back() }]); }
     },
-    onError: (err: any) => Alert.alert('Erreur', err.response?.data?.message ?? 'Erreur lors de la création'),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message ?? err?.response?.data?.error ?? 'Erreur lors de la création';
+      if (typeof window !== 'undefined') { window.alert('Erreur : ' + msg); } else { Alert.alert('Erreur', msg); }
+    },
   });
 
   const canSubmit = beneficiary && amount && Number(amount) > 0 && !mutation.isPending;
