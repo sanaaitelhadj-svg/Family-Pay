@@ -340,7 +340,7 @@ mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (re
 // Sponsor crée directement un compte bénéficiaire
 mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const { prisma } = await import('../../lib/prisma.js');
-  const { SmsService } = await import('../../lib/sms.js');
+  const { smsProvider } = await import('../../lib/sms.js');
   const { phone, firstName, lastName, dateOfBirth } = req.body;
 
   if (!phone || !firstName) {
@@ -349,7 +349,7 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
 
   const sponsorId = req.user!.profileId;
   const sponsor   = await prisma.sponsor.findUnique({ where: { id: sponsorId }, include: { user: true } });
-  if (!sponsor) return res.status(404).json({ error: 'SPONSOR_NOT_FOUND' });
+  if (!sponsor) { res.status(404).json({ error: 'SPONSOR_NOT_FOUND' }); return; }
 
   const existing = await prisma.user.findUnique({ where: { phone } });
   if (existing) return res.status(409).json({ error: 'PHONE_EXISTS', message: 'Ce numéro a déjà un compte' });
@@ -363,7 +363,7 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
       phone,
       firstName,
       lastName:      lastName ?? null,
-      passwordHash,
+      password: passwordHash,
       role:          'BENEFICIARY',
       isFirstLogin:  true,
       cndpConsentAt: new Date(),
@@ -374,16 +374,16 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
         },
       },
     },
-    include: { beneficiary: true },
   });
+  const beneficiary = await prisma.beneficiary.findUnique({ where: { userId: newUser.id } });
 
-  await SmsService.send(phone,
+  await smsProvider.send(phone,
     `Bonjour ${firstName} ! Votre compte FamilyPay a été créé par ${sponsor.user.firstName}. Téléchargez l'app et connectez-vous avec votre numéro.`
   );
 
   res.status(201).json({
     message: 'Compte bénéficiaire créé avec succès',
-    beneficiaryId: newUser.beneficiary?.id,
+    beneficiaryId: beneficiary?.id,
     phone,
   });
 }));
