@@ -344,7 +344,7 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
   const { phone, firstName, lastName, dateOfBirth } = req.body;
 
   if (!phone || !firstName) {
-    return res.status(400).json({ error: 'MISSING_FIELDS', message: 'Téléphone et prénom requis' });
+    res.status(400).json({ error: 'MISSING_FIELDS', message: 'Téléphone et prénom requis' }); return;
   }
 
   const sponsorId = req.user!.profileId;
@@ -352,7 +352,7 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
   if (!sponsor) { res.status(404).json({ error: 'SPONSOR_NOT_FOUND' }); return; }
 
   const existing = await prisma.user.findUnique({ where: { phone } });
-  if (existing) return res.status(409).json({ error: 'PHONE_EXISTS', message: 'Ce numéro a déjà un compte' });
+  if (existing) { res.status(409).json({ error: 'PHONE_EXISTS', message: 'Ce numéro a déjà un compte' }); return; }
 
   const bcrypt = await import('bcryptjs');
   const tempPassword = Math.random().toString(36).slice(-8);
