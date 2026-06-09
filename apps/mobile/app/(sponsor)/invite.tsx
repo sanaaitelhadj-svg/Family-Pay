@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native';
 import { api } from '../../src/lib/api';
 
 export default function InviteScreen() {
@@ -24,16 +24,11 @@ export default function InviteScreen() {
 
   async function handleCopy() {
     try {
-      if (Platform.OS === 'web') {
-        await (navigator as any).clipboard.writeText(link);
-        Alert.alert('Copié !', 'Lien copié dans le presse-papiers');
-      } else {
-        const Clipboard = require('@react-native-clipboard/clipboard').default;
-        await Clipboard.setString(link);
-        Alert.alert('Copié !', 'Lien copié dans le presse-papiers');
-      }
+      const Clipboard = await import('expo-clipboard');
+      await Clipboard.setStringAsync(link);
+      Alert.alert('Copié !', 'Lien copié dans le presse-papiers');
     } catch {
-      Alert.alert('Token', token);
+      Alert.alert("Token d'invitation", token);
     }
   }
 
