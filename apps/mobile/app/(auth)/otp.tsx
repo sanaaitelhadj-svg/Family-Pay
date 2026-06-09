@@ -32,7 +32,7 @@ export default function OtpScreen() {
       const res = await api.post('/auth/verify-otp', { phone, code, purpose: (purpose as string) ?? 'LOGIN' });
       const { accessToken, refreshToken, user } = res.data;
       await setAuth(user, accessToken, refreshToken);
-      // Layout re-renders automatically based on auth state
+      router.replace('/' as any);
     } catch (err: any) {
       Alert.alert('Code invalide', err.response?.data?.message ?? 'Vérifiez le code reçu par SMS');
       setOtp(['', '', '', '', '', '']);
