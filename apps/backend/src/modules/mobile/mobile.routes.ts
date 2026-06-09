@@ -141,7 +141,8 @@ mobileRouter.post('/sponsor/invite-beneficiary', authenticate(['SPONSOR']), wrap
     }
   } else {
     // Créer le compte utilisateur
-    const bcrypt = await import('bcryptjs');
+    const bcryptModule = await import('bcryptjs');
+  const bcrypt = (bcryptModule as any).default ?? bcryptModule;
     const tempPwd = Math.random().toString(36).slice(-8);
     user = await prisma.user.create({
       data: {
@@ -354,7 +355,8 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
   const existing = await prisma.user.findUnique({ where: { phone } });
   if (existing) { res.status(409).json({ error: 'PHONE_EXISTS', message: 'Ce numéro a déjà un compte' }); return; }
 
-  const bcrypt = await import('bcryptjs');
+  const bcryptModule = await import('bcryptjs');
+  const bcrypt = (bcryptModule as any).default ?? bcryptModule;
   const tempPassword = Math.random().toString(36).slice(-8);
   const passwordHash = await bcrypt.hash(tempPassword, 10);
 
