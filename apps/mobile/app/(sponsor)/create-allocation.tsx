@@ -33,7 +33,7 @@ export default function CreateAllocationScreen() {
 
   const { data: beneficiaries } = useQuery({
     queryKey: ['sponsor-beneficiaries'],
-    queryFn: () => api.get('/sponsor/beneficiaries').then(r => r.data.beneficiaries ?? []),
+    queryFn: () => api.get('/mobile/sponsor/beneficiaries').then(r => r.data ?? []),
   });
 
   const mutation = useMutation({
@@ -79,9 +79,11 @@ export default function CreateAllocationScreen() {
         <Text style={styles.label}>Bénéficiaire *</Text>
         {!beneficiaries || beneficiaries.length === 0 ? (
           <Card style={styles.noBeneCard}>
-            <Text style={styles.noBeneText}>Aucun bénéficiaire disponible</Text>
-            <Button label="Inviter un bénéficiaire" onPress={() => router.push('/(sponsor)/invite' as any)}
+            <Text style={styles.noBeneText}>Aucun bénéficiaire lié</Text>
+            <Button label="🔗 Inviter par lien" onPress={() => router.push('/(sponsor)/invite' as any)}
               variant="outline" style={{marginTop:10}} />
+            <Button label="➕ Créer un compte bénéficiaire" onPress={() => router.push('/(sponsor)/create-beneficiary' as any)}
+              style={{marginTop:8}} />
           </Card>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:16}} contentContainerStyle={{gap:10}}>

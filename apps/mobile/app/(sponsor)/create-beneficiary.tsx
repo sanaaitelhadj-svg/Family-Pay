@@ -83,7 +83,21 @@ export default function CreateBeneficiaryScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Date de naissance <Text style={styles.optional}>(optionnel)</Text></Text>
-            <TextInput style={[styles.input, errors.dateOfBirth && styles.inputErr]} placeholder="JJ/MM/AAAA" placeholderTextColor={Colors.textMuted} value={form.dateOfBirth} onChangeText={v => set('dateOfBirth', v)} keyboardType="number-pad" maxLength={10} />
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                style={{ backgroundColor: '#F8F8FC', border: '1px solid #E5E7EB', borderRadius: 10, padding: '13px 14px', fontSize: 15, color: '#1a1a2e', width: '100%', boxSizing: 'border-box' } as any}
+                onChange={e => {
+                  const d = e.target.value; // YYYY-MM-DD
+                  if (d) {
+                    const [y, m, day] = d.split('-');
+                    set('dateOfBirth', `${day}/${m}/${y}`);
+                  }
+                }}
+              />
+            ) : (
+              <TextInput style={[styles.input, errors.dateOfBirth && styles.inputErr]} placeholder="JJ/MM/AAAA" placeholderTextColor={Colors.textMuted} value={form.dateOfBirth} onChangeText={v => set('dateOfBirth', v)} keyboardType="number-pad" maxLength={10} />
+            )}
             {errors.dateOfBirth && <Text style={styles.err}>{errors.dateOfBirth}</Text>}
           </View>
 
