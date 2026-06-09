@@ -1,0 +1,11 @@
+{
+  "name": "FamilyPay",
+  "postStartCommand": "cd apps/mobile && npx expo start --port 8081 --web &",
+  "forwardPorts": [8081],
+  "portsAttributes": {
+    "8081": {
+      "label": "Expo Web",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}
