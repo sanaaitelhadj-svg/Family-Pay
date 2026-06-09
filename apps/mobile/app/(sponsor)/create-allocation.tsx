@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import React, { useState } from 'react';
+
+import { ScrollView, View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -31,6 +32,7 @@ export default function CreateAllocationScreen() {
   const [amount,      setAmount]      = useState('');
   const [expiresAt,   setExpiresAt]   = useState('');
   const [cardId,      setCardId]      = useState('');
+  const [requiresApproval, setRequiresApproval] = useState(false);
 
   const { data: cards } = useQuery({
     queryKey: ['sponsor-cards'],
@@ -38,6 +40,12 @@ export default function CreateAllocationScreen() {
   });
 
   const defaultCard = (cards ?? []).find((c: any) => c.isDefault);
+
+  // Auto-enable requiresApproval for minors
+  const selectedBenef = (beneficiaries ?? []).find((b: any) => b.id === beneficiary);
+  React.useEffect(() => {
+    if (selectedBenef?.isMinor) setRequiresApproval(true);
+  }, [beneficiary]);
 
     const { data: beneficiaries } = useQuery({
     queryKey: ['sponsor-beneficiaries'],
@@ -51,6 +59,7 @@ export default function CreateAllocationScreen() {
       limitAmount: Number(amount),
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       cardId: cardId || defaultCard?.id || undefined,
+      requiresApproval,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sponsor-allocations'] });
@@ -134,6 +143,28 @@ export default function CreateAllocationScreen() {
           )}
         </View>
 
+        {/* Approbation des transactions */}
+        <View style={styles.approvalRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>
+              🔐 Approbation par transaction
+              {selectedBenef?.isMinor ? '  ⚠️ Mineur' : ''}
+            </Text>
+            <Text style={styles.approvalSub}>
+              {requiresApproval
+                ? 'Chaque paiement devra être approuvé par vous'
+                : 'Les paiements sont automatiquement autorisés'}
+            </Text>
+          </View>
+          <Switch
+            value={requiresApproval}
+            onValueChange={setRequiresApproval}
+            trackColor={{ false: '#d1d5db', true: Colors.primary }}
+            thumbColor="#fff"
+            disabled={selectedBenef?.isMinor === true}
+          />
+        </View>
+
         {/* Carte bancaire */}
         <Text style={styles.label}>Carte bancaire</Text>
         {(cards ?? []).length === 0 ? (
@@ -167,6 +198,8 @@ export default function CreateAllocationScreen() {
 
 const styles = StyleSheet.create({
   container:   { flex:1, backgroundColor:Colors.bg },
+  approvalRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: Colors.border, marginBottom: 8 },
+  approvalSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 3 },
   noCardBtn:   { borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 8 },
   noCardText:  { fontSize: 13, fontWeight: '600', color: Colors.primary },
   cardsRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },

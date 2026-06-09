@@ -40,7 +40,9 @@ mobileRouter.get('/sponsor/beneficiaries', authenticate(['SPONSOR']), wrap(async
       totalSpent,
       activeAllocations,
       isActive:     b.isActive,
+      isMinor:      b.isMinor,
       relationship: b.relationship ?? null,
+      dateOfBirth:  b.dateOfBirth ?? null,
       createdAt: b.createdAt,
     };
   });
@@ -425,6 +427,7 @@ mobileRouter.get('/sponsor/beneficiaries/:beneficiaryId/allocations', authentica
     limitAmount: Number(a.limitAmount),
     remainingAmount: Number(a.remainingAmount),
     status: a.status,
+    requiresApproval: a.requiresApproval,
     expiresAt: a.expiresAt,
     renewalPeriod: a.renewalPeriod,
     createdAt: a.createdAt,
@@ -578,4 +581,16 @@ mobileRouter.post('/sponsor/phone/change-confirm', authenticate(['SPONSOR']), wr
   if (!sponsor) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
   await prisma.user.update({ where: { id: sponsor.userId }, data: { phone: newPhone } });
   res.json({ message: 'Numéro mis à jour', phone: newPhone });
+}));
+
+// ── Sponsor: toggle requiresApproval sur une allocation ───────────────────
+mobileRouter.patch('/sponsor/allocations/:allocationId/approval', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const alloc = await prisma.allocation.findFirst({
+    where: { id: (req.params.allocationId as string), sponsorId },
+  });
+  if (!alloc) { res.status(404).json({ message: 'Allocation introuvable' }); return; }
+  const newValue = !alloc.requiresApproval;
+  await prisma.allocation.update({ where: { id: alloc.id }, data: { requiresApproval: newValue } });
+  res.json({ requiresApproval: newValue });
 }));

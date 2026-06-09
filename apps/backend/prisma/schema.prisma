@@ -245,9 +245,10 @@ model Allocation {
   remainingAmount Decimal            @db.Decimal(12, 2)
   status          AllocationStatus   @default(ACTIVE)
   expiresAt       DateTime?
-  renewalPeriod   String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  renewalPeriod    String?
+  requiresApproval Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   authorizations Authorization[]
 

@@ -1,0 +1,1 @@
+ALTER TABLE "allocations" ADD COLUMN IF NOT EXISTS "requiresApproval" BOOLEAN NOT NULL DEFAULT false;

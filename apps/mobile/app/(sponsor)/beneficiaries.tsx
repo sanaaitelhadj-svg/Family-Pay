@@ -14,6 +14,7 @@ type Allocation = {
   limitAmount: number;
   remainingAmount: number;
   status: 'ACTIVE' | 'PAUSED' | 'EXPIRED' | 'EXHAUSTED';
+  requiresApproval: boolean;
 };
 
 type Beneficiary = {
@@ -23,7 +24,9 @@ type Beneficiary = {
   totalSpent: number;
   activeAllocations: number;
   isActive: boolean;
+  isMinor: boolean;
   relationship: string | null;
+  dateOfBirth: string | null;
   createdAt: string;
 };
 
@@ -74,6 +77,11 @@ export default function BeneficiariesScreen() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sponsor-allocations', expandedId] }),
   });
 
+  const toggleApproval = useMutation({
+    mutationFn: (id: string) => apiClient.patch(`/mobile/sponsor/allocations/${id}/approval`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sponsor-allocations', expandedId] }),
+  });
+
   const deleteAlloc = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/mobile/sponsor/allocations/${id}`),
     onSuccess: () => {
@@ -88,6 +96,12 @@ export default function BeneficiariesScreen() {
     } else {
       onConfirm();
     }
+  };
+
+  const getAge = (dateOfBirth: string | null) => {
+    if (!dateOfBirth) return null;
+    const d = new Date(dateOfBirth);
+    return Math.floor((Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
   };
 
   const filtered = (data ?? []).filter(b => {
@@ -161,8 +175,13 @@ export default function BeneficiariesScreen() {
                   <Text style={styles.avatarText}>{initials}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardName}>{item.user.firstName} {item.user.lastName}</Text>
-                  <Text style={styles.cardPhone}>{item.user.phone}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.cardName}>{item.user.firstName} {item.user.lastName}</Text>
+                    {item.isMinor && <View style={styles.minorBadge}><Text style={styles.minorBadgeText}>Mineur</Text></View>}
+                  </View>
+                  <Text style={styles.cardPhone}>
+                    {item.user.phone}{item.dateOfBirth ? ` · ${getAge(item.dateOfBirth)} ans` : ''}
+                  </Text>
                   {item.relationship && (
                     <View style={styles.relBadge}>
                       <Text style={styles.relBadgeText}>{item.relationship}</Text>
@@ -229,6 +248,12 @@ export default function BeneficiariesScreen() {
                             <Text style={[styles.allocBadgeText, { color: isActive ? '#16a34a' : '#d97706' }]}>{alloc.status}</Text>
                           </View>
                           <View style={styles.allocActions}>
+                            <TouchableOpacity
+                              onPress={() => toggleApproval.mutate(alloc.id)}
+                              style={[styles.allocActionBtn, alloc.requiresApproval && { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}
+                            >
+                              <Text style={styles.allocActionIcon}>{alloc.requiresApproval ? '🔐' : '🔓'}</Text>
+                            </TouchableOpacity>
                             <TouchableOpacity onPress={() => pauseAlloc.mutate(alloc.id)} style={styles.allocActionBtn}>
                               <Text style={styles.allocActionIcon}>{isActive ? '⏸' : '▶'}</Text>
                             </TouchableOpacity>
@@ -310,6 +335,10 @@ const styles = StyleSheet.create({
   allocAmounts: { flexDirection: 'row', justifyContent: 'space-between' },
   allocAmountText: { fontSize: 11, color: Colors.textSecondary },
   noAlloc: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', paddingVertical: 8 },
+  minorBadge: { backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  minorBadgeText: { fontSize: 10, fontWeight: '700', color: '#d97706' },
+  approvalBadge: { backgroundColor: '#fef3c7', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  approvalBadgeText: { fontSize: 11, color: '#d97706', fontWeight: '600' },
   relBadge: { marginTop: 3, backgroundColor: 'rgba(91,61,245,0.1)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
   relBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.primary },
   empty: { alignItems: 'center', paddingTop: 60 },
