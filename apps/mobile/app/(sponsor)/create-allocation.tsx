@@ -30,8 +30,16 @@ export default function CreateAllocationScreen() {
   const [beneficiary, setBeneficiary] = useState('');
   const [amount,      setAmount]      = useState('');
   const [expiresAt,   setExpiresAt]   = useState('');
+  const [cardId,      setCardId]      = useState('');
 
-  const { data: beneficiaries } = useQuery({
+  const { data: cards } = useQuery({
+    queryKey: ['sponsor-cards'],
+    queryFn: () => api.get('/mobile/sponsor/cards').then(r => r.data ?? []),
+  });
+
+  const defaultCard = (cards ?? []).find((c: any) => c.isDefault);
+
+    const { data: beneficiaries } = useQuery({
     queryKey: ['sponsor-beneficiaries'],
     queryFn: () => api.get('/mobile/sponsor/beneficiaries').then(r => r.data ?? []),
   });
@@ -42,6 +50,7 @@ export default function CreateAllocationScreen() {
       category,
       limitAmount: Number(amount),
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+      cardId: cardId || defaultCard?.id || undefined,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sponsor-allocations'] });
@@ -125,7 +134,31 @@ export default function CreateAllocationScreen() {
           )}
         </View>
 
-        <Button label="Créer l'allocation" onPress={() => mutation.mutate()}
+        {/* Carte bancaire */}
+        <Text style={styles.label}>Carte bancaire</Text>
+        {(cards ?? []).length === 0 ? (
+          <TouchableOpacity style={styles.noCardBtn} onPress={() => router.push('/(sponsor)/cards' as any)}>
+            <Text style={styles.noCardText}>+ Ajouter une carte de paiement</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.cardsRow}>
+            {(cards ?? []).map((c: any) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.cardChip, (cardId === c.id || (!cardId && c.isDefault)) && styles.cardChipActive]}
+                onPress={() => setCardId(c.id)}
+              >
+                <Text style={styles.cardChipNum}>{c.maskedNumber}</Text>
+                <Text style={styles.cardChipSub}>{String(c.expiryMonth).padStart(2,'0')}/{c.expiryYear}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.cardChipAdd} onPress={() => router.push('/(sponsor)/cards' as any)}>
+              <Text style={styles.cardChipAddText}>+ Carte</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+                <Button label="Créer l'allocation" onPress={() => mutation.mutate()}
           loading={mutation.isPending} disabled={!canSubmit} style={{marginTop:8}} />
       </ScrollView>
     </View>
@@ -134,6 +167,15 @@ export default function CreateAllocationScreen() {
 
 const styles = StyleSheet.create({
   container:   { flex:1, backgroundColor:Colors.bg },
+  noCardBtn:   { borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 8 },
+  noCardText:  { fontSize: 13, fontWeight: '600', color: Colors.primary },
+  cardsRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  cardChip:    { flex: 1, minWidth: 140, backgroundColor: Colors.surface, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: Colors.border },
+  cardChipActive: { borderColor: Colors.primary, borderWidth: 2, backgroundColor: 'rgba(91,61,245,0.05)' },
+  cardChipNum: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 1 },
+  cardChipSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  cardChipAdd: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
+  cardChipAddText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   topBar:      { flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:20, paddingTop:56, backgroundColor:Colors.surface, borderBottomWidth:1, borderBottomColor:Colors.border },
   back:        { fontSize:15, color:Colors.primary, fontWeight:'600', width:60 },
   title:       { fontSize:17, fontWeight:'700', color:Colors.textPrimary },

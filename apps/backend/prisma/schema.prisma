@@ -64,6 +64,7 @@ enum OtpPurpose {
   VERIFY_PHONE
   SIGNUP
   LOGIN
+  PHONE_CHANGE
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -117,8 +118,30 @@ model Sponsor {
   allocations   Allocation[]
   transactions  Transaction[]
   commissions   Commission[]
+  cards         SponsorCard[]
 
   @@map("sponsors")
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPONSOR CARD — cartes bancaires du sponsor
+// ═══════════════════════════════════════════════════════════════════════════
+
+model SponsorCard {
+  id           String   @id @default(uuid())
+  sponsorId    String
+  sponsor      Sponsor  @relation(fields: [sponsorId], references: [id])
+  maskedNumber String
+  cardHolder   String
+  expiryMonth  Int
+  expiryYear   Int
+  brand        String   @default("VISA")
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([sponsorId])
+  @@map("sponsor_cards")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

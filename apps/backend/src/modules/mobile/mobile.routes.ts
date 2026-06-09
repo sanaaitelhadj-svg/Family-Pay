@@ -493,3 +493,82 @@ mobileRouter.delete('/sponsor/allocations/:allocationId', authenticate(['SPONSOR
 
   res.json({ success: true });
 }));
+
+// ── Sponsor: liste des cartes ─────────────────────────────────────────────
+mobileRouter.get('/sponsor/cards', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const cards = await prisma.sponsorCard.findMany({
+    where: { sponsorId },
+    orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+  });
+  res.json(cards);
+}));
+
+// ── Sponsor: ajouter une carte ────────────────────────────────────────────
+mobileRouter.post('/sponsor/cards', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const { cardNumber, cardHolder, expiryMonth, expiryYear, brand } = req.body;
+  if (!cardNumber || !cardHolder || !expiryMonth || !expiryYear) {
+    res.status(400).json({ message: 'Champs requis manquants' }); return;
+  }
+  const last4 = String(cardNumber).replace(/\s/g, '').slice(-4);
+  const maskedNumber = `**** **** **** ${last4}`;
+  const existingCount = await prisma.sponsorCard.count({ where: { sponsorId } });
+  const card = await prisma.sponsorCard.create({
+    data: { sponsorId, maskedNumber, cardHolder: String(cardHolder).toUpperCase(), expiryMonth: Number(expiryMonth), expiryYear: Number(expiryYear), brand: brand ?? 'VISA', isDefault: existingCount === 0 },
+  });
+  res.status(201).json(card);
+}));
+
+// ── Sponsor: supprimer une carte ──────────────────────────────────────────
+mobileRouter.delete('/sponsor/cards/:cardId', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const card = await prisma.sponsorCard.findFirst({ where: { id: req.params.cardId as string, sponsorId } });
+  if (!card) { res.status(404).json({ message: 'Carte introuvable' }); return; }
+  await prisma.sponsorCard.delete({ where: { id: card.id } });
+  if (card.isDefault) {
+    const next = await prisma.sponsorCard.findFirst({ where: { sponsorId }, orderBy: { createdAt: 'asc' } });
+    if (next) await prisma.sponsorCard.update({ where: { id: next.id }, data: { isDefault: true } });
+  }
+  res.json({ success: true });
+}));
+
+// ── Sponsor: définir carte par défaut ─────────────────────────────────────
+mobileRouter.patch('/sponsor/cards/:cardId/default', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const card = await prisma.sponsorCard.findFirst({ where: { id: req.params.cardId as string, sponsorId } });
+  if (!card) { res.status(404).json({ message: 'Carte introuvable' }); return; }
+  await prisma.sponsorCard.updateMany({ where: { sponsorId }, data: { isDefault: false } });
+  await prisma.sponsorCard.update({ where: { id: card.id }, data: { isDefault: true } });
+  res.json({ success: true });
+}));
+
+// ── Sponsor: demander changement téléphone ────────────────────────────────
+mobileRouter.post('/sponsor/phone/change-request', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const { newPhone } = req.body;
+  if (!newPhone) { res.status(400).json({ message: 'Numéro requis' }); return; }
+  const existing = await prisma.user.findUnique({ where: { phone: newPhone } });
+  if (existing) { res.status(409).json({ message: 'Ce numéro est déjà utilisé par un autre compte' }); return; }
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await prisma.otp.create({ data: { phone: newPhone, code: otp, purpose: 'PHONE_CHANGE', expiresAt } });
+  const { smsProvider } = await import('../../lib/sms.js');
+  await smsProvider.send(newPhone, `FamilyPay : votre code de vérification est ${otp}`);
+  res.json({ message: 'OTP envoyé' });
+}));
+
+// ── Sponsor: confirmer changement téléphone ───────────────────────────────
+mobileRouter.post('/sponsor/phone/change-confirm', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const { newPhone, code } = req.body;
+  if (!newPhone || !code) { res.status(400).json({ message: 'Numéro et code requis' }); return; }
+  const otp = await prisma.otp.findFirst({
+    where: { phone: newPhone, code, purpose: 'PHONE_CHANGE', usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!otp) { res.status(400).json({ message: 'Code invalide ou expiré' }); return; }
+  await prisma.otp.update({ where: { id: otp.id }, data: { usedAt: new Date() } });
+  const sponsor = await prisma.sponsor.findUnique({ where: { id: req.user!.profileId } });
+  if (!sponsor) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
+  await prisma.user.update({ where: { id: sponsor.userId }, data: { phone: newPhone } });
+  res.json({ message: 'Numéro mis à jour', phone: newPhone });
+}));
