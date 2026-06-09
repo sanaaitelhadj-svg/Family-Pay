@@ -39,6 +39,8 @@ mobileRouter.get('/sponsor/beneficiaries', authenticate(['SPONSOR']), wrap(async
       totalAllocated,
       totalSpent,
       activeAllocations,
+      isActive:     b.isActive,
+      relationship: b.relationship ?? null,
       createdAt: b.createdAt,
     };
   });
@@ -342,7 +344,7 @@ mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (re
 mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const { prisma } = await import('../../lib/prisma.js');
   const { smsProvider } = await import('../../lib/sms.js');
-  const { phone, firstName, lastName, dateOfBirth } = req.body;
+  const { phone, firstName, lastName, dateOfBirth, relationship } = req.body;
 
   if (!phone || !firstName) {
     res.status(400).json({ error: 'MISSING_FIELDS', message: 'Téléphone et prénom requis' }); return;
@@ -372,7 +374,8 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
       beneficiary:   {
         create: {
           sponsorId,
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          dateOfBirth:  dateOfBirth ? new Date(dateOfBirth) : null,
+          relationship: relationship ?? null,
         },
       },
     },

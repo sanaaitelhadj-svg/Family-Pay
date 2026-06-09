@@ -23,6 +23,7 @@ type Beneficiary = {
   totalSpent: number;
   activeAllocations: number;
   isActive: boolean;
+  relationship: string | null;
   createdAt: string;
 };
 
@@ -162,6 +163,11 @@ export default function BeneficiariesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>{item.user.firstName} {item.user.lastName}</Text>
                   <Text style={styles.cardPhone}>{item.user.phone}</Text>
+                  {item.relationship && (
+                    <View style={styles.relBadge}>
+                      <Text style={styles.relBadgeText}>{item.relationship}</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.rightCol}>
                   <View style={[styles.statusPill, { backgroundColor: item.isActive ? '#dcfce7' : '#f3f4f6' }]}>
@@ -304,6 +310,8 @@ const styles = StyleSheet.create({
   allocAmounts: { flexDirection: 'row', justifyContent: 'space-between' },
   allocAmountText: { fontSize: 11, color: Colors.textSecondary },
   noAlloc: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', paddingVertical: 8 },
+  relBadge: { marginTop: 3, backgroundColor: 'rgba(91,61,245,0.1)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
+  relBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.primary },
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
