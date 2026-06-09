@@ -405,15 +405,15 @@ mobileRouter.post('/beneficiary/complete-onboarding', authenticate(['BENEFICIARY
 
 // ── Sponsor: allocations d'un bénéficiaire ─────────────────────────────────
 mobileRouter.get('/sponsor/beneficiaries/:beneficiaryId/allocations', authenticate(['SPONSOR']), wrap(async (req, res) => {
-  const sponsorRecord = await (req as any).prisma.sponsor.findUnique({ where: { userId: (req as any).user.id } });
+  const sponsorRecord = await prisma.sponsor.findUnique({ where: { userId: req.user!.id } });
   if (!sponsorRecord) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
 
-  const benef = await (req as any).prisma.beneficiary.findFirst({
+  const benef = await prisma.beneficiary.findFirst({
     where: { id: req.params.beneficiaryId, sponsorId: sponsorRecord.id },
   });
   if (!benef) { res.status(404).json({ message: 'Bénéficiaire introuvable' }); return; }
 
-  const allocations = await (req as any).prisma.allocation.findMany({
+  const allocations = await prisma.allocation.findMany({
     where: { beneficiaryId: benef.id, sponsorId: sponsorRecord.id },
     orderBy: { createdAt: 'desc' },
   });
@@ -432,67 +432,67 @@ mobileRouter.get('/sponsor/beneficiaries/:beneficiaryId/allocations', authentica
 
 // ── Sponsor: suspendre / réactiver un bénéficiaire ────────────────────────
 mobileRouter.patch('/sponsor/beneficiaries/:beneficiaryId/suspend', authenticate(['SPONSOR']), wrap(async (req, res) => {
-  const sponsorRecord = await (req as any).prisma.sponsor.findUnique({ where: { userId: (req as any).user.id } });
+  const sponsorRecord = await prisma.sponsor.findUnique({ where: { userId: req.user!.id } });
   if (!sponsorRecord) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
 
-  const benef = await (req as any).prisma.beneficiary.findFirst({
+  const benef = await prisma.beneficiary.findFirst({
     where: { id: req.params.beneficiaryId, sponsorId: sponsorRecord.id },
   });
   if (!benef) { res.status(404).json({ message: 'Bénéficiaire introuvable' }); return; }
 
   const newActive = !benef.isActive;
-  await (req as any).prisma.beneficiary.update({ where: { id: benef.id }, data: { isActive: newActive } });
-  await (req as any).prisma.user.update({ where: { id: benef.userId }, data: { isActive: newActive } });
+  await prisma.beneficiary.update({ where: { id: benef.id }, data: { isActive: newActive } });
+  await prisma.user.update({ where: { id: benef.userId }, data: { isActive: newActive } });
 
   res.json({ isActive: newActive });
 }));
 
 // ── Sponsor: supprimer un bénéficiaire ────────────────────────────────────
 mobileRouter.delete('/sponsor/beneficiaries/:beneficiaryId', authenticate(['SPONSOR']), wrap(async (req, res) => {
-  const sponsorRecord = await (req as any).prisma.sponsor.findUnique({ where: { userId: (req as any).user.id } });
+  const sponsorRecord = await prisma.sponsor.findUnique({ where: { userId: req.user!.id } });
   if (!sponsorRecord) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
 
-  const benef = await (req as any).prisma.beneficiary.findFirst({
+  const benef = await prisma.beneficiary.findFirst({
     where: { id: req.params.beneficiaryId, sponsorId: sponsorRecord.id },
     include: { allocations: true },
   });
   if (!benef) { res.status(404).json({ message: 'Bénéficiaire introuvable' }); return; }
 
   // Supprimer allocations puis bénéficiaire puis user
-  await (req as any).prisma.allocation.deleteMany({ where: { beneficiaryId: benef.id } });
-  await (req as any).prisma.beneficiary.delete({ where: { id: benef.id } });
-  await (req as any).prisma.user.delete({ where: { id: benef.userId } });
+  await prisma.allocation.deleteMany({ where: { beneficiaryId: benef.id } });
+  await prisma.beneficiary.delete({ where: { id: benef.id } });
+  await prisma.user.delete({ where: { id: benef.userId } });
 
   res.json({ success: true });
 }));
 
 // ── Sponsor: pauser / réactiver une allocation ────────────────────────────
 mobileRouter.patch('/sponsor/allocations/:allocationId/pause', authenticate(['SPONSOR']), wrap(async (req, res) => {
-  const sponsorRecord = await (req as any).prisma.sponsor.findUnique({ where: { userId: (req as any).user.id } });
+  const sponsorRecord = await prisma.sponsor.findUnique({ where: { userId: req.user!.id } });
   if (!sponsorRecord) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
 
-  const alloc = await (req as any).prisma.allocation.findFirst({
+  const alloc = await prisma.allocation.findFirst({
     where: { id: req.params.allocationId, sponsorId: sponsorRecord.id },
   });
   if (!alloc) { res.status(404).json({ message: 'Allocation introuvable' }); return; }
 
   const newStatus = alloc.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
-  await (req as any).prisma.allocation.update({ where: { id: alloc.id }, data: { status: newStatus } });
+  await prisma.allocation.update({ where: { id: alloc.id }, data: { status: newStatus } });
 
   res.json({ status: newStatus });
 }));
 
 // ── Sponsor: supprimer une allocation ─────────────────────────────────────
 mobileRouter.delete('/sponsor/allocations/:allocationId', authenticate(['SPONSOR']), wrap(async (req, res) => {
-  const sponsorRecord = await (req as any).prisma.sponsor.findUnique({ where: { userId: (req as any).user.id } });
+  const sponsorRecord = await prisma.sponsor.findUnique({ where: { userId: req.user!.id } });
   if (!sponsorRecord) { res.status(404).json({ message: 'Sponsor introuvable' }); return; }
 
-  const alloc = await (req as any).prisma.allocation.findFirst({
+  const alloc = await prisma.allocation.findFirst({
     where: { id: req.params.allocationId, sponsorId: sponsorRecord.id },
   });
   if (!alloc) { res.status(404).json({ message: 'Allocation introuvable' }); return; }
 
-  await (req as any).prisma.allocation.delete({ where: { id: alloc.id } });
+  await prisma.allocation.delete({ where: { id: alloc.id } });
 
   res.json({ success: true });
 }));
