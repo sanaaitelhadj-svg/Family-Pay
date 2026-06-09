@@ -336,3 +336,64 @@ mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (re
     totalRevenue: Number(totalRevenue._sum?.amount ?? 0),
   });
 }));
+
+// Sponsor crée directement un compte bénéficiaire
+mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const { prisma } = await import('../../lib/prisma.js');
+  const { SmsService } = await import('../../lib/sms.js');
+  const { phone, firstName, lastName, dateOfBirth } = req.body;
+
+  if (!phone || !firstName) {
+    return res.status(400).json({ error: 'MISSING_FIELDS', message: 'Téléphone et prénom requis' });
+  }
+
+  const sponsorId = req.user!.profileId;
+  const sponsor   = await prisma.sponsor.findUnique({ where: { id: sponsorId }, include: { user: true } });
+  if (!sponsor) return res.status(404).json({ error: 'SPONSOR_NOT_FOUND' });
+
+  const existing = await prisma.user.findUnique({ where: { phone } });
+  if (existing) return res.status(409).json({ error: 'PHONE_EXISTS', message: 'Ce numéro a déjà un compte' });
+
+  const bcrypt = await import('bcryptjs');
+  const tempPassword = Math.random().toString(36).slice(-8);
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+  const newUser = await prisma.user.create({
+    data: {
+      phone,
+      firstName,
+      lastName:      lastName ?? null,
+      passwordHash,
+      role:          'BENEFICIARY',
+      isFirstLogin:  true,
+      cndpConsentAt: new Date(),
+      beneficiary:   {
+        create: {
+          sponsorId,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        },
+      },
+    },
+    include: { beneficiary: true },
+  });
+
+  await SmsService.send(phone,
+    `Bonjour ${firstName} ! Votre compte FamilyPay a été créé par ${sponsor.user.firstName}. Téléchargez l'app et connectez-vous avec votre numéro.`
+  );
+
+  res.status(201).json({
+    message: 'Compte bénéficiaire créé avec succès',
+    beneficiaryId: newUser.beneficiary?.id,
+    phone,
+  });
+}));
+
+// Bénéficiaire confirme sa première connexion
+mobileRouter.post('/beneficiary/complete-onboarding', authenticate(['BENEFICIARY']), wrap(async (req, res) => {
+  const { prisma } = await import('../../lib/prisma.js');
+  await prisma.user.update({
+    where: { id: req.user!.userId },
+    data:  { isFirstLogin: false },
+  });
+  res.json({ message: 'Onboarding complété' });
+}));

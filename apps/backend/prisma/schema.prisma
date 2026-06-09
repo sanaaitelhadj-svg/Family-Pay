@@ -78,6 +78,7 @@ model User {
   firstName     String?
   lastName      String?
   role          UserRole
+  isFirstLogin  Boolean   @default(true)
   cndpConsentAt DateTime
   isVerified    Boolean  @default(false)
   isActive      Boolean  @default(true)

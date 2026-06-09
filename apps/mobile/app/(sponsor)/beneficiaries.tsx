@@ -53,9 +53,14 @@ export default function BeneficiariesScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Bénéficiaires</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/(sponsor)/invite')}>
-          <Text style={styles.addBtnText}>+ Inviter</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/(sponsor)/invite' as any)}>
+            <Text style={styles.addBtnText}>🔗 Inviter</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.addBtn, { backgroundColor: Colors.success ?? '#16a34a' }]} onPress={() => router.push('/(sponsor)/create-beneficiary' as any)}>
+            <Text style={styles.addBtnText}>+ Créer</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchRow}>
