@@ -31,11 +31,17 @@ export default function ProfileScreen() {
     },
   });
 
-  const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnecter', style: 'destructive', onPress: async () => { await clearAuth(); router.replace('/(auth)'); } },
-    ]);
+  const handleLogout = async () => {
+    const confirmed = typeof window !== 'undefined'
+      ? window.confirm('Voulez-vous vraiment vous déconnecter ?')
+      : true;
+    if (!confirmed) return;
+    await clearAuth();
+    if (typeof window !== 'undefined') {
+      (window as any).location.href = '/';
+    } else {
+      router.replace('/(auth)');
+    }
   };
 
   if (isLoading || !data) {

@@ -45,6 +45,8 @@ export default function CreateBeneficiaryScreen() {
       );
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Impossible de créer le compte';
+      console.log('[CREATE-BENEF ERROR]', err?.response?.status, msg);
+      console.log('[CREATE-BENEF ERROR]', err?.response?.status, msg);
       Alert.alert('Erreur', msg);
     } finally {
       setLoading(false);

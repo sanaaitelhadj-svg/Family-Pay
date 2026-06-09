@@ -30,7 +30,7 @@ export default function BeneficiaryProfileScreen() {
   const handleLogout = () => {
     Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnecter', style: 'destructive', onPress: async () => { await clearAuth(); router.replace('/(auth)'); } },
+      { text: 'Déconnecter', style: 'destructive', onPress: async () => { await clearAuth(); if (typeof window !== 'undefined') { (window as any).location.href = '/'; } else { router.replace('/(auth)'); } } },
     ]);
   };
 
