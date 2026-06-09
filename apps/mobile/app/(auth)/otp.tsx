@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Platform } from 'react-native';
 import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '@/lib/api';
@@ -32,7 +33,15 @@ export default function OtpScreen() {
       const res = await api.post('/auth/verify-otp', { phone, code, purpose: (purpose as string) ?? 'LOGIN' });
       const { accessToken, refreshToken, user } = res.data;
       await setAuth(user, accessToken, refreshToken);
-      router.replace('/' as any);
+      if (Platform.OS === 'web') {
+        // Force full reload so Expo Router re-initializes cleanly with auth from localStorage
+        (window as any).location.href = '/';
+      } else {
+        const dest = user.role === 'SPONSOR' ? '/(sponsor)'
+          : user.role === 'BENEFICIARY' ? '/(beneficiary)'
+          : '/(merchant)';
+        router.replace(dest as any);
+      }
     } catch (err: any) {
       Alert.alert('Code invalide', err.response?.data?.message ?? 'Vérifiez le code reçu par SMS');
       setOtp(['', '', '', '', '', '']);
