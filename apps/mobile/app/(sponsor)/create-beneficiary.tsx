@@ -38,11 +38,13 @@ export default function CreateBeneficiaryScreen() {
         lastName:    form.lastName.trim() || undefined,
         dateOfBirth,
       });
-      Alert.alert(
-        'Compte créé ✅',
-        `Le compte de ${form.firstName} a été créé. Un SMS lui a été envoyé.`,
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      if (typeof window !== 'undefined') {
+        window.alert(`✅ Compte créé !\nLe compte de ${form.firstName} a été créé. Un SMS lui a été envoyé.`);
+        router.back();
+      } else {
+        Alert.alert('Compte créé ✅', `Le compte de ${form.firstName} a été créé. Un SMS lui a été envoyé.`,
+          [{ text: 'OK', onPress: () => router.back() }]);
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Impossible de créer le compte';
       console.log('[CREATE-BENEF ERROR]', err?.response?.status, msg);

@@ -45,9 +45,7 @@ export default function CreateAllocationScreen() {
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sponsor-allocations'] });
-      Alert.alert('✅ Allocation créée', 'L\'allocation a été créée avec succès.', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      if (typeof window !== 'undefined') { window.alert('✅ Allocation créée avec succès !'); router.back(); } else { Alert.alert('✅ Allocation créée', "L'allocation a été créée avec succès.", [{ text: 'OK', onPress: () => router.back() }]); }
     },
     onError: (err: any) => Alert.alert('Erreur', err.response?.data?.message ?? 'Erreur lors de la création'),
   });
