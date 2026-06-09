@@ -21,12 +21,19 @@ export function createApp() {
   app.set('trust proxy', 1);
 
   app.use(helmet());
+  const allowedOrigins = process.env.CORS_ORIGINS?.split(',') ?? [];
   app.use(cors({
-    origin: process.env.CORS_ORIGINS?.split(',') ?? [
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'http://localhost:3003',
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl)
+      if (!origin) return callback(null, true);
+      // Allow Codespace domains
+      if (origin.endsWith('.app.github.dev')) return callback(null, true);
+      // Allow localhost
+      if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) return callback(null, true);
+      // Allow configured origins
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   }));
   app.use(compression());

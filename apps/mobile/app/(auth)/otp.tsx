@@ -11,7 +11,7 @@ export default function OtpScreen() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const inputs = useRef<(TextInput | null)[]>([]);
-  const { phone, role } = useLocalSearchParams<{ phone: string; role: string }>();
+  const { phone, role, purpose } = useLocalSearchParams<{ phone: string; role: string; purpose: string }>();
   const router  = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
 
@@ -29,12 +29,12 @@ export default function OtpScreen() {
     if (code.length !== 6) return;
     setLoading(true);
     try {
-      const res = await api.post('/auth/verify-otp', { phone, code, purpose: 'LOGIN' });
+      const res = await api.post('/auth/verify-otp', { phone, code, purpose: (purpose as string) ?? 'LOGIN' });
       const { accessToken, refreshToken, user } = res.data;
       await setAuth(user, accessToken, refreshToken);
-      const dest = user.role === 'SPONSOR' ? '/(sponsor)/'
-        : user.role === 'BENEFICIARY' ? '/(beneficiary)/'
-        : '/(merchant)/';
+      const dest = user.role === 'SPONSOR' ? '/sponsor'
+        : user.role === 'BENEFICIARY' ? '/beneficiary'
+        : '/merchant';
       router.replace(dest as any);
     } catch (err: any) {
       Alert.alert('Code invalide', err.response?.data?.message ?? 'Vérifiez le code reçu par SMS');

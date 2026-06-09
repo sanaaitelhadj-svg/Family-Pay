@@ -39,7 +39,7 @@ export default function RegisterSponsorScreen() {
         email:       form.email.trim()    || undefined,
         cndpConsent: true,
       });
-      router.push({ pathname: '/(auth)/otp', params: { phone: form.phone.replace(/\s/g, ''), purpose: 'SIGNUP', role: 'SPONSOR' } });
+      router.push({ pathname: '/otp', params: { phone: form.phone.replace(/\s/g, ''), purpose: 'SIGNUP', role: 'SPONSOR' } });
     } catch (err: any) {
       Alert.alert('Erreur', err?.response?.data?.message ?? "Impossible de créer le compte");
     } finally {
