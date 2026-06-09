@@ -229,7 +229,7 @@ export class AuthService {
     const token = await TokenService.issueInvitationToken(sponsorId);
     const invitationUrl = `${process.env.APP_URL ?? 'https://familypay.altivax.com'}/join/${token}`;
 
-    await AuthService.createAuditLog(sponsorId, 'INVITATION_CREATED', 'Sponsor', sponsorId);
+    await AuthService.createAuditLog(sponsor.userId, 'INVITATION_CREATED', 'Sponsor', sponsorId);
 
     return { invitationToken: token, invitationUrl };
   }
