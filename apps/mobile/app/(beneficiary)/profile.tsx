@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Colors, Radius } from '../../src/constants/theme';
@@ -27,15 +27,28 @@ export default function BeneficiaryProfileScreen() {
     },
   });
 
-  const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnecter', style: 'destructive', onPress: async () => { await clearAuth(); if (typeof window !== 'undefined') { (window as any).location.href = '/'; } else { router.replace('/(auth)'); } } },
-    ]);
+  const handleLogout = async () => {
+    const confirmed = typeof window !== 'undefined'
+      ? window.confirm('Voulez-vous vraiment vous déconnecter ?')
+      : true;
+    if (!confirmed) return;
+    await clearAuth();
+    if (typeof window !== 'undefined') {
+      (window as any).location.href = '/';
+    } else {
+      router.replace('/(auth)');
+    }
   };
 
   if (isLoading || !data) {
-    return <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={Colors.primary} size="large" />
+        <TouchableOpacity style={[styles.logoutBtn, { marginTop: 40 }]} onPress={handleLogout} activeOpacity={0.85}>
+          <Text style={styles.logoutText}>🚪 Déconnexion</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   const { user } = data;
@@ -67,6 +80,10 @@ export default function BeneficiaryProfileScreen() {
         </View>
       </View>
 
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+        <Text style={styles.logoutText}>🚪 Déconnexion</Text>
+      </TouchableOpacity>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🔔 Notifications</Text>
         <View style={styles.switchRow}>
@@ -81,9 +98,6 @@ export default function BeneficiaryProfileScreen() {
         <TouchableOpacity style={styles.actionRow} activeOpacity={0.7}><Text style={styles.actionText}>Politique de confidentialité</Text><Text style={styles.chevron}>›</Text></TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
-        <Text style={styles.logoutText}>🚪 Déconnexion</Text>
-      </TouchableOpacity>
       <Text style={styles.version}>FamilyPay v1.0.0 — © ALTIVAX 2026</Text>
     </ScrollView>
   );
@@ -113,7 +127,7 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   actionText: { fontSize: 14, color: Colors.textPrimary },
   chevron: { fontSize: 20, color: Colors.textMuted },
-  logoutBtn: { marginHorizontal: 16, marginTop: 8, backgroundColor: Colors.errorBg, borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
+  logoutBtn: { marginHorizontal: 16, marginTop: 8, marginBottom: 12, backgroundColor: Colors.errorBg, borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
   logoutText: { color: Colors.error, fontWeight: '700', fontSize: 15 },
   version: { textAlign: 'center', color: Colors.textMuted, fontSize: 11, marginTop: 16 },
 });
