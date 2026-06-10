@@ -249,8 +249,8 @@ export default function BeneficiariesScreen() {
                           </View>
                           <View style={styles.allocActions}>
                             <TouchableOpacity
-                              onPress={() => toggleApproval.mutate(alloc.id)}
-                              style={[styles.allocActionBtn, alloc.requiresApproval && { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}
+                              onPress={() => !item.isMinor && toggleApproval.mutate(alloc.id)}
+                              style={[styles.allocActionBtn, alloc.requiresApproval && { backgroundColor: '#fef3c7', borderColor: '#fde68a' }, item.isMinor && { opacity: 0.4 }]}
                             >
                               <Text style={styles.allocActionIcon}>{alloc.requiresApproval ? '🔐' : '🔓'}</Text>
                             </TouchableOpacity>
