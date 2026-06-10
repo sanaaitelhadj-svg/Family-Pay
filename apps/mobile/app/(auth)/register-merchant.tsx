@@ -35,7 +35,7 @@ interface MerchantFieldProps {
   onChange: (k: string, v: string) => void;
 }
 
-function MerchantField({ label, fieldKey, placeholder, keyboard = 'default', optional = false, secure = false, form, errors, onChange }: MerchantFieldProps) {
+function MerchantField({ label, fieldKey, placeholder, keyboard = 'default', optional = false, secure = false, form, errors, onChange, onBlur }: MerchantFieldProps & { onBlur?: () => void }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}{optional ? <Text style={styles.optional}> (optionnel)</Text> : ' *'}</Text>
@@ -45,6 +45,7 @@ function MerchantField({ label, fieldKey, placeholder, keyboard = 'default', opt
         placeholderTextColor={Colors.textMuted}
         value={form[fieldKey] ?? ''}
         onChangeText={v => onChange(fieldKey, v)}
+        onBlur={onBlur}
         keyboardType={keyboard}
         secureTextEntry={secure}
         autoCapitalize={keyboard === 'email-address' || secure ? 'none' : 'sentences'}
@@ -63,6 +64,26 @@ export default function RegisterMerchantScreen() {
   const [cndp, setCndp] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showCityPicker, setShowCityPicker] = useState(false);
+  const [checkingName, setCheckingName] = useState(false);
+
+  const checkBusinessName = async () => {
+    if (!form.businessName.trim() || !form.city.trim() || !form.address.trim()) return;
+    setCheckingName(true);
+    try {
+      await apiClient.post('/auth/merchant/check', {
+        businessName: form.businessName.trim(),
+        city:         form.city.trim(),
+        address:      form.address.trim(),
+      });
+      // Pas de doublon — effacer l'erreur si elle existait
+      setErrors(e => { const n = { ...e }; delete n.businessName; return n; });
+    } catch (err: any) {
+      const { field, message } = err?.response?.data ?? {};
+      if (field === 'businessName') setErrors(e => ({ ...e, businessName: message }));
+    } finally {
+      setCheckingName(false);
+    }
+  };
 
   const [form, setForm] = useState({
     businessName: '', category: '' as any, address: '', city: '', phone: '', email: '',
@@ -223,7 +244,7 @@ export default function RegisterMerchantScreen() {
           {/* ÉTAPE 0 — Infos de base */}
           {step === 0 && <>
             <Text style={styles.stepTitle}>Informations de base</Text>
-            <MerchantField form={form} errors={errors} onChange={set} label="Nom commercial" fieldKey="businessName" placeholder="Ex : Pharmacie Al Amal" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Nom commercial" fieldKey="businessName" onBlur={checkBusinessName} placeholder="Ex : Pharmacie Al Amal" />
             <View style={styles.field}>
               <Text style={styles.label}>Catégorie *</Text>
               <View style={styles.catGrid}>
@@ -239,7 +260,7 @@ export default function RegisterMerchantScreen() {
               </View>
               {errors.category && <Text style={styles.err}>{errors.category}</Text>}
             </View>
-            <MerchantField form={form} errors={errors} onChange={set} label="Adresse" fieldKey="address" placeholder="123 Rue Mohammed V" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Adresse" fieldKey="address" onBlur={checkBusinessName} placeholder="123 Rue Mohammed V" />
             <View style={styles.field}>
               <Text style={styles.label}>Ville *</Text>
               <TouchableOpacity
@@ -261,7 +282,7 @@ export default function RegisterMerchantScreen() {
                     <TouchableOpacity
                       key={city}
                       style={[styles.cityOption, form.city === city && styles.cityOptionActive]}
-                      onPress={() => { set('city', city); setShowCityPicker(false); }}
+                      onPress={() => { set('city', city); setShowCityPicker(false); setTimeout(checkBusinessName, 100); }}
                     >
                       <Text style={[styles.cityOptionText, form.city === city && { color: Colors.primary, fontWeight: '700' }]}>{city}</Text>
                     </TouchableOpacity>
