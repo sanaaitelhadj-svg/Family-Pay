@@ -48,10 +48,10 @@ export const RegisterMerchantSchema = z.object({
   // Bancaire — obligatoire
   rib: z.string().min(10).max(30),
   // Contacts — obligatoire
-  contactAdmin:   z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }),
-  contactFinance: z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }),
-  contactOps:     z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
-  contactLegal:   z.object({ nom: z.string(), phone: z.string(), email: z.string().email().optional() }).optional(),
+  contactAdmin:   z.object({ firstName: z.string(), lastName: z.string(), phone: z.string(), email: z.string().email() }),
+  contactFinance: z.object({ firstName: z.string(), lastName: z.string(), phone: z.string(), email: z.string().email() }),
+  contactOps:     z.object({ firstName: z.string(), lastName: z.string(), phone: z.string(), email: z.string().email() }).optional(),
+  contactLegal:   z.object({ firstName: z.string(), lastName: z.string(), phone: z.string(), email: z.string().email() }).optional(),
   // Physique — obligatoire
   gpsLat: z.number().min(-90).max(90),
   gpsLng: z.number().min(-180).max(180),

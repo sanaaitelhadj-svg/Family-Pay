@@ -123,6 +123,7 @@ export class AuthService {
             address: input.address,
             city: input.city,
             phone: input.phone,
+            email: input.email ? input.email.toLowerCase() : null,
             registrationNumber: input.registrationNumber,
             iceNumber: input.iceNumber,
             taxId: input.taxId,

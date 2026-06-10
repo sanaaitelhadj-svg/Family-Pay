@@ -90,8 +90,8 @@ export default function RegisterMerchantScreen() {
   const [form, setForm] = useState({
     businessName: '', category: '' as any, address: '', city: '', phone: '', email: '',
     registrationNumber: '', iceNumber: '', cinRepresentant: '', rib: '',
-    contactAdminNom: '', contactAdminPhone: '',
-    contactFinanceNom: '', contactFinancePhone: '',
+    contactAdminFirstName: '', contactAdminLastName: '', contactAdminPhone: '', contactAdminEmail: '',
+    contactFinanceFirstName: '', contactFinanceLastName: '', contactFinancePhone: '', contactFinanceEmail: '',
     gpsLat: '', gpsLng: '',
     password: '', confirmPassword: '',
   });
@@ -154,10 +154,14 @@ export default function RegisterMerchantScreen() {
       if (form.rib.trim().length < 10)               e.rib = 'RIB requis';
     }
     if (s === 2) {
-      if (form.contactAdminNom.trim().length < 2)    e.contactAdminNom = 'Nom contact admin requis';
+      if (form.contactAdminFirstName.trim().length < 2) e.contactAdminFirstName = 'Prénom requis';
+      if (form.contactAdminLastName.trim().length < 2)  e.contactAdminLastName = 'Nom requis';
       if (!MOROCCAN_PHONE.test(form.contactAdminPhone)) e.contactAdminPhone = 'Téléphone invalide';
-      if (form.contactFinanceNom.trim().length < 2)  e.contactFinanceNom = 'Nom contact finance requis';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactAdminEmail)) e.contactAdminEmail = 'Email invalide';
+      if (form.contactFinanceFirstName.trim().length < 2) e.contactFinanceFirstName = 'Prénom requis';
+      if (form.contactFinanceLastName.trim().length < 2)  e.contactFinanceLastName = 'Nom requis';
       if (!MOROCCAN_PHONE.test(form.contactFinancePhone)) e.contactFinancePhone = 'Téléphone invalide';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactFinanceEmail)) e.contactFinanceEmail = 'Email invalide';
     }
     if (s === 3) {
       if (!form.gpsLat || !form.gpsLng) e.gps = 'Position GPS requise';
@@ -202,8 +206,8 @@ export default function RegisterMerchantScreen() {
         iceNumber:          form.iceNumber.trim(),
         cinRepresentant:    form.cinRepresentant.trim(),
         rib:                form.rib.trim(),
-        contactAdmin:   { nom: form.contactAdminNom.trim(),   phone: form.contactAdminPhone },
-        contactFinance: { nom: form.contactFinanceNom.trim(), phone: form.contactFinancePhone },
+        contactAdmin:   { firstName: form.contactAdminFirstName.trim(), lastName: form.contactAdminLastName.trim(), phone: form.contactAdminPhone, email: form.contactAdminEmail.trim() },
+        contactFinance: { firstName: form.contactFinanceFirstName.trim(), lastName: form.contactFinanceLastName.trim(), phone: form.contactFinancePhone, email: form.contactFinanceEmail.trim() },
         gpsLat: parseFloat(form.gpsLat),
         gpsLng: parseFloat(form.gpsLng),
         photos: [],
@@ -325,12 +329,18 @@ export default function RegisterMerchantScreen() {
           {step === 2 && <>
             <Text style={styles.stepTitle}>Contacts</Text>
             <Text style={styles.stepSubtitle}>Ces contacts seront utilisés pour la gestion du compte.</Text>
+
             <Text style={styles.contactSection}>👤 Contact administratif</Text>
-            <MerchantField form={form} errors={errors} onChange={set} label="Nom" fieldKey="contactAdminNom" placeholder="Ex : Youssef Alami" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Prénom" fieldKey="contactAdminFirstName" placeholder="Ex : Youssef" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Nom" fieldKey="contactAdminLastName" placeholder="Ex : Alami" />
             <MerchantField form={form} errors={errors} onChange={set} label="Téléphone" fieldKey="contactAdminPhone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Email" fieldKey="contactAdminEmail" placeholder="admin@commerce.ma" keyboard="email-address" />
+
             <Text style={styles.contactSection}>💰 Contact financier</Text>
-            <MerchantField form={form} errors={errors} onChange={set} label="Nom" fieldKey="contactFinanceNom" placeholder="Ex : Sara Idrissi" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Prénom" fieldKey="contactFinanceFirstName" placeholder="Ex : Sara" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Nom" fieldKey="contactFinanceLastName" placeholder="Ex : Idrissi" />
             <MerchantField form={form} errors={errors} onChange={set} label="Téléphone" fieldKey="contactFinancePhone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Email" fieldKey="contactFinanceEmail" placeholder="finance@commerce.ma" keyboard="email-address" />
           </>}
 
           {/* ÉTAPE 3 — Localisation + CNDP */}
