@@ -41,16 +41,16 @@ export default function CreateAllocationScreen() {
 
   const defaultCard = (cards ?? []).find((c: any) => c.isDefault);
 
+  const { data: beneficiaries } = useQuery({
+    queryKey: ['sponsor-beneficiaries'],
+    queryFn: () => api.get('/mobile/sponsor/beneficiaries').then(r => r.data ?? []),
+  });
+
   // Auto-enable requiresApproval for minors
   const selectedBenef = (beneficiaries ?? []).find((b: any) => b.id === beneficiary);
   React.useEffect(() => {
     if (selectedBenef?.isMinor) setRequiresApproval(true);
   }, [beneficiary]);
-
-    const { data: beneficiaries } = useQuery({
-    queryKey: ['sponsor-beneficiaries'],
-    queryFn: () => api.get('/mobile/sponsor/beneficiaries').then(r => r.data ?? []),
-  });
 
   const mutation = useMutation({
     mutationFn: () => api.post('/allocations', {
