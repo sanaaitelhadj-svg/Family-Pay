@@ -64,6 +64,7 @@ export default function RegisterMerchantScreen() {
   const [cndp, setCndp] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showCityPicker, setShowCityPicker] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
   const [checkingName, setCheckingName] = useState(false);
 
   const checkBusinessName = async (overrides?: { city?: string; address?: string; businessName?: string; category?: string }) => {
@@ -269,7 +270,7 @@ export default function RegisterMerchantScreen() {
               <Text style={styles.label}>Ville *</Text>
               <TouchableOpacity
                 style={[styles.input, styles.cityPicker, errors.city && styles.inputErr]}
-                onPress={() => setShowCityPicker(v => !v)}
+                onPress={() => { setShowCityPicker(v => !v); setCitySearch(''); }}
                 activeOpacity={0.8}
               >
                 <Text style={form.city ? { color: Colors.textPrimary, fontSize: 15 } : { color: Colors.textMuted, fontSize: 15 }}>
@@ -280,13 +281,21 @@ export default function RegisterMerchantScreen() {
               {errors.city && <Text style={styles.err}>{errors.city}</Text>}
               {showCityPicker && (
                 <View style={styles.cityDropdown}>
+                  <TextInput
+                    style={styles.citySearch}
+                    placeholder="Rechercher une ville..."
+                    placeholderTextColor={Colors.textMuted}
+                    value={citySearch}
+                    onChangeText={setCitySearch}
+                    autoFocus
+                  />
                   {MOROCCAN_CITIES.filter(c =>
-                    form.city.length < 2 || c.toLowerCase().includes(form.city.toLowerCase())
+                    citySearch.length < 1 || c.toLowerCase().includes(citySearch.toLowerCase())
                   ).map(city => (
                     <TouchableOpacity
                       key={city}
                       style={[styles.cityOption, form.city === city && styles.cityOptionActive]}
-                      onPress={() => { set('city', city); setShowCityPicker(false); checkBusinessName({ city }); }}
+                      onPress={() => { set('city', city); setShowCityPicker(false); setCitySearch(''); checkBusinessName({ city }); }}
                     >
                       <Text style={[styles.cityOptionText, form.city === city && { color: Colors.primary, fontWeight: '700' }]}>{city}</Text>
                     </TouchableOpacity>
@@ -434,6 +443,7 @@ const styles = StyleSheet.create({
   navRow:          { marginTop: 8 },
   cityPicker:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13 },
   cityDropdown:    { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, maxHeight: 200, overflow: 'scroll' as any, marginTop: 4 },
+  citySearch:      { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: Colors.primary, fontSize: 14, color: Colors.textPrimary, backgroundColor: Colors.bg },
   cityOption:      { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
   cityOptionActive:{ backgroundColor: Colors.primaryLight },
   cityOptionText:  { fontSize: 14, color: Colors.textPrimary },
