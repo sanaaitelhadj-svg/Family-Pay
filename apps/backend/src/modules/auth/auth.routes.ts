@@ -36,19 +36,20 @@ authRouter.post('/beneficiary/register', wrap(async (req, res) => {
 
 authRouter.post('/merchant/check', wrap(async (req, res) => {
   const { prisma } = await import('../../lib/prisma.js');
-  const { phone, email, businessName, city, address } = req.body;
+  const { phone, email, businessName, city, address, category } = req.body;
 
-  // Doublon nom commercial + ville (+ adresse si fournie)
-  if (businessName && city) {
+  // Doublon nom commercial + ville + adresse + catégorie
+  if (businessName && city && category) {
     const where: any = {
       businessName: { equals: businessName.trim(), mode: 'insensitive' },
       city:         { equals: city.trim(),         mode: 'insensitive' },
+      category,
     };
     if (address) where.address = { equals: address.trim(), mode: 'insensitive' };
     const byName = await prisma.merchant.findFirst({ where });
     if (byName) {
       const loc = address ? `${city} — ${address}` : city;
-      res.status(409).json({ field: 'businessName', message: `Un marchand "${businessName}" existe déjà à ${loc}` }); return;
+      res.status(409).json({ field: 'businessName', message: `Un marchand "${businessName}" (${category}) existe déjà à ${loc}` }); return;
     }
   }
 

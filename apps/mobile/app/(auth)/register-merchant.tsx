@@ -66,15 +66,16 @@ export default function RegisterMerchantScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [checkingName, setCheckingName] = useState(false);
 
-  const checkBusinessName = async (overrides?: { city?: string; address?: string; businessName?: string }) => {
+  const checkBusinessName = async (overrides?: { city?: string; address?: string; businessName?: string; category?: string }) => {
     const f = { ...formRef.current, ...overrides };
-    if (!f.businessName.trim() || !f.city.trim() || !f.address.trim()) return;
+    if (!f.businessName.trim() || !f.city.trim() || !f.address.trim() || !f.category) return;
     setCheckingName(true);
     try {
       await apiClient.post('/auth/merchant/check', {
         businessName: f.businessName.trim(),
         city:         f.city.trim(),
         address:      f.address.trim(),
+        category:     f.category,
       });
       setErrors(e => { const n = { ...e }; delete n.businessName; return n; });
     } catch (err: any) {
@@ -255,7 +256,7 @@ export default function RegisterMerchantScreen() {
                   <TouchableOpacity
                     key={c.key}
                     style={[styles.catBtn, form.category === c.key && styles.catBtnActive]}
-                    onPress={() => set('category', c.key)}
+                    onPress={() => { set('category', c.key); checkBusinessName({ category: c.key }); }}
                   >
                     <Text style={[styles.catText, form.category === c.key && styles.catTextActive]}>{c.label}</Text>
                   </TouchableOpacity>
