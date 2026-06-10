@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Colors, Radius } from '../../src/constants/theme';
+import { MOROCCAN_CITIES } from '../../src/constants/moroccan-cities';
 import { apiClient } from '../../src/lib/api';
 
 const MOROCCAN_PHONE = /^(\+212|00212|0)[67]\d{8}$/;
@@ -61,6 +62,7 @@ export default function RegisterMerchantScreen() {
   const [geoLoading, setGeoLoading] = useState(false);
   const [cndp, setCndp] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showCityPicker, setShowCityPicker] = useState(false);
 
   const [form, setForm] = useState({
     businessName: '', category: '' as any, address: '', city: '', phone: '', email: '',
@@ -238,7 +240,35 @@ export default function RegisterMerchantScreen() {
               {errors.category && <Text style={styles.err}>{errors.category}</Text>}
             </View>
             <MerchantField form={form} errors={errors} onChange={set} label="Adresse" fieldKey="address" placeholder="123 Rue Mohammed V" />
-            <MerchantField form={form} errors={errors} onChange={set} label="Ville" fieldKey="city" placeholder="Casablanca" />
+            <View style={styles.field}>
+              <Text style={styles.label}>Ville *</Text>
+              <TouchableOpacity
+                style={[styles.input, styles.cityPicker, errors.city && styles.inputErr]}
+                onPress={() => setShowCityPicker(v => !v)}
+                activeOpacity={0.8}
+              >
+                <Text style={form.city ? { color: Colors.textPrimary, fontSize: 15 } : { color: Colors.textMuted, fontSize: 15 }}>
+                  {form.city || 'Sélectionner une ville...'}
+                </Text>
+                <Text style={{ fontSize: 12, color: Colors.textMuted }}>{showCityPicker ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              {errors.city && <Text style={styles.err}>{errors.city}</Text>}
+              {showCityPicker && (
+                <View style={styles.cityDropdown}>
+                  {MOROCCAN_CITIES.filter(c =>
+                    form.city.length < 2 || c.toLowerCase().includes(form.city.toLowerCase())
+                  ).map(city => (
+                    <TouchableOpacity
+                      key={city}
+                      style={[styles.cityOption, form.city === city && styles.cityOptionActive]}
+                      onPress={() => { set('city', city); setShowCityPicker(false); }}
+                    >
+                      <Text style={[styles.cityOptionText, form.city === city && { color: Colors.primary, fontWeight: '700' }]}>{city}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
             <MerchantField form={form} errors={errors} onChange={set} label="Téléphone" fieldKey="phone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
             <MerchantField form={form} errors={errors} onChange={set} label="Email" fieldKey="email" placeholder="contact@commerce.ma" keyboard="email-address" optional />
             <MerchantField form={form} errors={errors} onChange={set} label="Mot de passe" fieldKey="password" placeholder="Min. 6 caractères" secure />
@@ -376,7 +406,12 @@ const styles = StyleSheet.create({
   checkboxActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   checkmark: { color: '#fff', fontSize: 13, fontWeight: '700' },
   cndpText: { flex: 1, fontSize: 12, color: Colors.textSecondary, lineHeight: 17 },
-  navRow: { marginTop: 8 },
+  navRow:          { marginTop: 8 },
+  cityPicker:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13 },
+  cityDropdown:    { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, maxHeight: 200, overflow: 'scroll' as any, marginTop: 4 },
+  cityOption:      { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  cityOptionActive:{ backgroundColor: Colors.primaryLight },
+  cityOptionText:  { fontSize: 14, color: Colors.textPrimary },
   btn: { borderRadius: Radius.md, paddingVertical: 15, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },

@@ -36,11 +36,30 @@ authRouter.post('/beneficiary/register', wrap(async (req, res) => {
 
 authRouter.post('/merchant/check', wrap(async (req, res) => {
   const { prisma } = await import('../../lib/prisma.js');
-  const { phone, email } = req.body;
+  const { phone, email, businessName, city, address } = req.body;
+
+  // Doublon nom commercial + ville (+ adresse si fournie)
+  if (businessName && city) {
+    const where: any = {
+      businessName: { equals: businessName.trim(), mode: 'insensitive' },
+      city:         { equals: city.trim(),         mode: 'insensitive' },
+    };
+    if (address) where.address = { equals: address.trim(), mode: 'insensitive' };
+    const byName = await prisma.merchant.findFirst({ where });
+    if (byName) {
+      const loc = address ? `${city} — ${address}` : city;
+      res.status(409).json({ field: 'businessName', message: `Un marchand "${businessName}" existe déjà à ${loc}` }); return;
+    }
+  }
+
+  // Doublon téléphone
   const byPhone = phone ? await prisma.user.findUnique({ where: { phone } }) : null;
-  const byEmail = email ? await prisma.user.findFirst({ where: { email: email.toLowerCase() } }) : null;
   if (byPhone) { res.status(409).json({ field: 'phone', message: 'Ce numéro de téléphone est déjà utilisé' }); return; }
-  if (byEmail) { res.status(409).json({ field: 'email', message: 'Cet email est déjà utilisé par un autre compte' }); return; }
+
+  // Doublon email
+  const byEmail = email ? await prisma.user.findFirst({ where: { email: email.toLowerCase() } }) : null;
+  if (byEmail) { res.status(409).json({ field: 'email', message: 'Cet email est déjà utilisé' }); return; }
+
   res.json({ available: true });
 }));
 
