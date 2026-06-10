@@ -26,6 +26,8 @@ export default function SponsorLayout() {
       <Tabs.Screen name="add-card"  options={{ href: null, title: "Carte" }} />
       <Tabs.Screen name="invite" options={{ href: null }} />
       <Tabs.Screen name="create-beneficiary" options={{ href: null }} />
+      <Tabs.Screen name="change-phone" options={{ href: null }} />
+      <Tabs.Screen name="cards" options={{ href: null }} />
     </Tabs>
   );
 }
