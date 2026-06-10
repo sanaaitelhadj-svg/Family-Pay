@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { redis } from '../../lib/redis.js';
 import { AppError } from '../../lib/errors.js';
 
-const ACCESS_TTL = 15 * 60;
+const ACCESS_TTL = 24 * 3600; // 24h — refresh tokens in Redis lost on restart
 const REFRESH_TTL = 7 * 24 * 3600;
 
 export interface JwtPayload {

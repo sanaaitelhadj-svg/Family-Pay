@@ -14,6 +14,12 @@ const removeStorageItem = async (key: string): Promise<void> => {
   await SS.deleteItemAsync(key);
 };
 
+// Event listeners for auth expiry (native)
+type AuthListener = () => void;
+const authListeners: AuthListener[] = [];
+export const onAuthExpired = (fn: AuthListener) => { authListeners.push(fn); };
+const notifyAuthExpired = () => authListeners.forEach(fn => fn());
+
 export const api = axios.create({ baseURL: BASE_URL, timeout: 10_000 });
 export const apiClient = api;
 
@@ -33,17 +39,27 @@ api.interceptors.response.use(
         const refresh = await getStorageItem('refresh_token');
         if (!refresh) throw new Error('no refresh token');
         const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: refresh });
-        await (Platform.OS === 'web'
-          ? (localStorage.setItem('access_token', data.accessToken), localStorage.setItem('refresh_token', data.refreshToken))
-          : Promise.all([
-              require('expo-secure-store').setItemAsync('access_token', data.accessToken),
-              require('expo-secure-store').setItemAsync('refresh_token', data.refreshToken),
-            ]));
+        if (Platform.OS === 'web') {
+          localStorage.setItem('access_token', data.accessToken);
+          localStorage.setItem('refresh_token', data.refreshToken);
+        } else {
+          const SS = require('expo-secure-store');
+          await Promise.all([
+            SS.setItemAsync('access_token', data.accessToken),
+            SS.setItemAsync('refresh_token', data.refreshToken),
+          ]);
+        }
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return axios(original);
       } catch {
+        // Refresh failed — clear session and redirect to login
         await removeStorageItem('access_token');
         await removeStorageItem('refresh_token');
+        if (Platform.OS === 'web') {
+          window.location.href = '/';
+        } else {
+          notifyAuthExpired();
+        }
       }
     }
     return Promise.reject(error);
