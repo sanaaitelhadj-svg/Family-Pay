@@ -12,7 +12,7 @@ export default function BeneficiaryAllocationsScreen() {
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['beneficiary-allocations'],
-    queryFn: () => api.get('/allocations/my').then((r) => r.data),
+    queryFn: () => api.get('/mobile/beneficiary/allocations').then((r) => r.data),
   });
 
   const handleDismissWelcome = async () => {
@@ -36,7 +36,7 @@ export default function BeneficiaryAllocationsScreen() {
     <View style={styles.container}>
       <Text style={styles.header}>Mes budgets</Text>
       <FlatList
-        data={data?.allocations ?? []}
+        data={data ?? []}
         keyExtractor={(item: any) => item.id}
         renderItem={({ item }) => <AllocationCard allocation={item} />}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
