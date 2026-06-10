@@ -40,7 +40,7 @@ mobileRouter.get('/sponsor/beneficiaries', authenticate(['SPONSOR']), wrap(async
       totalSpent,
       activeAllocations,
       isActive:     b.isActive,
-      isMinor:      b.isMinor,
+      isMinor:      b.dateOfBirth ? (() => { const d = new Date(b.dateOfBirth!); const today = new Date(); let age = today.getFullYear() - d.getFullYear(); const m = today.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--; return age < 18; })() : false,
       relationship: b.relationship ?? null,
       dateOfBirth:  b.dateOfBirth ?? null,
       createdAt: b.createdAt,
@@ -378,6 +378,7 @@ mobileRouter.post('/sponsor/beneficiaries/create', authenticate(['SPONSOR']), wr
           sponsorId,
           dateOfBirth:  dateOfBirth ? new Date(dateOfBirth) : null,
           relationship: relationship ?? null,
+          isMinor: dateOfBirth ? (() => { const d = new Date(dateOfBirth); const today = new Date(); let age = today.getFullYear() - d.getFullYear(); const m = today.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--; return age < 18; })() : false,
         },
       },
     },
@@ -408,6 +409,43 @@ mobileRouter.post('/beneficiary/complete-onboarding', authenticate(['BENEFICIARY
 }));
 
 // ── Sponsor: allocations d'un bénéficiaire ─────────────────────────────────
+// ── Sponsor: créer une allocation ────────────────────────────────────────
+mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const { beneficiaryId, category, limitAmount, expiresAt, requiresApproval } = req.body;
+
+  if (!beneficiaryId || !limitAmount || Number(limitAmount) <= 0) {
+    res.status(400).json({ error: 'MISSING_FIELDS', message: 'Bénéficiaire et montant requis' }); return;
+  }
+
+  const benef = await prisma.beneficiary.findFirst({ where: { id: beneficiaryId, sponsorId } });
+  if (!benef) { res.status(404).json({ error: 'NOT_FOUND', message: 'Bénéficiaire introuvable' }); return; }
+
+  const allocation = await prisma.allocation.create({
+    data: {
+      beneficiaryId,
+      sponsorId,
+      category:         category ?? 'GENERAL',
+      limitAmount:      Number(limitAmount),
+      remainingAmount:  Number(limitAmount),
+      status:           'ACTIVE',
+      expiresAt:        expiresAt ? new Date(expiresAt) : null,
+      requiresApproval: requiresApproval ?? false,
+    },
+  });
+
+  res.status(201).json({
+    id: allocation.id,
+    category: allocation.category,
+    limitAmount: Number(allocation.limitAmount),
+    remainingAmount: Number(allocation.remainingAmount),
+    status: allocation.status,
+    requiresApproval: allocation.requiresApproval,
+    expiresAt: allocation.expiresAt,
+    createdAt: allocation.createdAt,
+  });
+}));
+
 mobileRouter.get('/sponsor/beneficiaries/:beneficiaryId/allocations', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const sponsorId = req.user!.profileId;
 
