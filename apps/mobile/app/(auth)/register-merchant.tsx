@@ -74,7 +74,7 @@ export default function RegisterMerchantScreen() {
 
   const geocodeAddress = async () => {
     if (!form.address || !form.city) {
-      if (typeof window !== 'undefined') window.alert('Renseignez d'abord l'adresse et la ville (étape 1)');
+      if (typeof window !== 'undefined') window.alert("Renseignez d'abord l'adresse et la ville (étape 1)");
       return;
     }
     setGeoLoading(true);
