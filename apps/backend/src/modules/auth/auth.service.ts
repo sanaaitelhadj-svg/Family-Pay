@@ -344,7 +344,7 @@ export class AuthService {
     const payload   = { userId: user.id, role: 'MERCHANT' as const, profileId };
     const accessToken  = TokenService.issueAccessToken(payload);
     const refreshToken = await TokenService.issueRefreshToken(user.id);
-    await AuthService.createAuditLog(user.id, 'MERCHANT_LOGIN', 'Merchant', phone);
+    await AuthService.createAuditLog(user.id, 'MERCHANT_LOGIN', 'Merchant', email);
     return {
       accessToken, refreshToken,
       user: { id: user.id, phone: user.phone, firstName: user.firstName, role: user.role, profileId },
