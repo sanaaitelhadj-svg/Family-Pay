@@ -33,6 +33,17 @@ authRouter.post('/beneficiary/register', wrap(async (req, res) => {
   res.status(201).json(result);
 }));
 
+
+authRouter.post('/merchant/check', wrap(async (req, res) => {
+  const { prisma } = await import('../../lib/prisma.js');
+  const { phone, email } = req.body;
+  const byPhone = phone ? await prisma.user.findUnique({ where: { phone } }) : null;
+  const byEmail = email ? await prisma.user.findFirst({ where: { email: email.toLowerCase() } }) : null;
+  if (byPhone) { res.status(409).json({ field: 'phone', message: 'Ce numéro de téléphone est déjà utilisé' }); return; }
+  if (byEmail) { res.status(409).json({ field: 'email', message: 'Cet email est déjà utilisé par un autre compte' }); return; }
+  res.json({ available: true });
+}));
+
 authRouter.post('/merchant/register', wrap(async (req, res) => {
   const input = RegisterMerchantSchema.parse(req.body);
   const result = await AuthService.registerMerchant(input);

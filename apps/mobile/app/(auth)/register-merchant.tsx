@@ -139,7 +139,23 @@ export default function RegisterMerchantScreen() {
     return Object.keys(e).length === 0;
   };
 
-  const next = () => { if (validateStep(step)) setStep(s => s + 1); };
+  const next = async () => {
+    if (!validateStep(step)) return;
+    if (step === 0) {
+      // Vérifier doublon phone/email avant de continuer
+      try {
+        await apiClient.post('/auth/merchant/check', {
+          phone: form.phone.replace(/\s/g, ''),
+          email: form.email.trim() || undefined,
+        });
+      } catch (err: any) {
+        const { field, message } = err?.response?.data ?? {};
+        setErrors(e => ({ ...e, [field ?? 'phone']: message ?? 'Déjà utilisé' }));
+        return;
+      }
+    }
+    setStep(s => s + 1);
+  };
   const prev = () => { setStep(s => s - 1); setErrors({}); };
 
   const submit = async () => {
@@ -165,13 +181,17 @@ export default function RegisterMerchantScreen() {
         photos: [],
         cndpConsent: true,
       });
-      Alert.alert(
-        '✅ Compte créé',
-        'Votre demande est en cours de validation par notre équipe. Vous serez notifié par SMS.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)') }],
-      );
+      const msg = 'Votre demande est en cours de validation par notre équipe. Vous serez notifié par SMS.';
+      if (typeof window !== 'undefined') {
+        window.alert('✅ Compte marchand créé !\n\n' + msg);
+        router.replace('/(auth)' as any);
+      } else {
+        Alert.alert('✅ Compte créé', msg, [{ text: 'OK', onPress: () => router.replace('/(auth)' as any) }]);
+      }
     } catch (err: any) {
-      Alert.alert('Erreur', err?.response?.data?.message ?? 'Impossible de créer le compte');
+      const errMsg = err?.response?.data?.message ?? 'Impossible de créer le compte';
+      if (typeof window !== 'undefined') { window.alert('Erreur : ' + errMsg); }
+      else { Alert.alert('Erreur', errMsg); }
     } finally {
       setLoading(false);
     }
