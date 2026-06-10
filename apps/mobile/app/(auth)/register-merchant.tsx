@@ -66,9 +66,6 @@ export default function RegisterMerchantScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [checkingName, setCheckingName] = useState(false);
 
-  const formRef = React.useRef(form);
-  React.useEffect(() => { formRef.current = form; }, [form]);
-
   const checkBusinessName = async (overrides?: { city?: string; address?: string; businessName?: string }) => {
     const f = { ...formRef.current, ...overrides };
     if (!f.businessName.trim() || !f.city.trim() || !f.address.trim()) return;
@@ -97,6 +94,9 @@ export default function RegisterMerchantScreen() {
     password: '', confirmPassword: '',
   });
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const formRef = React.useRef(form);
+  React.useEffect(() => { formRef.current = form; }, [form]);
 
   const geocodeAddress = async () => {
     if (!form.address || !form.city) {
