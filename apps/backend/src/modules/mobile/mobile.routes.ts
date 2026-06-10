@@ -186,12 +186,13 @@ mobileRouter.get('/beneficiary/allocations', authenticate(['BENEFICIARY']), wrap
   });
 
   const result = allocations.map(a => ({
-    id:       a.id,
-    category: a.category,
-    amount:   Number(a.limitAmount),
-    spent:    Number(a.limitAmount) - Number(a.remainingAmount),
-    status:   a.status,
-    expiresAt: a.expiresAt,
+    id:              a.id,
+    category:        a.category,
+    limitAmount:     Number(a.limitAmount),
+    remainingAmount: Number(a.remainingAmount),
+    status:          a.status,
+    requiresApproval: a.requiresApproval,
+    expiresAt:       a.expiresAt,
     sponsor: {
       user: {
         firstName: a.sponsor.user.firstName,
