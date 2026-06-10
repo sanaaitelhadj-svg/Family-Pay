@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { api } from '@/lib/api';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { Button } from '@/components/Button';
+import { useAuthStore } from '@/lib/auth-store';
 
 type Role = 'SPONSOR' | 'BENEFICIARY' | 'MERCHANT';
 
@@ -13,35 +14,60 @@ const ROLES: { key: Role; label: string; icon: string; desc: string }[] = [
   { key: 'MERCHANT',    label: 'Marchand',      icon: '🏪', desc: 'Acceptez les paiements' },
 ];
 
-const LOGIN_ENDPOINT: Record<Role, string> = {
-  SPONSOR:     '/auth/sponsor/login',
-  BENEFICIARY: '/auth/beneficiary/login',
-  MERCHANT:    '/auth/merchant/login',
-};
-
 export default function WelcomeScreen() {
-  const [role, setRole]       = useState<Role>('SPONSOR');
-  const [phone, setPhone]     = useState('');
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [role, setRole]         = useState<Role>('SPONSOR');
+  const [phone, setPhone]       = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd]   = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const router  = useRouter();
+  const setAuth = useAuthStore((s) => s.setAuth);
 
-  const handleContinue = async () => {
+  // ── OTP flow (SPONSOR / BENEFICIARY) ──────────────────────────────────
+  const handleOtpContinue = async () => {
     const clean = phone.replace(/\s/g, '');
     if (!/^(\+212|00212|0)[5-7]\d{8}$/.test(clean)) {
-      Alert.alert('Numéro invalide', 'Entrez un numéro marocain valide (ex: 0612345678)');
-      return;
+      Alert.alert('Numéro invalide', 'Entrez un numéro marocain valide (ex: 0612345678)'); return;
     }
     setLoading(true);
     try {
-      await api.post(LOGIN_ENDPOINT[role], { phone: clean });
-      router.push({ pathname: '/(auth)/otp', params: { phone: clean, role } });
+      const endpoint = role === 'SPONSOR' ? '/auth/sponsor/login' : '/auth/beneficiary/login';
+      await api.post(endpoint, { phone: clean });
+      router.push({ pathname: '/(auth)/otp', params: { phone: clean, role, purpose: 'LOGIN' } });
     } catch (err: any) {
-      const msg = err.response?.data?.message ?? err.response?.data?.error ?? 'Numéro non reconnu';
-      Alert.alert('Erreur', msg);
+      Alert.alert('Erreur', err.response?.data?.message ?? err.response?.data?.error ?? 'Numéro non reconnu');
     } finally {
       setLoading(false);
     }
   };
+
+  // ── Password flow (MERCHANT) ───────────────────────────────────────────
+  const handleMerchantLogin = async () => {
+    const clean = phone.replace(/\s/g, '');
+    if (!/^(\+212|00212|0)[5-7]\d{8}$/.test(clean)) {
+      Alert.alert('Numéro invalide', 'Entrez un numéro marocain valide'); return;
+    }
+    if (!password.trim()) {
+      Alert.alert('Mot de passe requis', 'Entrez votre mot de passe'); return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/merchant/login', { phone: clean, password });
+      const { accessToken, refreshToken, user } = res.data;
+      await setAuth(user, accessToken, refreshToken);
+      if (Platform.OS === 'web') {
+        (window as any).location.href = '/';
+      } else {
+        router.replace('/(merchant)' as any);
+      }
+    } catch (err: any) {
+      Alert.alert('Erreur', err.response?.data?.message ?? 'Identifiants incorrects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isMerchant = role === 'MERCHANT';
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -62,7 +88,7 @@ export default function WelcomeScreen() {
             <TouchableOpacity
               key={r.key}
               style={[styles.roleCard, role === r.key && styles.roleCardActive]}
-              onPress={() => setRole(r.key)}
+              onPress={() => { setRole(r.key); setPhone(''); setPassword(''); }}
               activeOpacity={0.8}
             >
               <Text style={styles.roleIcon}>{r.icon}</Text>
@@ -72,8 +98,8 @@ export default function WelcomeScreen() {
           ))}
         </View>
 
-        {/* Phone input */}
-        <Text style={styles.sectionLabel}>Numéro de téléphone</Text>
+        {/* Phone input (commun) */}
+        <Text style={styles.sectionLabel}>Téléphone</Text>
         <View style={styles.inputWrap}>
           <Text style={styles.flag}>🇲🇦</Text>
           <TextInput
@@ -87,8 +113,35 @@ export default function WelcomeScreen() {
           />
         </View>
 
-        <Button label="Recevoir le code SMS" onPress={handleContinue} loading={loading}
-          disabled={phone.length < 9} style={{ marginTop: 8 }} />
+        {/* Mot de passe (Marchand uniquement) */}
+        {isMerchant && (
+          <>
+            <Text style={styles.sectionLabel}>Mot de passe</Text>
+            <View style={styles.inputWrap}>
+              <Text style={styles.flag}>🔒</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Votre mot de passe"
+                secureTextEntry={!showPwd}
+                value={password}
+                onChangeText={setPassword}
+                autoCapitalize="none"
+                placeholderTextColor={Colors.textMuted}
+              />
+              <TouchableOpacity onPress={() => setShowPwd(v => !v)} style={{ padding: 8 }}>
+                <Text style={{ fontSize: 16 }}>{showPwd ? '🙈' : '👁'}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        <Button
+          label={isMerchant ? 'Se connecter' : 'Recevoir le code SMS'}
+          onPress={isMerchant ? handleMerchantLogin : handleOtpContinue}
+          loading={loading}
+          disabled={phone.length < 9 || (isMerchant && !password.trim())}
+          style={{ marginTop: 8 }}
+        />
 
         <TouchableOpacity
           onPress={() => router.push('/(auth)/register' as any)}

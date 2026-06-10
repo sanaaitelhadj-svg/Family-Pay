@@ -21,6 +21,38 @@ const CATEGORIES = [
 
 const STEPS = ['Infos de base', 'Légal & Bancaire', 'Contacts', 'Localisation'];
 
+
+interface MerchantFieldProps {
+  label: string;
+  fieldKey: string;
+  placeholder: string;
+  keyboard?: any;
+  optional?: boolean;
+  secure?: boolean;
+  form: Record<string, string>;
+  errors: Record<string, string>;
+  onChange: (k: string, v: string) => void;
+}
+
+function MerchantField({ label, fieldKey, placeholder, keyboard = 'default', optional = false, secure = false, form, errors, onChange }: MerchantFieldProps) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}{optional ? <Text style={styles.optional}> (optionnel)</Text> : ' *'}</Text>
+      <TextInput
+        style={[styles.input, errors[fieldKey] && styles.inputErr]}
+        placeholder={placeholder}
+        placeholderTextColor={Colors.textMuted}
+        value={form[fieldKey] ?? ''}
+        onChangeText={v => onChange(fieldKey, v)}
+        keyboardType={keyboard}
+        secureTextEntry={secure}
+        autoCapitalize={keyboard === 'email-address' || secure ? 'none' : 'sentences'}
+      />
+      {errors[fieldKey] && <Text style={styles.err}>{errors[fieldKey]}</Text>}
+    </View>
+  );
+}
+
 export default function RegisterMerchantScreen() {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -35,6 +67,7 @@ export default function RegisterMerchantScreen() {
     contactAdminNom: '', contactAdminPhone: '',
     contactFinanceNom: '', contactFinancePhone: '',
     gpsLat: '', gpsLng: '',
+    password: '', confirmPassword: '',
   });
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -59,6 +92,8 @@ export default function RegisterMerchantScreen() {
       if (form.city.trim().length < 2)         e.city = 'Ville requise';
       if (!MOROCCAN_PHONE.test(form.phone))    e.phone = 'Format : +212 6XXXXXXXX';
       if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide';
+      if (form.password.trim().length < 6) e.password = 'Mot de passe requis (min 6 caractères)';
+      if (form.password !== form.confirmPassword) e.confirmPassword = 'Les mots de passe ne correspondent pas';
     }
     if (s === 1) {
       if (form.registrationNumber.trim().length < 2) e.registrationNumber = 'N° RC requis';
@@ -94,6 +129,7 @@ export default function RegisterMerchantScreen() {
         city:         form.city.trim(),
         phone:        form.phone.replace(/\s/g, ''),
         email:        form.email.trim() || undefined,
+        password:     form.password,
         registrationNumber: form.registrationNumber.trim(),
         iceNumber:          form.iceNumber.trim(),
         cinRepresentant:    form.cinRepresentant.trim(),
@@ -116,22 +152,6 @@ export default function RegisterMerchantScreen() {
       setLoading(false);
     }
   };
-
-  const Field = ({ label, k, placeholder, keyboard = 'default', optional = false }: any) => (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}{optional ? <Text style={styles.optional}> (optionnel)</Text> : ' *'}</Text>
-      <TextInput
-        style={[styles.input, errors[k] && styles.inputErr]}
-        placeholder={placeholder}
-        placeholderTextColor={Colors.textMuted}
-        value={(form as any)[k]}
-        onChangeText={v => set(k, v)}
-        keyboardType={keyboard}
-        autoCapitalize={keyboard === 'email-address' ? 'none' : 'sentences'}
-      />
-      {errors[k] && <Text style={styles.err}>{errors[k]}</Text>}
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -157,7 +177,7 @@ export default function RegisterMerchantScreen() {
           {/* ÉTAPE 0 — Infos de base */}
           {step === 0 && <>
             <Text style={styles.stepTitle}>Informations de base</Text>
-            <Field label="Nom commercial" k="businessName" placeholder="Ex : Pharmacie Al Amal" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Nom commercial" fieldKey="businessName" placeholder="Ex : Pharmacie Al Amal" />
             <View style={styles.field}>
               <Text style={styles.label}>Catégorie *</Text>
               <View style={styles.catGrid}>
@@ -173,10 +193,12 @@ export default function RegisterMerchantScreen() {
               </View>
               {errors.category && <Text style={styles.err}>{errors.category}</Text>}
             </View>
-            <Field label="Adresse" k="address" placeholder="123 Rue Mohammed V" />
-            <Field label="Ville" k="city" placeholder="Casablanca" />
-            <Field label="Téléphone" k="phone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
-            <Field label="Email" k="email" placeholder="contact@commerce.ma" keyboard="email-address" optional />
+            <MerchantField form={form} errors={errors} onChange={set} label="Adresse" fieldKey="address" placeholder="123 Rue Mohammed V" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Ville" fieldKey="city" placeholder="Casablanca" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Téléphone" fieldKey="phone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Email" fieldKey="email" placeholder="contact@commerce.ma" keyboard="email-address" optional />
+            <MerchantField form={form} errors={errors} onChange={set} label="Mot de passe" fieldKey="password" placeholder="Min. 6 caractères" secure />
+            <MerchantField form={form} errors={errors} onChange={set} label="Confirmer le mot de passe" fieldKey="confirmPassword" placeholder="Répéter le mot de passe" secure />
           </>}
 
           {/* ÉTAPE 1 — Légal & Bancaire */}
@@ -185,10 +207,10 @@ export default function RegisterMerchantScreen() {
             <View style={styles.infoBanner}>
               <Text style={styles.infoText}>Ces informations sont requises pour la conformité BAM et le KYC marchand.</Text>
             </View>
-            <Field label="N° Registre de Commerce (RC)" k="registrationNumber" placeholder="Ex : 123456" />
-            <Field label="N° ICE" k="iceNumber" placeholder="Ex : 001234567000012" />
-            <Field label="CIN du représentant légal" k="cinRepresentant" placeholder="Ex : AB123456" />
-            <Field label="RIB bancaire" k="rib" placeholder="Ex : 0114 2010 0000 1234 5678 9013" keyboard="number-pad" />
+            <MerchantField form={form} errors={errors} onChange={set} label="N° Registre de Commerce (RC)" fieldKey="registrationNumber" placeholder="Ex : 123456" />
+            <MerchantField form={form} errors={errors} onChange={set} label="N° ICE" fieldKey="iceNumber" placeholder="Ex : 001234567000012" />
+            <MerchantField form={form} errors={errors} onChange={set} label="CIN du représentant légal" fieldKey="cinRepresentant" placeholder="Ex : AB123456" />
+            <MerchantField form={form} errors={errors} onChange={set} label="RIB bancaire" fieldKey="rib" placeholder="Ex : 0114 2010 0000 1234 5678 9013" keyboard="number-pad" />
           </>}
 
           {/* ÉTAPE 2 — Contacts */}
@@ -196,11 +218,11 @@ export default function RegisterMerchantScreen() {
             <Text style={styles.stepTitle}>Contacts</Text>
             <Text style={styles.stepSubtitle}>Ces contacts seront utilisés pour la gestion du compte.</Text>
             <Text style={styles.contactSection}>👤 Contact administratif</Text>
-            <Field label="Nom" k="contactAdminNom" placeholder="Ex : Youssef Alami" />
-            <Field label="Téléphone" k="contactAdminPhone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Nom" fieldKey="contactAdminNom" placeholder="Ex : Youssef Alami" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Téléphone" fieldKey="contactAdminPhone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
             <Text style={styles.contactSection}>💰 Contact financier</Text>
-            <Field label="Nom" k="contactFinanceNom" placeholder="Ex : Sara Idrissi" />
-            <Field label="Téléphone" k="contactFinancePhone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Nom" fieldKey="contactFinanceNom" placeholder="Ex : Sara Idrissi" />
+            <MerchantField form={form} errors={errors} onChange={set} label="Téléphone" fieldKey="contactFinancePhone" placeholder="+212 6XXXXXXXX" keyboard="phone-pad" />
           </>}
 
           {/* ÉTAPE 3 — Localisation + CNDP */}

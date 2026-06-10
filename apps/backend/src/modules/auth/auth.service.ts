@@ -112,6 +112,7 @@ export class AuthService {
       data: {
         phone: input.phone,
         firstName: input.businessName,
+        password: input.password ? await (async () => { const b = await import('bcryptjs'); const bc = (b as any).default ?? b; return bc.hash(input.password, 10); })() : null,
         role: 'MERCHANT',
         cndpConsentAt: new Date(),
         merchant: {
@@ -316,6 +317,37 @@ export class AuthService {
     }
     await OtpService.requestOtp(phone, 'LOGIN');
     return { message: 'Code OTP envoyé si le compte existe' };
+  }
+
+  static async loginMerchantWithPassword(phone: string, password: string) {
+    const user = await prisma.user.findUnique({
+      where: { phone },
+      include: { merchant: true },
+    });
+    if (!user || user.role !== 'MERCHANT') {
+      throw new AppError('Compte marchand introuvable', 404, 'USER_NOT_FOUND');
+    }
+    if (!user.isActive) {
+      throw new AppError('Compte désactivé', 403, 'ACCOUNT_INACTIVE');
+    }
+    if (!user.password) {
+      throw new AppError('Mot de passe non configuré, contactez le support', 400, 'NO_PASSWORD');
+    }
+    const bcryptModule = await import('bcryptjs');
+    const bcrypt = (bcryptModule as any).default ?? bcryptModule;
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      throw new AppError('Téléphone ou mot de passe incorrect', 401, 'INVALID_CREDENTIALS');
+    }
+    const profileId = user.merchant?.id ?? '';
+    const payload   = { userId: user.id, role: 'MERCHANT' as const, profileId };
+    const accessToken  = TokenService.issueAccessToken(payload);
+    const refreshToken = await TokenService.issueRefreshToken(user.id);
+    await AuthService.createAuditLog(user.id, 'MERCHANT_LOGIN', 'Merchant', phone);
+    return {
+      accessToken, refreshToken,
+      user: { id: user.id, phone: user.phone, firstName: user.firstName, role: user.role, profileId },
+    };
   }
 
 }

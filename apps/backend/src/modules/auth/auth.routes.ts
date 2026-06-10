@@ -90,8 +90,11 @@ authRouter.post('/admin/login', wrap(async (req, res) => {
 }));
 
 authRouter.post('/merchant/login', wrap(async (req, res) => {
-  const { phone } = RequestOtpSchema.parse({ ...req.body, purpose: 'LOGIN' });
-  const result = await AuthService.loginMerchant(phone);
+  const { phone, password } = req.body;
+  if (!phone || !password) {
+    res.status(400).json({ error: 'MISSING_FIELDS', message: 'Téléphone et mot de passe requis' }); return;
+  }
+  const result = await AuthService.loginMerchantWithPassword(phone.replace(/\s/g, ''), password);
   res.json(result);
 }));
 
