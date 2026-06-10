@@ -58,6 +58,7 @@ export default function RegisterMerchantScreen() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [cndp, setCndp] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,6 +71,29 @@ export default function RegisterMerchantScreen() {
     password: '', confirmPassword: '',
   });
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const geocodeAddress = async () => {
+    if (!form.address || !form.city) {
+      if (typeof window !== 'undefined') window.alert('Renseignez d'abord l'adresse et la ville (étape 1)');
+      return;
+    }
+    setGeoLoading(true);
+    try {
+      const q = encodeURIComponent(`${form.address}, ${form.city}, Maroc`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        set('gpsLat', parseFloat(data[0].lat).toFixed(6));
+        set('gpsLng', parseFloat(data[0].lon).toFixed(6));
+      } else {
+        if (typeof window !== 'undefined') window.alert('Adresse introuvable, essayez "Détecter ma position"');
+      }
+    } catch {
+      if (typeof window !== 'undefined') window.alert('Erreur de géolocalisation');
+    } finally {
+      setGeoLoading(false);
+    }
+  };
 
   const detectLocation = async () => {
     setLocLoading(true);
@@ -91,7 +115,7 @@ export default function RegisterMerchantScreen() {
       if (form.address.trim().length < 5)      e.address = 'Adresse requise (min 5 car.)';
       if (form.city.trim().length < 2)         e.city = 'Ville requise';
       if (!MOROCCAN_PHONE.test(form.phone))    e.phone = 'Format : +212 6XXXXXXXX';
-      if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide';
+      if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email obligatoire (identifiant de connexion)';
       if (form.password.trim().length < 6) e.password = 'Mot de passe requis (min 6 caractères)';
       if (form.password !== form.confirmPassword) e.confirmPassword = 'Les mots de passe ne correspondent pas';
     }
@@ -230,20 +254,24 @@ export default function RegisterMerchantScreen() {
             <Text style={styles.stepTitle}>Localisation & Confirmation</Text>
             <View style={styles.field}>
               <Text style={styles.label}>Position GPS *</Text>
-              <TouchableOpacity style={styles.gpsBtn} onPress={detectLocation} disabled={locLoading} activeOpacity={0.8}>
-                {locLoading
-                  ? <ActivityIndicator color={Colors.primary} size="small" />
-                  : <Text style={styles.gpsBtnText}>📍 Détecter ma position</Text>}
-              </TouchableOpacity>
+              <Text style={styles.hint}>Détectez automatiquement ou utilisez l'adresse saisie à l'étape 1</Text>
+              <View style={styles.gpsButtons}>
+                <TouchableOpacity style={[styles.gpsBtn, {flex:1}]} onPress={detectLocation} disabled={locLoading} activeOpacity={0.8}>
+                  {locLoading
+                    ? <ActivityIndicator color={Colors.primary} size="small" />
+                    : <Text style={styles.gpsBtnText}>📍 Ma position</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.gpsBtn, {flex:1}]} onPress={geocodeAddress} disabled={geoLoading} activeOpacity={0.8}>
+                  {geoLoading
+                    ? <ActivityIndicator color={Colors.primary} size="small" />
+                    : <Text style={styles.gpsBtnText}>🔍 Via adresse</Text>}
+                </TouchableOpacity>
+              </View>
               {form.gpsLat && form.gpsLng && (
                 <View style={styles.gpsResult}>
-                  <Text style={styles.gpsCoords}>Lat: {form.gpsLat}  |  Lng: {form.gpsLng}</Text>
+                  <Text style={styles.gpsCoords}>✅ Position définie ({form.gpsLat}, {form.gpsLng})</Text>
                 </View>
               )}
-              <View style={styles.manualGps}>
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Latitude" placeholderTextColor={Colors.textMuted} value={form.gpsLat} onChangeText={v => set('gpsLat', v)} keyboardType="numbers-and-punctuation" />
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Longitude" placeholderTextColor={Colors.textMuted} value={form.gpsLng} onChangeText={v => set('gpsLng', v)} keyboardType="numbers-and-punctuation" />
-              </View>
               {errors.gps && <Text style={styles.err}>{errors.gps}</Text>}
             </View>
 

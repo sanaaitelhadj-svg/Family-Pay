@@ -90,11 +90,11 @@ authRouter.post('/admin/login', wrap(async (req, res) => {
 }));
 
 authRouter.post('/merchant/login', wrap(async (req, res) => {
-  const { phone, password } = req.body;
-  if (!phone || !password) {
-    res.status(400).json({ error: 'MISSING_FIELDS', message: 'Téléphone et mot de passe requis' }); return;
+  const { email, password } = req.body;
+  if (!email || !password) {
+    res.status(400).json({ error: 'MISSING_FIELDS', message: 'Email et mot de passe requis' }); return;
   }
-  const result = await AuthService.loginMerchantWithPassword(phone.replace(/\s/g, ''), password);
+  const result = await AuthService.loginMerchantWithPassword(email.trim().toLowerCase(), password);
   res.json(result);
 }));
 

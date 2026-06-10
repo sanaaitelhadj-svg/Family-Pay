@@ -111,6 +111,7 @@ export class AuthService {
     await prisma.user.create({
       data: {
         phone: input.phone,
+        email: input.email ? input.email.toLowerCase() : null,
         firstName: input.businessName,
         password: input.password ? await (async () => { const b = await import('bcryptjs'); const bc = (b as any).default ?? b; return bc.hash(input.password, 10); })() : null,
         role: 'MERCHANT',
@@ -319,13 +320,13 @@ export class AuthService {
     return { message: 'Code OTP envoyé si le compte existe' };
   }
 
-  static async loginMerchantWithPassword(phone: string, password: string) {
-    const user = await prisma.user.findUnique({
-      where: { phone },
+  static async loginMerchantWithPassword(email: string, password: string) {
+    const user = await prisma.user.findFirst({
+      where: { email: email.toLowerCase(), role: 'MERCHANT' },
       include: { merchant: true },
     });
-    if (!user || user.role !== 'MERCHANT') {
-      throw new AppError('Compte marchand introuvable', 404, 'USER_NOT_FOUND');
+    if (!user) {
+      throw new AppError('Email ou mot de passe incorrect', 401, 'INVALID_CREDENTIALS');
     }
     if (!user.isActive) {
       throw new AppError('Compte désactivé', 403, 'ACCOUNT_INACTIVE');

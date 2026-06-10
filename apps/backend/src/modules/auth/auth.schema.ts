@@ -38,7 +38,7 @@ export const RegisterMerchantSchema = z.object({
   address:      z.string().min(5).max(200),
   city:         z.string().min(2).max(50),
   phone:        moroccanPhone,
-  email:        z.string().email().optional(),
+  email:        z.string().email('Email invalide'),
   // Légal — obligatoire pour KYC
   registrationNumber: z.string().min(2).max(50),
   iceNumber:          z.string().min(5).max(20),

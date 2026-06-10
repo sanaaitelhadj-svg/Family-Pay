@@ -17,6 +17,7 @@ const ROLES: { key: Role; label: string; icon: string; desc: string }[] = [
 export default function WelcomeScreen() {
   const [role, setRole]         = useState<Role>('SPONSOR');
   const [phone, setPhone]       = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
@@ -43,16 +44,15 @@ export default function WelcomeScreen() {
 
   // ── Password flow (MERCHANT) ───────────────────────────────────────────
   const handleMerchantLogin = async () => {
-    const clean = phone.replace(/\s/g, '');
-    if (!/^(\+212|00212|0)[5-7]\d{8}$/.test(clean)) {
-      Alert.alert('Numéro invalide', 'Entrez un numéro marocain valide'); return;
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Email invalide', 'Entrez un email valide'); return;
     }
     if (!password.trim()) {
       Alert.alert('Mot de passe requis', 'Entrez votre mot de passe'); return;
     }
     setLoading(true);
     try {
-      const res = await api.post('/auth/merchant/login', { phone: clean, password });
+      const res = await api.post('/auth/merchant/login', { email: email.trim().toLowerCase(), password });
       const { accessToken, refreshToken, user } = res.data;
       await setAuth(user, accessToken, refreshToken);
       if (Platform.OS === 'web') {
@@ -88,7 +88,7 @@ export default function WelcomeScreen() {
             <TouchableOpacity
               key={r.key}
               style={[styles.roleCard, role === r.key && styles.roleCardActive]}
-              onPress={() => { setRole(r.key); setPhone(''); setPassword(''); }}
+              onPress={() => { setRole(r.key); setPhone(''); setEmail(''); setPassword(''); }}
               activeOpacity={0.8}
             >
               <Text style={styles.roleIcon}>{r.icon}</Text>
@@ -98,20 +98,41 @@ export default function WelcomeScreen() {
           ))}
         </View>
 
-        {/* Phone input (commun) */}
-        <Text style={styles.sectionLabel}>Téléphone</Text>
-        <View style={styles.inputWrap}>
-          <Text style={styles.flag}>🇲🇦</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0612 345 678"
-            keyboardType="phone-pad"
-            value={phone}
-            onChangeText={setPhone}
-            autoFocus
-            placeholderTextColor={Colors.textMuted}
-          />
-        </View>
+        {/* Phone input (Sponsor/Bénéficiaire) ou Email (Marchand) */}
+        {!isMerchant ? (
+          <>
+            <Text style={styles.sectionLabel}>Téléphone</Text>
+            <View style={styles.inputWrap}>
+              <Text style={styles.flag}>🇲🇦</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0612 345 678"
+                keyboardType="phone-pad"
+                value={phone}
+                onChangeText={setPhone}
+                autoFocus
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.sectionLabel}>Email</Text>
+            <View style={styles.inputWrap}>
+              <Text style={styles.flag}>✉️</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="contact@commerce.ma"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+                autoFocus
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+          </>
+        )}
 
         {/* Mot de passe (Marchand uniquement) */}
         {isMerchant && (
@@ -139,7 +160,7 @@ export default function WelcomeScreen() {
           label={isMerchant ? 'Se connecter' : 'Recevoir le code SMS'}
           onPress={isMerchant ? handleMerchantLogin : handleOtpContinue}
           loading={loading}
-          disabled={phone.length < 9 || (isMerchant && !password.trim())}
+          disabled={(isMerchant ? (!email.trim() || !password.trim()) : phone.length < 9)}
           style={{ marginTop: 8 }}
         />
 
