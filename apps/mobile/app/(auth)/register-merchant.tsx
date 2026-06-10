@@ -66,16 +66,19 @@ export default function RegisterMerchantScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [checkingName, setCheckingName] = useState(false);
 
-  const checkBusinessName = async () => {
-    if (!form.businessName.trim() || !form.city.trim() || !form.address.trim()) return;
+  const formRef = React.useRef(form);
+  React.useEffect(() => { formRef.current = form; }, [form]);
+
+  const checkBusinessName = async (overrides?: { city?: string; address?: string; businessName?: string }) => {
+    const f = { ...formRef.current, ...overrides };
+    if (!f.businessName.trim() || !f.city.trim() || !f.address.trim()) return;
     setCheckingName(true);
     try {
       await apiClient.post('/auth/merchant/check', {
-        businessName: form.businessName.trim(),
-        city:         form.city.trim(),
-        address:      form.address.trim(),
+        businessName: f.businessName.trim(),
+        city:         f.city.trim(),
+        address:      f.address.trim(),
       });
-      // Pas de doublon — effacer l'erreur si elle existait
       setErrors(e => { const n = { ...e }; delete n.businessName; return n; });
     } catch (err: any) {
       const { field, message } = err?.response?.data ?? {};
@@ -282,7 +285,7 @@ export default function RegisterMerchantScreen() {
                     <TouchableOpacity
                       key={city}
                       style={[styles.cityOption, form.city === city && styles.cityOptionActive]}
-                      onPress={() => { set('city', city); setShowCityPicker(false); setTimeout(checkBusinessName, 100); }}
+                      onPress={() => { set('city', city); setShowCityPicker(false); checkBusinessName({ city }); }}
                     >
                       <Text style={[styles.cityOptionText, form.city === city && { color: Colors.primary, fontWeight: '700' }]}>{city}</Text>
                     </TouchableOpacity>
