@@ -55,12 +55,14 @@ export const RegisterMerchantSchema = z.object({
   // Physique — obligatoire
   gpsLat: z.number().min(-90).max(90),
   gpsLng: z.number().min(-180).max(180),
-  photos: z.array(z.string().url()).min(1).max(10),
+  photos: z.array(z.string().url()).min(0).max(10),
   // Horaires
   businessHours: z.record(
     z.string(),
     z.object({ open: z.string(), close: z.string(), closed: z.boolean().optional() })
   ).optional(),
+  // Accès
+  password: z.string().min(6).max(100),
   // CNDP
   cndpConsent: z.literal(true, {
     errorMap: () => ({ message: 'Le consentement CNDP est obligatoire' }),
