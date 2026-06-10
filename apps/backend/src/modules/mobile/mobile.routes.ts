@@ -633,3 +633,111 @@ mobileRouter.patch('/sponsor/allocations/:allocationId/approval', authenticate([
   await prisma.allocation.update({ where: { id: alloc.id }, data: { requiresApproval: newValue } });
   res.json({ requiresApproval: newValue });
 }));
+
+// ── Marchand: générer un QR de paiement ──────────────────────────────────
+mobileRouter.post('/merchant/qr/generate', authenticate(['MERCHANT']), wrap(async (req, res) => {
+  const merchantId = req.user!.profileId;
+  const { amount } = req.body;
+
+  if (!amount || Number(amount) <= 0) {
+    res.status(400).json({ error: 'INVALID_AMOUNT', message: 'Montant invalide' }); return;
+  }
+
+  const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
+  if (!merchant) { res.status(404).json({ error: 'MERCHANT_NOT_FOUND' }); return; }
+
+  const { randomUUID } = await import('crypto');
+  const token     = randomUUID();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+
+  await prisma.qrCode.create({
+    data: { merchantId, category: merchant.category, amount: Number(amount), token, expiresAt },
+  });
+
+  res.json({ token, expiresAt, category: merchant.category, amount: Number(amount) });
+}));
+
+// ── Bénéficiaire: aperçu paiement (avant confirmation) ───────────────────
+mobileRouter.post('/beneficiary/pay/preview', authenticate(['BENEFICIARY']), wrap(async (req, res) => {
+  const { token } = req.body;
+  const beneficiaryId = req.user!.profileId;
+
+  const qr = await prisma.qrCode.findUnique({
+    where: { token },
+    include: { merchant: { include: { user: true } } },
+  });
+  if (!qr)          { res.status(404).json({ error: 'QR_NOT_FOUND',  message: 'QR code invalide' }); return; }
+  if (qr.usedAt)    { res.status(400).json({ error: 'QR_USED',       message: 'QR code déjà utilisé' }); return; }
+  if (new Date() > qr.expiresAt) { res.status(400).json({ error: 'QR_EXPIRED', message: 'QR code expiré' }); return; }
+
+  const allocation = await prisma.allocation.findFirst({
+    where: { beneficiaryId, category: qr.category, status: 'ACTIVE', remainingAmount: { gte: qr.amount } },
+  });
+  if (!allocation) {
+    res.status(403).json({ error: 'NO_ALLOCATION', message: `Aucune allocation active en ${qr.category} avec fonds suffisants` }); return;
+  }
+
+  const merchantName = (qr.merchant as any).businessName
+    ?? `${qr.merchant.user.firstName} ${qr.merchant.user.lastName ?? ''}`.trim();
+
+  res.json({
+    merchantName,
+    category:         qr.category,
+    amount:           Number(qr.amount),
+    remainingAfter:   Number(allocation.remainingAmount) - Number(qr.amount),
+    requiresApproval: allocation.requiresApproval,
+    allocationId:     allocation.id,
+  });
+}));
+
+// ── Bénéficiaire: confirmer le paiement ──────────────────────────────────
+mobileRouter.post('/beneficiary/pay/confirm', authenticate(['BENEFICIARY']), wrap(async (req, res) => {
+  const { token } = req.body;
+  const beneficiaryId = req.user!.profileId;
+
+  const qr = await prisma.qrCode.findUnique({ where: { token } });
+  if (!qr)          { res.status(404).json({ error: 'QR_NOT_FOUND' }); return; }
+  if (qr.usedAt)    { res.status(400).json({ error: 'QR_USED',     message: 'QR code déjà utilisé' }); return; }
+  if (new Date() > qr.expiresAt) { res.status(400).json({ error: 'QR_EXPIRED', message: 'QR code expiré' }); return; }
+
+  const allocation = await prisma.allocation.findFirst({
+    where: { beneficiaryId, category: qr.category, status: 'ACTIVE', remainingAmount: { gte: qr.amount } },
+  });
+  if (!allocation) {
+    res.status(403).json({ error: 'NO_ALLOCATION', message: 'Aucune allocation disponible' }); return;
+  }
+
+  const { randomUUID } = await import('crypto');
+
+  if (allocation.requiresApproval) {
+    const authorization = await prisma.authorization.create({
+      data: { allocationId: allocation.id, beneficiaryId, merchantId: qr.merchantId, amount: qr.amount, status: 'PENDING_REVIEW' },
+    });
+    await prisma.qrCode.update({ where: { token }, data: { usedAt: new Date(), authorizationId: authorization.id } });
+    res.json({ status: 'PENDING_REVIEW', message: "Paiement en attente d'approbation du sponsor", authorizationId: authorization.id });
+    return;
+  }
+
+  // Auto-approve
+  const authorization = await prisma.authorization.create({
+    data: { allocationId: allocation.id, beneficiaryId, merchantId: qr.merchantId, amount: qr.amount, status: 'APPROVED' },
+  });
+  await prisma.transaction.create({
+    data: {
+      authorizationId:  authorization.id,
+      sponsorId:        allocation.sponsorId,
+      merchantId:       qr.merchantId,
+      amount:           qr.amount,
+      pspTransactionId: randomUUID(),
+      status:           'COMPLETED',
+    },
+  });
+  await prisma.allocation.update({
+    where: { id: allocation.id },
+    data:  { remainingAmount: { decrement: qr.amount } },
+  });
+  await prisma.qrCode.update({ where: { token }, data: { usedAt: new Date(), authorizationId: authorization.id } });
+
+  res.json({ status: 'COMPLETED', amount: Number(qr.amount), message: 'Paiement effectué avec succès ✅' });
+}));
+

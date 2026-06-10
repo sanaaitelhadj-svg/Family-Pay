@@ -46,7 +46,7 @@ export default function MerchantHomeScreen() {
   const handleGenerate = async () => {
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) return;
     try {
-      const res = await apiClient.post('/qr/generate', {
+      const res = await apiClient.post('/mobile/merchant/qr/generate', {
         category: data?.merchant?.category ?? 'GENERAL',
         amount: parseFloat(amount),
       });
