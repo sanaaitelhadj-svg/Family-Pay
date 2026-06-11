@@ -791,16 +791,16 @@ adminRouter.patch('/admins/:id/reset-password',
 
 // ── Merchant Change Requests ─────────────────────────────────────────────────
 
-adminRouter.get('/merchants/change-requests', authenticate(['ADMIN']), wrap(async (req, res) => {
+adminRouter.get('/merchants/change-requests', authenticate(['ADMIN']), async (req, res, next) => { try {
   const requests = await prisma.merchantChangeRequest.findMany({
     where: { status: 'PENDING' },
     include: { merchant: { select: { id: true, businessName: true, category: true, city: true } } },
     orderBy: { createdAt: 'desc' },
   });
   res.json(requests);
-}));
+} catch(err) { next(err); return; } });
 
-adminRouter.post('/merchants/change-requests/:id/approve', authenticate(['ADMIN']), wrap(async (req, res) => {
+adminRouter.post('/merchants/change-requests/:id/approve', authenticate(['ADMIN']), async (req, res, next) => { try {
   const request = await prisma.merchantChangeRequest.findUnique({ where: { id: req.params['id'] } });
   if (!request) { res.status(404).json({ error: 'Demande introuvable' }); return; }
   if (request.status !== 'PENDING') { res.status(400).json({ error: 'Demande déjà traitée' }); return; }
@@ -812,9 +812,9 @@ adminRouter.post('/merchants/change-requests/:id/approve', authenticate(['ADMIN'
     prisma.adminNotification.create({ data: { type: 'CHANGE_APPROVED', title: 'Modification approuvée', body: 'Votre demande de modification a été approuvée.', entityId: request.merchantId } }),
   ]);
   res.json({ message: 'Modifications appliquées avec succès.' });
-}));
+} catch(err) { next(err); return; } });
 
-adminRouter.post('/merchants/change-requests/:id/reject', authenticate(['ADMIN']), wrap(async (req, res) => {
+adminRouter.post('/merchants/change-requests/:id/reject', authenticate(['ADMIN']), async (req, res, next) => { try {
   const { reason } = req.body;
   const request = await prisma.merchantChangeRequest.findUnique({ where: { id: req.params['id'] } });
   if (!request) { res.status(404).json({ error: 'Demande introuvable' }); return; }
@@ -825,24 +825,24 @@ adminRouter.post('/merchants/change-requests/:id/reject', authenticate(['ADMIN']
     prisma.adminNotification.create({ data: { type: 'CHANGE_REJECTED', title: 'Modification refusée', body: reason ?? 'Votre demande de modification a été refusée.', entityId: request.merchantId } }),
   ]);
   res.json({ message: 'Demande rejetée.' });
-}));
+} catch(err) { next(err); return; } });
 
 // ── Admin Notifications ──────────────────────────────────────────────────────
 
-adminRouter.get('/notifications', authenticate(['ADMIN']), wrap(async (req, res) => {
+adminRouter.get('/notifications', authenticate(['ADMIN']), async (req, res, next) => { try {
   const notifications = await prisma.adminNotification.findMany({
     orderBy: { createdAt: 'desc' },
     take: 50,
   });
   res.json(notifications);
-}));
+} catch(err) { next(err); return; } });
 
-adminRouter.post('/notifications/:id/read', authenticate(['ADMIN']), wrap(async (req, res) => {
+adminRouter.post('/notifications/:id/read', authenticate(['ADMIN']), async (req, res, next) => { try {
   await prisma.adminNotification.update({ where: { id: req.params['id'] }, data: { isRead: true } });
   res.json({ ok: true });
-}));
+} catch(err) { next(err); return; } });
 
-adminRouter.post('/notifications/read-all', authenticate(['ADMIN']), wrap(async (req, res) => {
+adminRouter.post('/notifications/read-all', authenticate(['ADMIN']), async (req, res, next) => { try {
   await prisma.adminNotification.updateMany({ where: { isRead: false }, data: { isRead: true } });
   res.json({ ok: true });
-}));
+} catch(err) { next(err); return; } });
