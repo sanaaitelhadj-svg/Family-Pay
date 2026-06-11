@@ -3,7 +3,7 @@ import { Store, Search, Plus, X, Check, Ban, Edit2, Save, ChevronRight, MapPin, 
 import { api } from '../api';
 import { PasswordResetModal } from '../components/PasswordResetModal';
 
-interface MerchantContact { name?: string; phone?: string; email?: string; }
+interface MerchantContact { name?: string; firstName?: string; lastName?: string; phone?: string; email?: string; }
 type Contact = MerchantContact;
 interface CreateContact { firstName: string; lastName: string; phone: string; email: string; }
 interface Merchant {
@@ -63,7 +63,7 @@ const EditField = ({ label, field, value, draft, onChange }: { label: string; fi
 const ContactCard = ({ label, contact }: { label: string; contact?: Contact }) => (
   <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl p-3">
     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{label}</p>
-    {contact?.name ? <div className="space-y-1"><p className="text-sm font-medium text-gray-800">{contact.name}</p>
+    {(contact?.name || contact?.firstName) ? <div className="space-y-1"><p className="text-sm font-medium text-gray-800">{contact.firstName && contact.lastName ? `${contact.firstName} ${contact.lastName}` : contact.name}</p>
       {contact.phone && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Phone className="w-3 h-3 flex-shrink-0"/>{contact.phone}</p>}
       {contact.email && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Mail className="w-3 h-3 flex-shrink-0"/>{contact.email}</p>}</div>
     : <p className="text-xs text-gray-400 italic">Non renseigné</p>}
