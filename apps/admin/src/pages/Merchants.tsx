@@ -102,7 +102,6 @@ export default function Merchants() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
   const [showChangeRequests, setShowChangeRequests] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
   const [rejectingId, setRejectingId] = useState<string|null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
