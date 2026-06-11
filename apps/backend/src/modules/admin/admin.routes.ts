@@ -57,7 +57,22 @@ adminRouter.get('/merchants', authenticate(['ADMIN']), async (req, res, next) =>
 
 adminRouter.patch('/merchants/:id/approve', authenticate(['ADMIN']), async (req, res, next) => {
   try {
-    await AdminService.approveMerchant(req.params['id'] as string);
+    const merchantId = req.params['id'] as string;
+    const { contractUrl, billingType, commissionType, commissionRate, planId, startDate, endDate } = req.body ?? {};
+
+    // Save billing info before approving
+    const billingData: any = {};
+    if (contractUrl)    billingData.contractUrl    = contractUrl;
+    if (commissionType) billingData.commissionType = commissionType;
+    if (commissionRate != null) billingData.commissionRate = Number(commissionRate);
+    if (startDate)      billingData.commissionStartDate = new Date(startDate);
+    if (endDate)        billingData.commissionEndDate   = new Date(endDate);
+
+    if (Object.keys(billingData).length > 0) {
+      await prisma.merchant.update({ where: { id: merchantId }, data: billingData });
+    }
+
+    await AdminService.approveMerchant(merchantId);
     res.json({ message: 'Marchand approuvé.' });
   } catch (err) { next(err); return; }
 });
