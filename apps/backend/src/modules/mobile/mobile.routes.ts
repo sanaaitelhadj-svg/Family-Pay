@@ -359,7 +359,7 @@ mobileRouter.post('/merchant/change-request', authenticate(['MERCHANT']), wrap(a
     where: { merchantId, status: 'PENDING' },
   });
   if (existing) {
-    res.status(409).json({ error: 'PENDING_REQUEST', message: 'Une demande de modification est déjà en attente d'approbation.' });
+    res.status(409).json({ error: 'PENDING_REQUEST', message: "Une demande de modification est déjà en attente d'approbation." });
     return;
   }
 
@@ -381,12 +381,12 @@ mobileRouter.post('/merchant/change-request', authenticate(['MERCHANT']), wrap(a
     data: {
       type: 'CHANGE_REQUEST',
       title: 'Demande de modification',
-      body: \`Le marchand "${merchant.businessName}" a soumis une demande de modification.\`,
+      body: `Le marchand "${merchant.businessName}" a soumis une demande de modification.`,
       entityId: merchantId,
     },
   });
 
-  res.status(201).json({ message: 'Demande envoyée. En attente de validation par l\'administrateur.', request });
+  res.status(201).json({ message: "Demande envoyée. En attente de validation par l'administrateur.", request });
 }));
 
 // Sponsor crée directement un compte bénéficiaire
