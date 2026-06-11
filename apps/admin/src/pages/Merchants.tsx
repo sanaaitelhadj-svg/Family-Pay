@@ -34,6 +34,14 @@ interface CreateForm {
   contactAdmin: CreateContact; contactFinance: CreateContact; contactOps: CreateContact; contactLegal: CreateContact;
 }
 
+const CHANGE_FIELD_LABELS: Record<string,string> = {
+  businessName:'Nom du commerce', address:'Adresse', city:'Ville', phone:'Téléphone', email:'Email',
+  registrationNumber:'N° RC', iceNumber:'ICE', taxId:'Identifiant fiscal', fiscalId:'Fiscal ID',
+  cinRepresentant:'CIN Représentant', rib:'RIB', iban:'IBAN',
+  contactAdmin:'Contact Administratif', contactFinance:'Contact Finance',
+  contactOps:'Contact Opérations', contactLegal:'Contact Juridique',
+};
+
 const CATEGORY_OPTIONS = [
   { value:'FOOD',      label:'Alimentation / Restauration' },
   { value:'PHARMACY',  label:'Pharmacie & Santé' },
@@ -409,6 +417,59 @@ export default function Merchants() {
                   <div className="grid grid-cols-2 gap-3"><InfoRow label="Version signée" value={selected.cguVersion}/><InfoRow label="Signé le" value={new Date(selected.cguSignedAt).toLocaleDateString('fr-FR')}/></div>
                 </div>
               )}
+              {/* ── Demandes de modification ── */}
+              {(() => {
+                const cr = changeRequests.find(r => r.merchantId === selected.id);
+                if (!cr) return null;
+                return (
+                  <div style={{border:'2px solid #EDE9FE', background:'#F5F3FF'}} className="rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-purple-500"/>
+                        <span className="text-sm font-semibold" style={{color:'#5B3DF5'}}>Demande de modification</span>
+                      </div>
+                      <span className="text-xs text-gray-400">{new Date(cr.createdAt).toLocaleDateString('fr-FR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+                    </div>
+                    <div className="space-y-2 mb-4">
+                      {Object.entries(cr.changes).map(([k, v]) => (
+                        <div key={k} className="rounded-lg p-2.5" style={{background:'#fff',border:'1px solid #DDD6FE'}}>
+                          <p className="text-xs font-semibold text-gray-500 mb-0.5">{CHANGE_FIELD_LABELS[k] ?? k}</p>
+                          {typeof v === 'object' && v !== null ? (
+                            <div className="text-xs text-gray-700 space-y-0.5">
+                              {Object.entries(v as Record<string,string>).map(([fk,fv]) => (
+                                <p key={fk}><span className="text-gray-400">{fk}: </span>{String(fv)}</p>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400 line-through">{(selected as any)[k] ?? '—'}</span>
+                              <span className="text-xs">→</span>
+                              <span className="text-xs font-medium text-gray-800">{String(v)}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {rejectingId === cr.id ? (
+                      <div className="flex gap-2 mt-2">
+                        <input value={rejectReason} onChange={e=>setRejectReason(e.target.value)}
+                          placeholder="Motif du refus..." className="flex-1 text-xs rounded-lg px-3 py-2 focus:outline-none"
+                          style={{border:'1px solid #DDD6FE'}} />
+                        <button onClick={() => rejectChangeRequest(cr.id, rejectReason)}
+                          className="text-xs px-3 py-2 rounded-lg font-semibold text-white" style={{background:'#EF4444'}}>Confirmer</button>
+                        <button onClick={() => setRejectingId(null)} className="text-xs px-3 py-2 rounded-lg" style={{border:'1px solid #ECECF2'}}>Annuler</button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button onClick={() => approveChangeRequest(cr.id)}
+                          className="flex-1 text-sm py-2 rounded-xl font-semibold text-white" style={{background:'#22C55E'}}>✓ Approuver</button>
+                        <button onClick={() => { setRejectingId(cr.id); setRejectReason(''); }}
+                          className="flex-1 text-sm py-2 rounded-xl font-semibold text-white" style={{background:'#EF4444'}}>✕ Refuser</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <p className="text-xs text-gray-400 text-center pb-2">Créé le {new Date(selected.createdAt).toLocaleDateString('fr-FR')}</p>
             </div>
           </div>

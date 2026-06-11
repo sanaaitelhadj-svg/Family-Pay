@@ -336,8 +336,8 @@ mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (re
     _sum: { amount: true },
   });
 
-  const pendingRequest = await prisma.merchantChangeRequest.findFirst({
-    where: { merchantId: merchant.id, status: 'PENDING' },
+  const lastRequest = await prisma.merchantChangeRequest.findFirst({
+    where: { merchantId: merchant.id },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -345,7 +345,8 @@ mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (re
     ...merchant,
     acceptedCategories: [merchant.category],
     totalRevenue: Number(totalRevenue._sum?.amount ?? 0),
-    pendingChangeRequest: pendingRequest ?? null,
+    pendingChangeRequest: lastRequest?.status === 'PENDING' ? lastRequest : null,
+    lastChangeRequest: lastRequest ?? null,
   });
 }));
 

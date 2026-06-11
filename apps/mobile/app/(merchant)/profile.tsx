@@ -39,6 +39,7 @@ type MerchantProfile = {
   user: { firstName: string; lastName: string; phone: string; email?: string; createdAt: string };
   _count: { transactions: number }; totalRevenue: number;
   pendingChangeRequest?: { id: string; status: string; createdAt: string } | null;
+  lastChangeRequest?: { id: string; status: string; reason?: string; createdAt: string } | null;
 };
 
 type EditForm = {
@@ -196,10 +197,24 @@ export default function MerchantProfileScreen() {
         </View>
       </View>
 
-      {data.pendingChangeRequest && (
+      {data.lastChangeRequest && data.lastChangeRequest.status === 'PENDING' && (
         <View style={styles.pendingBanner}>
           <Text style={styles.pendingIcon}>⏳</Text>
           <Text style={styles.pendingText}>Une demande de modification est en attente de validation par l'administrateur.</Text>
+        </View>
+      )}
+      {data.lastChangeRequest && data.lastChangeRequest.status === 'APPROVED' && (
+        <View style={[styles.pendingBanner, { backgroundColor: '#D1FAE5', borderColor: '#A7F3D0' }]}>
+          <Text style={styles.pendingIcon}>✅</Text>
+          <Text style={[styles.pendingText, { color: '#065F46' }]}>Votre demande de modification a été approuvée et appliquée.</Text>
+        </View>
+      )}
+      {data.lastChangeRequest && data.lastChangeRequest.status === 'REJECTED' && (
+        <View style={[styles.pendingBanner, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}>
+          <Text style={styles.pendingIcon}>❌</Text>
+          <Text style={[styles.pendingText, { color: '#991B1B' }]}>
+            Votre demande de modification a été refusée.{data.lastChangeRequest.reason ? ` Motif : ${data.lastChangeRequest.reason}` : ''}
+          </Text>
         </View>
       )}
 
