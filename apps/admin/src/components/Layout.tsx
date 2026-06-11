@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '../api';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { usePermissions } from '../contexts/PermissionsContext';
 import {
   LayoutDashboard, Users, Gift, Store, CreditCard,
@@ -42,6 +42,7 @@ function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<AdminNotif[]>([]);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const fetchNotifs = async () => {
     try {
@@ -62,6 +63,17 @@ function NotificationBell() {
   const markAllRead = async () => {
     try { await api.post('/admin/notifications/read-all'); } catch {}
     setNotifs(n => n.map(x => ({ ...x, isRead: true })));
+  };
+
+  const handleNotifClick = async (n: AdminNotif) => {
+    if (!n.isRead) {
+      try { await api.post(`/admin/notifications/${n.id}/read`); } catch {}
+      setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+    }
+    if (n.entityId && (n.type === 'CHANGE_REQUEST' || n.type === 'CHANGE_APPROVED' || n.type === 'CHANGE_REJECTED')) {
+      setOpen(false);
+      navigate('/merchants');
+    }
   };
 
   const notifColor: Record<string, string> = {
@@ -90,7 +102,8 @@ function NotificationBell() {
             {notifs.length === 0
               ? <p className="text-center text-sm text-gray-400 py-8">Aucune notification</p>
               : notifs.slice(0, 20).map(n => (
-                <div key={n.id} className="px-4 py-3 flex gap-3 items-start"
+                <div key={n.id} onClick={() => handleNotifClick(n)}
+                  className="px-4 py-3 flex gap-3 items-start cursor-pointer hover:bg-gray-50 transition-colors"
                   style={{ background: n.isRead ? '#fff' : '#F5F3FF', borderBottom: '1px solid #ECECF2' }}>
                   <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
                     style={{ background: notifColor[n.type] ?? '#6B7280', opacity: n.isRead ? 0.3 : 1 }} />
