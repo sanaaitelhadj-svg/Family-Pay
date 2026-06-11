@@ -801,7 +801,7 @@ adminRouter.get('/merchants/change-requests', authenticate(['ADMIN']), async (re
 } catch(err) { next(err); return; } });
 
 adminRouter.post('/merchants/change-requests/:id/approve', authenticate(['ADMIN']), async (req, res, next) => { try {
-  const request = await prisma.merchantChangeRequest.findUnique({ where: { id: req.params['id'] } });
+  const request = await prisma.merchantChangeRequest.findUnique({ where: { id: req.params['id'] as string } });
   if (!request) { res.status(404).json({ error: 'Demande introuvable' }); return; }
   if (request.status !== 'PENDING') { res.status(400).json({ error: 'Demande déjà traitée' }); return; }
 
@@ -816,7 +816,7 @@ adminRouter.post('/merchants/change-requests/:id/approve', authenticate(['ADMIN'
 
 adminRouter.post('/merchants/change-requests/:id/reject', authenticate(['ADMIN']), async (req, res, next) => { try {
   const { reason } = req.body;
-  const request = await prisma.merchantChangeRequest.findUnique({ where: { id: req.params['id'] } });
+  const request = await prisma.merchantChangeRequest.findUnique({ where: { id: req.params['id'] as string } });
   if (!request) { res.status(404).json({ error: 'Demande introuvable' }); return; }
   if (request.status !== 'PENDING') { res.status(400).json({ error: 'Demande déjà traitée' }); return; }
 
@@ -838,7 +838,7 @@ adminRouter.get('/notifications', authenticate(['ADMIN']), async (req, res, next
 } catch(err) { next(err); return; } });
 
 adminRouter.post('/notifications/:id/read', authenticate(['ADMIN']), async (req, res, next) => { try {
-  await prisma.adminNotification.update({ where: { id: req.params['id'] }, data: { isRead: true } });
+  await prisma.adminNotification.update({ where: { id: req.params['id'] as string }, data: { isRead: true } });
   res.json({ ok: true });
 } catch(err) { next(err); return; } });
 
