@@ -125,8 +125,17 @@ export default function Merchants() {
   const [createSaving, setCreateSaving] = useState(false);
   const [resetPwdModal, setResetPwdModal] = useState<string|null>(null);
 
-  useEffect(() => { fetchMerchants(); fetchPlans(); }, []);
+  useEffect(() => { fetchMerchants(); fetchPlans(); loadChangeRequests(); }, []);
   const fetchMerchants = async () => { setLoading(true); try { const d = await api.get('/admin/merchants'); setMerchants(d.data); } catch(e){console.error(e);} finally{setLoading(false);} };
+  const loadChangeRequests = async () => {
+    try { const r = await api.get('/admin/merchants/change-requests'); setChangeRequests(r.data); } catch(e) { console.error(e); }
+  };
+  const approveChangeRequest = async (id: string) => {
+    try { await api.post(`/admin/merchants/change-requests/${id}/approve`); await loadChangeRequests(); await fetchMerchants(); } catch(e:any) { alert(e?.response?.data?.error ?? 'Erreur'); }
+  };
+  const rejectChangeRequest = async (id: string, reason: string) => {
+    try { await api.post(`/admin/merchants/change-requests/${id}/reject`, { reason }); setRejectingId(null); setRejectReason(''); await loadChangeRequests(); } catch(e:any) { alert(e?.response?.data?.error ?? 'Erreur'); }
+  };
   const fetchPlans = async () => { try { const d = await api.get('/admin/plans'); setPlans(d.data); } catch(e){console.error(e);} };
   const updateDraft = (field: string, value: any) => setDraft(d => ({ ...d, [field]: value }));
   const save = async () => {

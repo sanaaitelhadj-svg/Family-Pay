@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { api } from '../api';
 import { Outlet, NavLink } from 'react-router-dom';
 import { usePermissions } from '../contexts/PermissionsContext';
 import {
@@ -44,9 +45,8 @@ function NotificationBell() {
 
   const fetchNotifs = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
-      const res = await fetch('/api/admin/notifications', { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setNotifs(await res.json());
+      const res = await api.get('/admin/notifications');
+      setNotifs(res.data);
     } catch {}
   };
 
@@ -60,8 +60,7 @@ function NotificationBell() {
   const unread = notifs.filter(n => !n.isRead).length;
 
   const markAllRead = async () => {
-    const token = localStorage.getItem('admin_token');
-    await fetch('/api/admin/notifications/read-all', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    try { await api.post('/admin/notifications/read-all'); } catch {}
     setNotifs(n => n.map(x => ({ ...x, isRead: true })));
   };
 
