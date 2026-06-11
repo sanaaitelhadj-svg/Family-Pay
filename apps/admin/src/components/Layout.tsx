@@ -4,7 +4,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { usePermissions } from '../contexts/PermissionsContext';
 import {
   LayoutDashboard, Users, Gift, Store, CreditCard,
-  Shield, FileText, DollarSign, ShieldCheck, ScrollText, LogOut, Bell,
+  Shield, FileText, DollarSign, ShieldCheck, ScrollText, LogOut, Bell, GitPullRequest,
 } from 'lucide-react';
 
 const NAV = [
@@ -18,6 +18,7 @@ const NAV = [
   { to: '/commissions',   label: 'Commissions',      page: 'commissions',   Icon: DollarSign },
   { to: '/admins',        label: 'Administrateurs',  page: 'admins',        Icon: ShieldCheck },
   { to: '/audit-logs',    label: 'Audit Logs',       page: 'auditLogs',     Icon: ScrollText },
+  { to: '/change-requests', label: 'Modifications',    page: 'dashboard',     Icon: GitPullRequest },
 ];
 
 function fmt(iso: string | null) {
@@ -72,7 +73,7 @@ function NotificationBell() {
     }
     if (n.entityId && (n.type === 'CHANGE_REQUEST' || n.type === 'CHANGE_APPROVED' || n.type === 'CHANGE_REJECTED')) {
       setOpen(false);
-      navigate('/merchants');
+      navigate('/change-requests');
     }
   };
 

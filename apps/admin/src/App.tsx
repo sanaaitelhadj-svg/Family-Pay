@@ -11,6 +11,7 @@ import Commissions from './pages/Commissions';
 import Subscriptions from './pages/Subscriptions'
 import { PermissionsProvider } from './contexts/PermissionsContext';
 import Admins from './pages/Admins';
+import ChangeRequests from './pages/ChangeRequests';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="commissions" element={<Commissions />} />
           <Route path="subscriptions" element={<Subscriptions />} />
           <Route path="admins" element={<Admins />} />
+          <Route path="change-requests" element={<ChangeRequests />} />
         </Route>
       </Routes>
           </PermissionsProvider>

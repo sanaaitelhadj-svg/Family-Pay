@@ -806,6 +806,14 @@ adminRouter.patch('/admins/:id/reset-password',
 
 // ── Merchant Change Requests ─────────────────────────────────────────────────
 
+adminRouter.get('/merchants/change-requests-all', authenticate(['ADMIN']), async (req, res, next) => { try {
+  const requests = await prisma.merchantChangeRequest.findMany({
+    include: { merchant: { select: { id: true, businessName: true, category: true, city: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(requests);
+} catch(err) { next(err); return; } });
+
 adminRouter.get('/merchants/change-requests', authenticate(['ADMIN']), async (req, res, next) => { try {
   const requests = await prisma.merchantChangeRequest.findMany({
     where: { status: 'PENDING' },
