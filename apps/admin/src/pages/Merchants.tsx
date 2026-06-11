@@ -148,7 +148,7 @@ export default function Merchants() {
       if(approvalForm.billingType==='commission'){payload.commissionType=approvalForm.commissionType;payload.commissionRate=approvalForm.commissionRate?Number(approvalForm.commissionRate):undefined;}
       else{payload.planId=approvalForm.planId||undefined;payload.subscriptionStart=approvalForm.startDate||undefined;payload.subscriptionEnd=approvalForm.endDate||undefined;}
       const ep=approvalModal.isEdit?`/admin/merchants/${approvalModal.id}/billing`:`/admin/merchants/${approvalModal.id}/approve`;
-      await api.post(ep,payload); await fetchMerchants(); setApprovalModal(null); setApprovalForm(defaultApprovalForm);
+      await api.patch(ep,payload); await fetchMerchants(); setApprovalModal(null); setApprovalForm(defaultApprovalForm);
     } catch(e){console.error(e);} finally{setSaving(false);}
   };
   const reject = async () => { if(!rejectModal||!rejectReason.trim()) return; setSaving(true); try { await api.post(`/admin/merchants/${rejectModal.id}/reject`,{reason:rejectReason}); await fetchMerchants(); if(selected?.id===rejectModal.id)setSelected(null); setRejectModal(null); setRejectReason(''); } catch(e){console.error(e);} finally{setSaving(false);} };
