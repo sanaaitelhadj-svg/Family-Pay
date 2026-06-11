@@ -76,7 +76,8 @@ const ContactEditFields = ({ label, prefix, draft, onChange }: { label: string; 
   return (
     <div style={{background:'#F8F8FC',border:'1px solid #ECECF2'}} className="rounded-xl p-3 space-y-2">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
-      <input type="text" placeholder="Nom" value={contact.name??''} onChange={e=>update('name',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
+      <input type="text" placeholder="Prénom" value={(contact as any).firstName??''} onChange={e=>update('firstName' as any,e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
+      <input type="text" placeholder="Nom" value={(contact as any).lastName??''} onChange={e=>update('lastName' as any,e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
       <input type="text" placeholder="Téléphone" value={contact.phone??''} onChange={e=>update('phone',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
       <input type="email" placeholder="Email" value={contact.email??''} onChange={e=>update('email',e.target.value)} style={{border:'1px solid #ECECF2'}} className="w-full rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none"/>
     </div>
@@ -246,7 +247,7 @@ export default function Merchants() {
                   </>
                 ) : (
                   <>
-                    <button onClick={()=>{setEditing(true);setDraft({});}} style={{border:'1px solid #ECECF2'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><Edit2 className="w-3.5 h-3.5"/>Modifier</button>
+                    <button onClick={()=>{setEditing(true);setDraft({ contactAdmin: selected?.contactAdmin, contactFinance: selected?.contactFinance, contactOps: selected?.contactOps, contactLegal: selected?.contactLegal });}} style={{border:'1px solid #ECECF2'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><Edit2 className="w-3.5 h-3.5"/>Modifier</button>
                     {selected.kycStatus==='PENDING_PSP' && <>
                       <button onClick={()=>openApprovalModal(selected)} style={{background:'#22C55E'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90"><Check className="w-3.5 h-3.5"/>Approuver</button>
                       <button onClick={()=>setRejectModal({id:selected.id,name:selected.businessName})} style={{background:'#EF4444'}} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90"><X className="w-3.5 h-3.5"/>Rejeter</button>
