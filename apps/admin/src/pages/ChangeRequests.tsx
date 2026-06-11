@@ -5,7 +5,7 @@ import { api } from '../api';
 interface ChangeRequest {
   id: string; merchantId: string; status: string; reason?: string; createdAt: string;
   changes: Record<string, any>;
-  merchant: { id: string; businessName: string; category: string; city: string };
+  merchant: Record<string, any>;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -131,20 +131,46 @@ export default function ChangeRequestsPage() {
                   <div style={{borderTop:'1px solid #F3F4F6'}} className="px-5 pb-4">
                     {/* Changes */}
                     <div className="grid grid-cols-1 gap-2 mt-3 mb-4">
-                      {Object.entries(cr.changes).map(([k, v]) => (
-                        <div key={k} className="rounded-xl p-3" style={{background:'#F8F8FC', border:'1px solid #ECECF2'}}>
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{FIELD_LABELS[k] ?? k}</p>
-                          {typeof v === 'object' && v !== null ? (
-                            <div className="text-xs text-gray-700 space-y-0.5">
-                              {Object.entries(v as Record<string,string>).map(([fk,fv]) => (
-                                <p key={fk}><span className="text-gray-400">{fk}: </span><span className="font-medium">{String(fv)}</span></p>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm font-medium text-gray-800">{String(v)}</p>
-                          )}
-                        </div>
-                      ))}
+                      {Object.entries(cr.changes).map(([k, v]) => {
+                        const currentVal = cr.merchant[k];
+                        const isObj = typeof v === 'object' && v !== null;
+                        return (
+                          <div key={k} className="rounded-xl p-3" style={{background:'#F8F8FC', border:'1px solid #ECECF2'}}>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{FIELD_LABELS[k] ?? k}</p>
+                            {isObj ? (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-lg p-2" style={{background:'#FEE2E2', border:'1px solid #FECACA'}}>
+                                  <p className="text-xs text-red-400 font-semibold mb-1">Actuel</p>
+                                  {currentVal && typeof currentVal === 'object'
+                                    ? Object.entries(currentVal as Record<string,string>).map(([fk,fv]) => (
+                                        <p key={fk} className="text-xs text-red-700"><span className="text-red-400">{fk}: </span>{String(fv)}</p>
+                                      ))
+                                    : <p className="text-xs text-red-500 italic">Non renseigné</p>
+                                  }
+                                </div>
+                                <div className="rounded-lg p-2" style={{background:'#D1FAE5', border:'1px solid #A7F3D0'}}>
+                                  <p className="text-xs text-green-600 font-semibold mb-1">Demandé</p>
+                                  {Object.entries(v as Record<string,string>).map(([fk,fv]) => (
+                                    <p key={fk} className="text-xs text-green-800"><span className="text-green-500">{fk}: </span>{String(fv)}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 rounded-lg px-3 py-2 text-sm" style={{background:'#FEE2E2', border:'1px solid #FECACA', color:'#991B1B'}}>
+                                  <span className="text-xs text-red-400 block mb-0.5">Actuel</span>
+                                  {currentVal != null ? String(currentVal) : <span className="italic text-red-300">—</span>}
+                                </div>
+                                <span className="text-gray-400 font-bold text-lg">→</span>
+                                <div className="flex-1 rounded-lg px-3 py-2 text-sm" style={{background:'#D1FAE5', border:'1px solid #A7F3D0', color:'#065F46'}}>
+                                  <span className="text-xs text-green-500 block mb-0.5">Demandé</span>
+                                  {String(v)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Rejection reason if rejected */}

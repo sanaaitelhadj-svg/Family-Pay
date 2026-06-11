@@ -808,7 +808,7 @@ adminRouter.patch('/admins/:id/reset-password',
 
 adminRouter.get('/merchants/change-requests-all', authenticate(['ADMIN']), async (req, res, next) => { try {
   const requests = await prisma.merchantChangeRequest.findMany({
-    include: { merchant: { select: { id: true, businessName: true, category: true, city: true } } },
+    include: { merchant: true },
     orderBy: { createdAt: 'desc' },
   });
   res.json(requests);
