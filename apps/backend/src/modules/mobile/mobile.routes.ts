@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { AuthService } from '../auth/auth.service.js';
@@ -494,7 +495,7 @@ mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async 
       status:            'ACTIVE',
       expiresAt:         expiresAt ? new Date(expiresAt) : null,
       requiresApproval:  requiresApproval ?? false,
-      allowedMerchantIds: (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : null,
+      allowedMerchantIds: (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : Prisma.JsonNull,
     },
   });
 
