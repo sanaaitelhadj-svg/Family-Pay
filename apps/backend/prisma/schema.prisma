@@ -247,9 +247,10 @@ model Allocation {
   status          AllocationStatus   @default(ACTIVE)
   expiresAt       DateTime?
   renewalPeriod    String?
-  requiresApproval Boolean            @default(false)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  requiresApproval    Boolean            @default(false)
+  allowedMerchantIds  Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   authorizations Authorization[]
 

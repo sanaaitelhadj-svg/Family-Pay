@@ -458,9 +458,24 @@ mobileRouter.post('/beneficiary/complete-onboarding', authenticate(['BENEFICIARY
 
 // ── Sponsor: allocations d'un bénéficiaire ─────────────────────────────────
 // ── Sponsor: créer une allocation ────────────────────────────────────────
+
+// GET /mobile/sponsor/merchants — liste marchands actifs par catégorie
+mobileRouter.get('/sponsor/merchants', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const { category } = req.query as { category?: string };
+  const where: any = { kycStatus: 'APPROVED', activationStatus: 'ACTIVE' };
+  if (category) where.category = category;
+  const merchants = await prisma.merchant.findMany({
+    where,
+    select: { id: true, businessName: true, category: true, city: true, address: true },
+    orderBy: { businessName: 'asc' },
+  });
+  res.json(merchants);
+}));
+
+
 mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const sponsorId = req.user!.profileId;
-  const { beneficiaryId, category, limitAmount, expiresAt, requiresApproval } = req.body;
+  const { beneficiaryId, category, limitAmount, expiresAt, requiresApproval, allowedMerchantIds } = req.body;
 
   if (!beneficiaryId || !limitAmount || Number(limitAmount) <= 0) {
     res.status(400).json({ error: 'MISSING_FIELDS', message: 'Bénéficiaire et montant requis' }); return;
@@ -476,9 +491,10 @@ mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async 
       category:         category ?? 'GENERAL',
       limitAmount:      Number(limitAmount),
       remainingAmount:  Number(limitAmount),
-      status:           'ACTIVE',
-      expiresAt:        expiresAt ? new Date(expiresAt) : null,
-      requiresApproval: requiresApproval ?? false,
+      status:            'ACTIVE',
+      expiresAt:         expiresAt ? new Date(expiresAt) : null,
+      requiresApproval:  requiresApproval ?? false,
+      allowedMerchantIds: (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : null,
     },
   });
 
@@ -489,6 +505,7 @@ mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async 
     remainingAmount: Number(allocation.remainingAmount),
     status: allocation.status,
     requiresApproval: allocation.requiresApproval,
+    allowedMerchantIds: allocation.allowedMerchantIds,
     expiresAt: allocation.expiresAt,
     createdAt: allocation.createdAt,
   });
@@ -722,6 +739,12 @@ mobileRouter.post('/beneficiary/pay/preview', authenticate(['BENEFICIARY']), wra
   });
   if (!allocation) {
     res.status(403).json({ error: 'NO_ALLOCATION', message: `Aucune allocation active en ${qr.category} avec fonds suffisants` }); return;
+  }
+
+  // Vérifier si l'allocation est limitée à certains marchands
+  const allowedIds = allocation.allowedMerchantIds as string[] | null;
+  if (allowedIds && allowedIds.length > 0 && !allowedIds.includes(qr.merchantId)) {
+    res.status(403).json({ error: 'MERCHANT_NOT_ALLOWED', message: `Ce marchand n'est pas autorisé par cette allocation.` }); return;
   }
 
   const merchantName = (qr.merchant as any).businessName

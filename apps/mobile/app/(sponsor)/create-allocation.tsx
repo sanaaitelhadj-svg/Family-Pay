@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 import { ScrollView, View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,52 +17,70 @@ const CATEGORIES = [
 ];
 
 export default function CreateAllocationScreen() {
-  // Gate : vérifier si le sponsor a une carte enregistrée
   const { data: profile } = useQuery({
     queryKey: ['sponsor-profile'],
     queryFn: async () => { const r = await api.get('/mobile/sponsor/profile'); return r.data; },
   });
 
-  const hasCard = !!(profile?.maskedCardReference);
   const router  = useRouter();
   const qc      = useQueryClient();
-  const [category,    setCategory]    = useState('GENERAL');
-  const [beneficiary, setBeneficiary] = useState('');
-  const [amount,      setAmount]      = useState('');
-  const [expiresAt,   setExpiresAt]   = useState('');
-  const [cardId,      setCardId]      = useState('');
-  const [requiresApproval, setRequiresApproval] = useState(false);
+  const [category,           setCategory]           = useState('GENERAL');
+  const [beneficiary,        setBeneficiary]        = useState('');
+  const [amount,             setAmount]             = useState('');
+  const [expiresAt,          setExpiresAt]          = useState('');
+  const [cardId,             setCardId]             = useState('');
+  const [requiresApproval,   setRequiresApproval]   = useState(false);
+  const [limitMerchants,     setLimitMerchants]     = useState(false);
+  const [selectedMerchants,  setSelectedMerchants]  = useState<string[]>([]);
 
   const { data: cards } = useQuery({
     queryKey: ['sponsor-cards'],
     queryFn: () => api.get('/mobile/sponsor/cards').then(r => r.data ?? []),
   });
 
-  const defaultCard = (cards ?? []).find((c: any) => c.isDefault);
-
   const { data: beneficiaries } = useQuery({
     queryKey: ['sponsor-beneficiaries'],
     queryFn: () => api.get('/mobile/sponsor/beneficiaries').then(r => r.data ?? []),
   });
 
-  // Auto-enable requiresApproval for minors
+  const { data: merchants, isLoading: loadingMerchants } = useQuery({
+    queryKey: ['sponsor-merchants', category],
+    queryFn: () => api.get(`/mobile/sponsor/merchants?category=${category}`).then(r => r.data ?? []),
+    enabled: limitMerchants,
+  });
+
+  const defaultCard = (cards ?? []).find((c: any) => c.isDefault);
   const selectedBenef = (beneficiaries ?? []).find((b: any) => b.id === beneficiary);
+
   React.useEffect(() => {
     if (selectedBenef?.isMinor) setRequiresApproval(true);
   }, [beneficiary]);
 
+  // Reset merchant selection when category changes
+  React.useEffect(() => {
+    setSelectedMerchants([]);
+  }, [category]);
+
+  const toggleMerchant = (id: string) => {
+    setSelectedMerchants(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const mutation = useMutation({
-    mutationFn: () => api.post('/allocations', {
+    mutationFn: () => api.post('/mobile/sponsor/allocations', {
       beneficiaryId: beneficiary,
       category,
       limitAmount: Number(amount),
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       cardId: cardId || defaultCard?.id || undefined,
       requiresApproval,
+      allowedMerchantIds: limitMerchants && selectedMerchants.length > 0 ? selectedMerchants : null,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sponsor-allocations'] });
-      if (typeof window !== 'undefined') { window.alert('✅ Allocation créée avec succès !'); router.back(); } else { Alert.alert('✅ Allocation créée', "L'allocation a été créée avec succès.", [{ text: 'OK', onPress: () => router.back() }]); }
+      if (typeof window !== 'undefined') { window.alert('✅ Allocation créée avec succès !'); router.back(); }
+      else { Alert.alert('✅ Allocation créée', "L'allocation a été créée avec succès.", [{ text: 'OK', onPress: () => router.back() }]); }
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? err?.response?.data?.error ?? 'Erreur lors de la création';
@@ -82,6 +99,7 @@ export default function CreateAllocationScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+
         {/* Catégorie */}
         <Text style={styles.label}>Catégorie *</Text>
         <View style={styles.catGrid}>
@@ -99,10 +117,8 @@ export default function CreateAllocationScreen() {
         {!beneficiaries || beneficiaries.length === 0 ? (
           <Card style={styles.noBeneCard}>
             <Text style={styles.noBeneText}>Aucun bénéficiaire lié</Text>
-            <Button label="🔗 Inviter par lien" onPress={() => router.push('/(sponsor)/invite' as any)}
-              variant="outline" style={{marginTop:10}} />
-            <Button label="➕ Créer un compte bénéficiaire" onPress={() => router.push('/(sponsor)/create-beneficiary' as any)}
-              style={{marginTop:8}} />
+            <Button label="🔗 Inviter par lien" onPress={() => router.push('/(sponsor)/invite' as any)} variant="outline" style={{marginTop:10}} />
+            <Button label="➕ Créer un compte bénéficiaire" onPress={() => router.push('/(sponsor)/create-beneficiary' as any)} style={{marginTop:8}} />
           </Card>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:16}} contentContainerStyle={{gap:10}}>
@@ -132,38 +148,81 @@ export default function CreateAllocationScreen() {
         <Text style={styles.label}>Date d'expiration <Text style={styles.optional}>(optionnel)</Text></Text>
         <View style={styles.inputWrap}>
           {Platform.OS === 'web' ? (
-            <input
-              type="date"
+            <input type="date"
               style={{ flex: 1, backgroundColor: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#1a1a2e', padding: '2px 0' } as any}
-              onChange={e => setExpiresAt(e.target.value)}
-            />
+              onChange={e => setExpiresAt(e.target.value)} />
           ) : (
             <TextInput style={styles.input} placeholder="AAAA-MM-JJ"
               value={expiresAt} onChangeText={setExpiresAt} placeholderTextColor={Colors.textMuted} />
           )}
         </View>
 
-        {/* Approbation des transactions */}
-        <View style={styles.approvalRow}>
+        {/* Approbation */}
+        <View style={styles.switchRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>
-              🔐 Approbation par transaction
-              {selectedBenef?.isMinor ? '  ⚠️ Mineur' : ''}
-            </Text>
-            <Text style={styles.approvalSub}>
-              {requiresApproval
-                ? 'Chaque paiement devra être approuvé par vous'
-                : 'Les paiements sont automatiquement autorisés'}
-            </Text>
+            <Text style={styles.switchLabel}>🔐 Approbation par transaction{selectedBenef?.isMinor ? '  ⚠️ Mineur' : ''}</Text>
+            <Text style={styles.switchSub}>{requiresApproval ? 'Chaque paiement devra être approuvé par vous' : 'Les paiements sont automatiquement autorisés'}</Text>
           </View>
-          <Switch
-            value={requiresApproval}
-            onValueChange={setRequiresApproval}
-            trackColor={{ false: '#d1d5db', true: Colors.primary }}
-            thumbColor="#fff"
-            disabled={selectedBenef?.isMinor === true}
-          />
+          <Switch value={requiresApproval} onValueChange={setRequiresApproval}
+            trackColor={{ false: '#d1d5db', true: Colors.primary }} thumbColor="#fff"
+            disabled={selectedBenef?.isMinor === true} />
         </View>
+
+        {/* Limiter aux marchands */}
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchLabel}>🏪 Limiter à des marchands spécifiques</Text>
+            <Text style={styles.switchSub}>{limitMerchants ? 'Sélectionnez les marchands autorisés ci-dessous' : 'Tous les marchands de la catégorie sont acceptés'}</Text>
+          </View>
+          <Switch value={limitMerchants} onValueChange={v => { setLimitMerchants(v); if (!v) setSelectedMerchants([]); }}
+            trackColor={{ false: '#d1d5db', true: Colors.primary }} thumbColor="#fff" />
+        </View>
+
+        {/* Liste marchands */}
+        {limitMerchants && (
+          <View style={styles.merchantSection}>
+            <View style={styles.merchantHeader}>
+              <Text style={styles.merchantTitle}>Marchands disponibles en {CATEGORIES.find(c=>c.key===category)?.label ?? category}</Text>
+              {selectedMerchants.length > 0 && (
+                <TouchableOpacity onPress={() => setSelectedMerchants([])}>
+                  <Text style={styles.clearBtn}>Tout effacer</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {loadingMerchants ? (
+              <Text style={styles.loadingText}>Chargement...</Text>
+            ) : !merchants || merchants.length === 0 ? (
+              <View style={styles.emptyMerchants}>
+                <Text style={styles.emptyMerchantsText}>Aucun marchand actif dans cette catégorie</Text>
+              </View>
+            ) : (
+              <View style={styles.merchantList}>
+                {merchants.map((m: any) => {
+                  const selected = selectedMerchants.includes(m.id);
+                  return (
+                    <TouchableOpacity key={m.id} onPress={() => toggleMerchant(m.id)} activeOpacity={0.7}
+                      style={[styles.merchantItem, selected && styles.merchantItemSelected]}>
+                      <View style={[styles.merchantCheck, selected && styles.merchantCheckSelected]}>
+                        {selected && <Text style={styles.checkMark}>✓</Text>}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.merchantName, selected && styles.merchantNameSelected]}>{m.businessName}</Text>
+                        <Text style={styles.merchantCity}>{m.city}{m.address ? ` — ${m.address}` : ''}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {selectedMerchants.length > 0 && (
+              <View style={styles.selectionBadge}>
+                <Text style={styles.selectionBadgeText}>✓ {selectedMerchants.length} marchand{selectedMerchants.length > 1 ? 's' : ''} sélectionné{selectedMerchants.length > 1 ? 's' : ''}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Carte bancaire */}
         <Text style={styles.label}>Carte bancaire</Text>
@@ -174,11 +233,9 @@ export default function CreateAllocationScreen() {
         ) : (
           <View style={styles.cardsRow}>
             {(cards ?? []).map((c: any) => (
-              <TouchableOpacity
-                key={c.id}
+              <TouchableOpacity key={c.id}
                 style={[styles.cardChip, (cardId === c.id || (!cardId && c.isDefault)) && styles.cardChipActive]}
-                onPress={() => setCardId(c.id)}
-              >
+                onPress={() => setCardId(c.id)}>
                 <Text style={styles.cardChipNum}>{c.maskedNumber}</Text>
                 <Text style={styles.cardChipSub}>{String(c.expiryMonth).padStart(2,'0')}/{c.expiryYear}</Text>
               </TouchableOpacity>
@@ -189,7 +246,7 @@ export default function CreateAllocationScreen() {
           </View>
         )}
 
-                <Button label="Créer l'allocation" onPress={() => mutation.mutate()}
+        <Button label="Créer l'allocation" onPress={() => mutation.mutate()}
           loading={mutation.isPending} disabled={!canSubmit} style={{marginTop:8}} />
       </ScrollView>
     </View>
@@ -198,17 +255,6 @@ export default function CreateAllocationScreen() {
 
 const styles = StyleSheet.create({
   container:   { flex:1, backgroundColor:Colors.bg },
-  approvalRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: Colors.border, marginBottom: 8 },
-  approvalSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 3 },
-  noCardBtn:   { borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 8 },
-  noCardText:  { fontSize: 13, fontWeight: '600', color: Colors.primary },
-  cardsRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  cardChip:    { flex: 1, minWidth: 140, backgroundColor: Colors.surface, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: Colors.border },
-  cardChipActive: { borderColor: Colors.primary, borderWidth: 2, backgroundColor: 'rgba(91,61,245,0.05)' },
-  cardChipNum: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 1 },
-  cardChipSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  cardChipAdd: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
-  cardChipAddText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   topBar:      { flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:20, paddingTop:56, backgroundColor:Colors.surface, borderBottomWidth:1, borderBottomColor:Colors.border },
   back:        { fontSize:15, color:Colors.primary, fontWeight:'600', width:60 },
   title:       { fontSize:17, fontWeight:'700', color:Colors.textPrimary },
@@ -232,4 +278,36 @@ const styles = StyleSheet.create({
   inputWrap:   { flexDirection:'row', alignItems:'center', backgroundColor:Colors.surface, borderRadius:Radius.md, borderWidth:1.5, borderColor:Colors.border, paddingHorizontal:14, ...Shadow.sm, marginBottom:4 },
   input:       { flex:1, fontSize:16, paddingVertical:13, color:Colors.textPrimary },
   inputSuffix: { fontSize:14, fontWeight:'600', color:Colors.textSecondary },
+  switchRow:   { flexDirection:'row', alignItems:'center', gap:12, backgroundColor:Colors.surface, borderRadius:10, padding:14, borderWidth:1, borderColor:Colors.border, marginBottom:8, marginTop:8 },
+  switchLabel: { fontSize:14, fontWeight:'600', color:Colors.textPrimary },
+  switchSub:   { fontSize:11, color:Colors.textSecondary, marginTop:3 },
+  // Merchant selection
+  merchantSection: { backgroundColor:Colors.surface, borderRadius:Radius.lg, borderWidth:1.5, borderColor:Colors.primary, padding:14, marginBottom:8 },
+  merchantHeader:  { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12 },
+  merchantTitle:   { fontSize:13, fontWeight:'700', color:Colors.primary, flex:1 },
+  clearBtn:        { fontSize:12, color:Colors.error, fontWeight:'600' },
+  loadingText:     { fontSize:13, color:Colors.textSecondary, textAlign:'center', paddingVertical:12 },
+  emptyMerchants:  { paddingVertical:16, alignItems:'center' },
+  emptyMerchantsText:{ fontSize:13, color:Colors.textMuted },
+  merchantList:    { gap:8 },
+  merchantItem:    { flexDirection:'row', alignItems:'center', gap:12, backgroundColor:Colors.bg, borderRadius:Radius.md, padding:12, borderWidth:1, borderColor:Colors.border },
+  merchantItemSelected:{ borderColor:Colors.primary, backgroundColor:Colors.primaryLight },
+  merchantCheck:   { width:22, height:22, borderRadius:11, borderWidth:2, borderColor:Colors.border, justifyContent:'center', alignItems:'center' },
+  merchantCheckSelected:{ borderColor:Colors.primary, backgroundColor:Colors.primary },
+  checkMark:       { color:'#fff', fontSize:12, fontWeight:'800' },
+  merchantName:    { fontSize:14, fontWeight:'600', color:Colors.textPrimary },
+  merchantNameSelected:{ color:Colors.primary },
+  merchantCity:    { fontSize:12, color:Colors.textSecondary, marginTop:2 },
+  selectionBadge:  { marginTop:10, backgroundColor:Colors.primaryLight, borderRadius:Radius.md, padding:10, alignItems:'center', borderWidth:1, borderColor:Colors.primary },
+  selectionBadgeText:{ fontSize:13, fontWeight:'700', color:Colors.primary },
+  // Cards
+  noCardBtn:    { borderWidth:1, borderColor:Colors.primary, borderRadius:10, paddingVertical:12, alignItems:'center', marginBottom:8 },
+  noCardText:   { fontSize:13, fontWeight:'600', color:Colors.primary },
+  cardsRow:     { flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 },
+  cardChip:     { flex:1, minWidth:140, backgroundColor:Colors.surface, borderRadius:10, padding:10, borderWidth:1, borderColor:Colors.border },
+  cardChipActive:{ borderColor:Colors.primary, borderWidth:2, backgroundColor:'rgba(91,61,245,0.05)' },
+  cardChipNum:  { fontSize:12, fontWeight:'700', color:Colors.textPrimary, letterSpacing:1 },
+  cardChipSub:  { fontSize:11, color:Colors.textSecondary, marginTop:2 },
+  cardChipAdd:  { paddingHorizontal:14, paddingVertical:10, borderRadius:10, backgroundColor:Colors.bg, borderWidth:1, borderColor:Colors.border, justifyContent:'center', alignItems:'center' },
+  cardChipAddText:{ fontSize:12, fontWeight:'600', color:Colors.primary },
 });
