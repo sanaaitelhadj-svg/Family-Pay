@@ -222,10 +222,11 @@ model Merchant {
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
 
-  authorizations Authorization[]
-  qrCodes        QrCode[]
-  transactions   Transaction[]
-  commissions    Commission[]
+  authorizations  Authorization[]
+  qrCodes         QrCode[]
+  transactions    Transaction[]
+  commissions     Commission[]
+  changeRequests  MerchantChangeRequest[]
 
   @@map("merchants")
 }
@@ -490,4 +491,36 @@ model ImpersonationLog {
   endedAt            DateTime?
 
   @@map("impersonation_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MERCHANT CHANGE REQUEST — demandes de modification soumises par le marchand
+// ═══════════════════════════════════════════════════════════════════════════
+model MerchantChangeRequest {
+  id         String   @id @default(uuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+  changes    Json
+  status     String   @default("PENDING")
+  reason     String?
+  reviewedBy String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("merchant_change_requests")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN NOTIFICATION — notifications internes pour l'interface admin
+// ═══════════════════════════════════════════════════════════════════════════
+model AdminNotification {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  body      String
+  entityId  String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("admin_notifications")
 }

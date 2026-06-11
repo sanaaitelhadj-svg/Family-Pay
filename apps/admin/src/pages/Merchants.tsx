@@ -17,6 +17,12 @@ interface Merchant {
   cguVersion?: string; cguSignedAt?: string; createdAt: string;
 }
 interface Plan { id: string; name: string; price: number; durationMonths: number; isActive: boolean; }
+interface ChangeRequest {
+  id: string; merchantId: string; changes: Record<string, any>; status: string;
+  reason?: string; createdAt: string;
+  merchant: { id: string; businessName: string; category: string; city: string };
+}
+
 interface ApprovalForm { contractUrl: string; billingType: 'commission' | 'subscription'; commissionType: string; commissionRate: string; planId: string; startDate: string; endDate: string; }
 interface CreateForm {
   businessName: string; category: string; city: string; address: string;
@@ -94,6 +100,10 @@ const SectionHeader = ({ icon: Icon, title }: { icon: React.ComponentType<{class
 
 export default function Merchants() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
+  const [showChangeRequests, setShowChangeRequests] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectingId, setRejectingId] = useState<string|null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Merchant | null>(null);

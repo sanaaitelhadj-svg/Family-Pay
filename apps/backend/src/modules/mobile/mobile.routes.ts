@@ -325,7 +325,7 @@ mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (re
   const merchant = await prisma.merchant.findUnique({
     where: { id: req.user!.profileId },
     include: {
-      user: true,
+      user: { select: { firstName: true, lastName: true, phone: true, email: true, createdAt: true } },
       _count: { select: { transactions: true } },
     },
   });
@@ -336,11 +336,57 @@ mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (re
     _sum: { amount: true },
   });
 
+  const pendingRequest = await prisma.merchantChangeRequest.findFirst({
+    where: { merchantId: merchant.id, status: 'PENDING' },
+    orderBy: { createdAt: 'desc' },
+  });
+
   res.json({
     ...merchant,
     acceptedCategories: [merchant.category],
     totalRevenue: Number(totalRevenue._sum?.amount ?? 0),
+    pendingChangeRequest: pendingRequest ?? null,
   });
+}));
+
+// POST /mobile/merchant/change-request — soumettre une demande de modification
+mobileRouter.post('/merchant/change-request', authenticate(['MERCHANT']), wrap(async (req, res) => {
+  const merchantId = req.user!.profileId;
+  const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
+  if (!merchant) { res.status(404).json({ error: 'Marchand introuvable' }); return;  }
+
+  const existing = await prisma.merchantChangeRequest.findFirst({
+    where: { merchantId, status: 'PENDING' },
+  });
+  if (existing) {
+    res.status(409).json({ error: 'PENDING_REQUEST', message: 'Une demande de modification est déjà en attente d'approbation.' });
+    return;
+  }
+
+  const allowed = ['businessName','address','city','phone','email','registrationNumber','iceNumber','taxId','fiscalId','cinRepresentant','rib','iban','contactAdmin','contactFinance','contactOps','contactLegal'];
+  const changes: Record<string, any> = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) changes[key] = req.body[key];
+  }
+  if (Object.keys(changes).length === 0) {
+    res.status(400).json({ error: 'NO_CHANGES', message: 'Aucune modification détectée.' });
+    return;
+  }
+
+  const request = await prisma.merchantChangeRequest.create({
+    data: { merchantId, changes, status: 'PENDING' },
+  });
+
+  await prisma.adminNotification.create({
+    data: {
+      type: 'CHANGE_REQUEST',
+      title: 'Demande de modification',
+      body: \`Le marchand "${merchant.businessName}" a soumis une demande de modification.\`,
+      entityId: merchantId,
+    },
+  });
+
+  res.status(201).json({ message: 'Demande envoyée. En attente de validation par l\'administrateur.', request });
 }));
 
 // Sponsor crée directement un compte bénéficiaire

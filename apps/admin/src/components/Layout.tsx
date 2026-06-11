@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { usePermissions } from '../contexts/PermissionsContext';
 import {
   LayoutDashboard, Users, Gift, Store, CreditCard,
-  Shield, FileText, DollarSign, ShieldCheck, ScrollText, LogOut,
+  Shield, FileText, DollarSign, ShieldCheck, ScrollText, LogOut, Bell,
 } from 'lucide-react';
 
 const NAV = [
@@ -30,6 +30,82 @@ function Avatar({ name }: { name: string }) {
     <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
       style={{ background: 'linear-gradient(135deg,#8B5CF6,#5B3DF5)' }}>
       {initials}
+    </div>
+  );
+}
+
+
+interface AdminNotif { id: string; type: string; title: string; body: string; entityId?: string; isRead: boolean; createdAt: string; }
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [notifs, setNotifs] = useState<AdminNotif[]>([]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const fetchNotifs = async () => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const res = await fetch('/api/admin/notifications', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setNotifs(await res.json());
+    } catch {}
+  };
+
+  useEffect(() => { fetchNotifs(); const t = setInterval(fetchNotifs, 30000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const unread = notifs.filter(n => !n.isRead).length;
+
+  const markAllRead = async () => {
+    const token = localStorage.getItem('admin_token');
+    await fetch('/api/admin/notifications/read-all', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    setNotifs(n => n.map(x => ({ ...x, isRead: true })));
+  };
+
+  const notifColor: Record<string, string> = {
+    CHANGE_REQUEST: '#5B3DF5', NEW_MERCHANT: '#059669', CHANGE_APPROVED: '#059669', CHANGE_REJECTED: '#DC2626',
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => { setOpen(o => !o); if (!open) fetchNotifs(); }}
+        className="relative w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+        style={{ background: open ? 'rgba(91,61,245,0.1)' : 'transparent', border: '1px solid #ECECF2' }}>
+        <Bell size={15} style={{ color: '#5B3DF5' }} />
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white"
+            style={{ background: '#EF4444', fontSize: '9px', fontWeight: 700 }}>{unread > 9 ? '9+' : unread}</span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 rounded-2xl shadow-xl z-50 overflow-hidden"
+          style={{ width: 320, background: '#fff', border: '1px solid #ECECF2', top: '100%' }}>
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #ECECF2' }}>
+            <span className="text-sm font-semibold text-gray-800">Notifications</span>
+            {unread > 0 && <button onClick={markAllRead} className="text-xs font-medium" style={{ color: '#5B3DF5' }}>Tout marquer lu</button>}
+          </div>
+          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+            {notifs.length === 0
+              ? <p className="text-center text-sm text-gray-400 py-8">Aucune notification</p>
+              : notifs.slice(0, 20).map(n => (
+                <div key={n.id} className="px-4 py-3 flex gap-3 items-start"
+                  style={{ background: n.isRead ? '#fff' : '#F5F3FF', borderBottom: '1px solid #ECECF2' }}>
+                  <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                    style={{ background: notifColor[n.type] ?? '#6B7280', opacity: n.isRead ? 0.3 : 1 }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800">{n.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-4">{n.body}</p>
+                    <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>{fmt(n.createdAt)}</p>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -121,7 +197,10 @@ export default function Layout() {
 
       {/* ── Main ── */}
       <main className="flex-1 overflow-auto ml-56" style={{ background: '#F8F8FC' }}>
-        <div className="h-full p-6">
+        <div className="flex items-center justify-end px-6 py-3" style={{ borderBottom: '1px solid #ECECF2', background: '#fff' }}>
+          <NotificationBell />
+        </div>
+        <div className="p-6">
           <Outlet />
         </div>
       </main>
