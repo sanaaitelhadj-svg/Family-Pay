@@ -23,7 +23,7 @@ export default function SponsorHome() {
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['sponsor-allocations'],
-    queryFn: () => api.get('/allocations').then(r => r.data.allocations ?? []),
+    queryFn: () => api.get('/mobile/sponsor/allocations').then(r => r.data.allocations ?? []),
   });
 
   const allocations: any[] = data ?? [];
@@ -87,6 +87,10 @@ export default function SponsorHome() {
         <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/(sponsor)/allocations' as any)} activeOpacity={0.8}>
           <Text style={styles.actionIcon}>📋</Text>
           <Text style={styles.actionLabel}>Voir toutes{'\n'}les alloc.</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/(sponsor)/merchants' as any)} activeOpacity={0.8}>
+          <Text style={styles.actionIcon}>🏬</Text>
+          <Text style={styles.actionLabel}>Marchands{'\n'}partenaires</Text>
         </TouchableOpacity>
       </View>
 

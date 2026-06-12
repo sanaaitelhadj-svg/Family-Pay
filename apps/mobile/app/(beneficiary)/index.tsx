@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { View, FlatList, StyleSheet, RefreshControl, Text, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../src/lib/api';
@@ -7,6 +8,7 @@ import { AllocationCard } from '../../src/components/AllocationCard';
 
 export default function BeneficiaryAllocationsScreen() {
   const { user, setAuth } = useAuthStore();
+  const router = useRouter();
   const [dismissing, setDismissing]   = useState(false);
   const isFirstLogin = (user as any)?.isFirstLogin === true;
 
@@ -35,6 +37,13 @@ export default function BeneficiaryAllocationsScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Mes budgets</Text>
+      <TouchableOpacity
+        style={styles.merchantsBtn}
+        onPress={() => router.push('/(beneficiary)/merchants' as any)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.merchantsBtnText}>🏬 Voir les marchands disponibles</Text>
+      </TouchableOpacity>
       <FlatList
         data={data ?? []}
         keyExtractor={(item: any) => item.id}
@@ -78,4 +87,6 @@ const styles = StyleSheet.create({
   welcomeText:    { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 24 },
   welcomeBtn:     { backgroundColor: '#6C47FF', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, width: '100%', alignItems: 'center' },
   welcomeBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  merchantsBtn:     { marginHorizontal: 16, marginBottom: 8, backgroundColor: '#EEF2FF', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#C7D2FE' },
+  merchantsBtnText: { fontSize: 14, fontWeight: '700', color: '#5B3DF5' },
 });
