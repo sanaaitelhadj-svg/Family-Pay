@@ -591,6 +591,96 @@ mobileRouter.get('/sponsor/beneficiaries/:beneficiaryId/allocations', authentica
   })));
 }));
 
+// ── Sponsor: modifier un bénéficiaire ───────────────────────────────────
+mobileRouter.patch('/sponsor/beneficiaries/:id', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const { firstName, lastName, phone, dateOfBirth, relationship } = req.body;
+
+  const benef = await prisma.beneficiary.findFirst({
+    where: { id: (req.params.id as string), sponsorId },
+    include: { user: true },
+  });
+  if (!benef) { res.status(404).json({ message: 'Bénéficiaire introuvable' }); return; }
+
+  if (firstName || lastName || phone) {
+    await prisma.user.update({
+      where: { id: benef.userId },
+      data: {
+        ...(firstName   ? { firstName }   : {}),
+        ...(lastName    ? { lastName }    : {}),
+        ...(phone       ? { phone }       : {}),
+      },
+    });
+  }
+
+  let isMinor = benef.isMinor;
+  if (dateOfBirth) {
+    const d = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+    isMinor = age < 18;
+  }
+
+  await prisma.beneficiary.update({
+    where: { id: benef.id },
+    data: {
+      ...(dateOfBirth  ? { dateOfBirth: new Date(dateOfBirth), isMinor } : {}),
+      ...(relationship ? { relationship } : {}),
+    },
+  });
+
+  if (isMinor) {
+    await prisma.allocation.updateMany({
+      where: { beneficiaryId: benef.id },
+      data: { requiresApproval: true },
+    });
+  }
+
+  res.json({ message: 'Bénéficiaire mis à jour' });
+}));
+
+// ── Sponsor: modifier une allocation ─────────────────────────────────────
+mobileRouter.patch('/sponsor/allocations/:allocationId', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const { limitAmount, expiresAt, requiresApproval, thresholdValue, thresholdType, thresholdPeriod, thresholdAutoSuspend, allowedMerchantIds } = req.body;
+
+  const alloc = await prisma.allocation.findFirst({
+    where: { id: (req.params.allocationId as string), sponsorId },
+    include: { beneficiary: true },
+  });
+  if (!alloc) { res.status(404).json({ message: 'Allocation introuvable' }); return; }
+
+  const isMinor = alloc.beneficiary.isMinor || (() => {
+    const dob = alloc.beneficiary.dateOfBirth;
+    if (!dob) return false;
+    const d = new Date(dob); const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+    return age < 18;
+  })();
+
+  const data: any = {};
+  if (limitAmount !== undefined) {
+    const newLimit = Number(limitAmount);
+    const diff = newLimit - Number(alloc.limitAmount);
+    data.limitAmount = newLimit;
+    data.remainingAmount = Math.max(0, Number(alloc.remainingAmount) + diff);
+  }
+  if (expiresAt !== undefined)          data.expiresAt          = expiresAt ? new Date(expiresAt) : null;
+  if (requiresApproval !== undefined)   data.requiresApproval   = isMinor ? true : requiresApproval;
+  if (thresholdValue !== undefined)     data.thresholdValue     = thresholdValue ? Number(thresholdValue) : null;
+  if (thresholdType !== undefined)      data.thresholdType      = thresholdType  ?? null;
+  if (thresholdPeriod !== undefined)    data.thresholdPeriod    = thresholdPeriod ?? null;
+  if (thresholdAutoSuspend !== undefined) data.thresholdAutoSuspend = thresholdAutoSuspend === true;
+  if (allowedMerchantIds !== undefined) data.allowedMerchantIds = (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : Prisma.JsonNull;
+
+  const updated = await prisma.allocation.update({ where: { id: alloc.id }, data });
+  res.json({ message: 'Allocation mise à jour', allocation: updated });
+}));
+
 // ── Sponsor: suspendre / réactiver un bénéficiaire ────────────────────────
 mobileRouter.patch('/sponsor/beneficiaries/:beneficiaryId/suspend', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const sponsorId = req.user!.profileId;

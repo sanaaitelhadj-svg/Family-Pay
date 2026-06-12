@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, RefreshControl, ActivityIndicator,
+  TextInput, RefreshControl, ActivityIndicator, Modal, ScrollView, Switch, Alert, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -40,7 +40,13 @@ export default function BeneficiariesScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId,  setExpandedId]  = useState<string | null>(null);
+  const [editBenef,   setEditBenef]   = useState<Beneficiary | null>(null);
+  const [editFirst,   setEditFirst]   = useState('');
+  const [editLast,    setEditLast]    = useState('');
+  const [editPhone,   setEditPhone]   = useState('');
+  const [editDob,     setEditDob]     = useState('');
+  const [editRel,     setEditRel]     = useState('');
 
   const { data, isLoading, refetch, isRefetching } = useQuery<Beneficiary[]>({
     queryKey: ['sponsor-beneficiaries'],
@@ -76,6 +82,33 @@ export default function BeneficiariesScreen() {
     mutationFn: (id: string) => apiClient.patch(`/mobile/sponsor/allocations/${id}/pause`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sponsor-allocations', expandedId] }),
   });
+
+  const updateBenef = useMutation({
+    mutationFn: (id: string) => apiClient.patch(`/mobile/sponsor/beneficiaries/${id}`, {
+      firstName:   editFirst   || undefined,
+      lastName:    editLast    || undefined,
+      phone:       editPhone   || undefined,
+      dateOfBirth: editDob     || undefined,
+      relationship: editRel    || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sponsor-beneficiaries'] });
+      setEditBenef(null);
+    },
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message ?? 'Erreur';
+      if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Erreur', msg);
+    },
+  });
+
+  const openEdit = (b: Beneficiary) => {
+    setEditBenef(b);
+    setEditFirst(b.user.firstName);
+    setEditLast(b.user.lastName);
+    setEditPhone(b.user.phone ?? '');
+    setEditDob(b.dateOfBirth ? b.dateOfBirth.split('T')[0] : '');
+    setEditRel(b.relationship ?? '');
+  };
 
   const toggleApproval = useMutation({
     mutationFn: (id: string) => apiClient.patch(`/mobile/sponsor/allocations/${id}/approval`),
@@ -114,7 +147,9 @@ export default function BeneficiariesScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <>
+      {editModal}
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Bénéficiaires</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -205,9 +240,15 @@ export default function BeneficiariesScreen() {
                   <View style={styles.actionRow}>
                     <TouchableOpacity
                       style={styles.actionBtn}
-                      onPress={() => router.push({ pathname: '/(sponsor)/create-allocation' as any, params: { beneficiaryId: item.id } })}
+                      onPress={() => openEdit(item)}
                     >
                       <Text style={styles.actionBtnText}>✏️ Modifier</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}
+                      onPress={() => router.push({ pathname: '/(sponsor)/create-allocation' as any, params: { beneficiaryId: item.id } })}
+                    >
+                      <Text style={[styles.actionBtnText, { color: '#5B3DF5' }]}>➕ Allocation</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.actionBtnWarn]}
@@ -285,6 +326,7 @@ export default function BeneficiariesScreen() {
         }}
       />
     </View>
+    </>
   );
 }
 
@@ -345,4 +387,15 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
   emptySubtext: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
+  modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalCard:     { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
+  modalHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle:    { fontSize: 17, fontWeight: '800', color: '#111827' },
+  modalClose:    { fontSize: 20, color: '#6B7280', padding: 4 },
+  fieldLabel:    { fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 6, marginTop: 12 },
+  fieldInput:    { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, backgroundColor: '#F9FAFB', color: '#111827' },
+  warnBox:       { backgroundColor: '#FFF8E6', borderRadius: 10, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#FDE68A' },
+  warnText:      { fontSize: 12, color: '#B45309' },
+  saveBtn:       { backgroundColor: '#5B3DF5', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 20, marginBottom: 8 },
+  saveBtnText:   { color: '#fff', fontWeight: '800', fontSize: 15 },
 });

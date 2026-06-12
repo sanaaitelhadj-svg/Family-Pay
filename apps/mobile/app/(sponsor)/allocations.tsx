@@ -203,6 +203,13 @@ export default function AllocationsScreen() {
 
                           {/* Actions */}
                           <View style={styles.actionsRow}>
+                            {/* Modifier */}
+                            <TouchableOpacity
+                              style={[styles.actionBtn, styles.actionBtnEdit]}
+                              onPress={() => router.push({ pathname: '/(sponsor)/edit-allocation', params: { id: a.id } } as any)}
+                            >
+                              <Text style={[styles.actionBtnText, { color: '#1D4ED8' }]}>✏️ Modifier</Text>
+                            </TouchableOpacity>
                             {/* Suspend / Resume */}
                             <TouchableOpacity
                               style={[styles.actionBtn, a.status === 'PAUSED' ? styles.actionBtnGreen : styles.actionBtnOrange]}
@@ -324,6 +331,7 @@ const styles = StyleSheet.create({
   actionBtnPurple: { backgroundColor: Colors.bg, borderColor: Colors.border },
   actionBtnPurpleActive: { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' },
   actionBtnRed:    { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  actionBtnEdit:   { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
   lockHint:   { marginTop: 8, backgroundColor: '#F5F3FF', borderRadius: Radius.sm, padding: 7, borderWidth: 1, borderColor: '#DDD6FE' },
   lockHintText: { fontSize: 11, color: '#5B3DF5' },
   expiry:        { fontSize: 11, color: Colors.textMuted, marginTop: 6 },
