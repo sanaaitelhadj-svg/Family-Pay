@@ -179,12 +179,12 @@ export default function CreateAllocationScreen() {
             disabled={selectedBenef?.isMinor === true} />
           {/* ── Section Seuil d'alerte ── */}
           <View style={styles.divider} />
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1 }}>
+          <View style={styles.thresholdToggleCard}>
+            <View style={styles.thresholdToggleTop}>
               <Text style={styles.switchLabel}>📊 Seuil d'alerte</Text>
-              <Text style={styles.switchSub}>{thresholdEnabled ? 'Alerte et/ou suspension automatique' : 'Aucun seuil défini'}</Text>
+              <Switch value={thresholdEnabled} onValueChange={setThresholdEnabled} trackColor={{ false: '#D1D5DB', true: '#5B3DF5' }} thumbColor="#fff" />
             </View>
-            <Switch value={thresholdEnabled} onValueChange={setThresholdEnabled} trackColor={{ true: '#5B3DF5' }} />
+            <Text style={styles.switchSub}>{thresholdEnabled ? 'Alerte et/ou suspension automatique' : 'Aucun seuil défini'}</Text>
           </View>
 
           {thresholdEnabled && (
@@ -385,7 +385,9 @@ const styles = StyleSheet.create({
   cardChipSub:  { fontSize:11, color:Colors.textSecondary, marginTop:2 },
   cardChipAdd:  { paddingHorizontal:14, paddingVertical:10, borderRadius:10, backgroundColor:Colors.bg, borderWidth:1, borderColor:Colors.border, justifyContent:'center', alignItems:'center' },
   cardChipAddText:{ fontSize:12, fontWeight:'600', color:Colors.primary },
-  divider:           { height: 1, backgroundColor: '#F3F4F6', marginVertical: 4 },
+  divider:            { height: 1, backgroundColor: '#F3F4F6', marginVertical: 4 },
+  thresholdToggleCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+  thresholdToggleTop:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   thresholdBox:      { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 14, marginTop: 4, gap: 4, borderWidth: 1, borderColor: '#E5E7EB' },
   thresholdLabel:    { fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 6, marginTop: 4 },
   thresholdInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
