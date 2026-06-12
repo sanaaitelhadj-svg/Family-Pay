@@ -869,45 +869,17 @@ mobileRouter.post('/merchant/qr/generate', authenticate(['MERCHANT']), wrap(asyn
 }));
 
 // ── Bénéficiaire: aperçu paiement (avant confirmation) ───────────────────
-// GET /mobile/beneficiary/merchants — marchands accessibles selon les allocations
+// GET /mobile/beneficiary/merchants — tous les marchands actifs/approuvés
 mobileRouter.get('/beneficiary/merchants', authenticate(['BENEFICIARY']), wrap(async (req, res) => {
-  const beneficiaryId = req.user!.profileId;
   const { category } = req.query as { category?: string };
-
-  const allocations = await prisma.allocation.findMany({
-    where: { beneficiaryId, status: 'ACTIVE' },
-  });
-
-  if (allocations.length === 0) { res.json([]); return; }
-
-  const merchantIds: string[] = [];
-  const categories: string[] = [];
-
-  for (const alloc of allocations) {
-    if (category && alloc.category !== category) continue;
-    const allowed = alloc.allowedMerchantIds as string[] | null;
-    if (Array.isArray(allowed) && allowed.length > 0) {
-      merchantIds.push(...allowed);
-    } else {
-      categories.push(alloc.category);
-    }
-  }
-
-  const where: any = { kycStatus: 'APPROVED', activationStatus: 'ACTIVE', OR: [] };
-  if (merchantIds.length > 0) where.OR.push({ id: { in: [...new Set(merchantIds)] } });
-  if (categories.length > 0) where.OR.push({ category: { in: [...new Set(categories)] } });
-  if (where.OR.length === 0) { res.json([]); return; }
-
+  const where: any = { kycStatus: 'APPROVED', activationStatus: 'ACTIVE' };
+  if (category) where.category = category;
   const merchants = await prisma.merchant.findMany({
     where,
     select: { id: true, businessName: true, category: true, city: true, address: true },
     orderBy: { businessName: 'asc' },
   });
-
-  res.json(merchants.map((m: any) => ({
-    ...m,
-    isRestricted: merchantIds.includes(m.id),
-  })));
+  res.json(merchants);
 }));
 
 mobileRouter.post('/beneficiary/pay/preview', authenticate(['BENEFICIARY']), wrap(async (req, res) => {
