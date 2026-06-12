@@ -535,7 +535,7 @@ mobileRouter.get('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async (
   };
   res.json({
     allocations: allocations.map((a: any) => {
-      const isMinor = calcIsMinor(a.beneficiary?.dateOfBirth ?? null);
+      const isMinor = a.beneficiary?.isMinor === true || calcIsMinor(a.beneficiary?.dateOfBirth ?? null);
       return {
         id: a.id,
         category: a.category,
