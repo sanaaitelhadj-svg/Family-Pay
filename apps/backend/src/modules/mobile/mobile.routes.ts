@@ -467,7 +467,7 @@ mobileRouter.get('/sponsor/merchants', authenticate(['SPONSOR']), wrap(async (re
   if (category) where.category = category;
   const merchants = await prisma.merchant.findMany({
     where,
-    select: { id: true, businessName: true, category: true, city: true, address: true, logo: true, description: true, phone: true },
+    select: { id: true, businessName: true, category: true, city: true, address: true },
     orderBy: { businessName: 'asc' },
   });
   res.json(merchants);
@@ -900,7 +900,7 @@ mobileRouter.get('/beneficiary/merchants', authenticate(['BENEFICIARY']), wrap(a
 
   const merchants = await prisma.merchant.findMany({
     where,
-    select: { id: true, businessName: true, category: true, city: true, address: true, logo: true, description: true, phone: true },
+    select: { id: true, businessName: true, category: true, city: true, address: true },
     orderBy: { businessName: 'asc' },
   });
 
