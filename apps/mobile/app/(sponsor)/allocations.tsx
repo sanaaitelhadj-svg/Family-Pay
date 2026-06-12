@@ -36,7 +36,7 @@ export default function AllocationsScreen() {
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['sponsor-allocations'],
-    queryFn: () => api.get('/allocations').then(r => r.data.allocations ?? []),
+    queryFn: () => api.get('/sponsor/allocations').then(r => r.data.allocations ?? []),
   });
 
   const pauseMutation = useMutation({
@@ -212,12 +212,12 @@ export default function AllocationsScreen() {
 
                             {/* Lock / Unlock (requiresApproval) */}
                             <TouchableOpacity
-                              style={[styles.actionBtn, a.requiresApproval ? styles.actionBtnPurpleActive : styles.actionBtnPurple]}
-                              onPress={() => approvalMutation.mutate({ id: a.id, value: !a.requiresApproval })}
+                              style={[styles.actionBtn, isMinor ? styles.actionBtnPurpleActive : (a.requiresApproval ? styles.actionBtnPurpleActive : styles.actionBtnPurple), isMinor && { opacity: 0.65 }]}
+                              onPress={() => !isMinor && approvalMutation.mutate({ id: a.id, value: !a.requiresApproval })}
                               disabled={approvalMutation.isPending || isMinor}
                             >
-                              <Text style={[styles.actionBtnText, { color: a.requiresApproval ? '#5B3DF5' : '#6B7280' }]}>
-                                {a.requiresApproval ? '🔒 Verrouillé' : '🔓 Libre'}
+                              <Text style={[styles.actionBtnText, { color: '#5B3DF5' }]}>
+                                {isMinor ? '🔒 Auto' : (a.requiresApproval ? '🔒 Verrouillé' : '🔓 Libre')}
                               </Text>
                             </TouchableOpacity>
 
@@ -231,9 +231,11 @@ export default function AllocationsScreen() {
                             </TouchableOpacity>
                           </View>
 
-                          {a.requiresApproval && (
-                            <View style={styles.lockHint}>
-                              <Text style={styles.lockHintText}>🔐 Chaque paiement nécessite votre approbation</Text>
+                          {(a.requiresApproval || isMinor) && (
+                            <View style={[styles.lockHint, isMinor && { backgroundColor: '#FFF1F2', borderColor: '#FECDD3' }]}>
+                              <Text style={[styles.lockHintText, isMinor && { color: '#BE123C' }]}>
+                                {isMinor ? '👶 Mineur — approbation obligatoire et non modifiable' : '🔐 Chaque paiement nécessite votre approbation'}
+                              </Text>
                             </View>
                           )}
                           {a.expiresAt && (

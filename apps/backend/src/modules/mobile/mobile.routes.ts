@@ -494,7 +494,7 @@ mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async 
       remainingAmount:  Number(limitAmount),
       status:            'ACTIVE',
       expiresAt:         expiresAt ? new Date(expiresAt) : null,
-      requiresApproval:  requiresApproval ?? false,
+      requiresApproval:  (() => { const dob = benef.dateOfBirth; if (!dob) return requiresApproval ?? false; const d = new Date(dob); const today = new Date(); let age = today.getFullYear() - d.getFullYear(); const m = today.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--; return age < 18 ? true : (requiresApproval ?? false); })(),
       allowedMerchantIds: (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : Prisma.JsonNull,
     },
   });
@@ -509,6 +509,51 @@ mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async 
     allowedMerchantIds: allocation.allowedMerchantIds,
     expiresAt: allocation.expiresAt,
     createdAt: allocation.createdAt,
+  });
+}));
+
+// ── Sponsor: toutes les allocations avec données bénéficiaire ────────────
+mobileRouter.get('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+  const allocations = await prisma.allocation.findMany({
+    where: { sponsorId },
+    include: {
+      beneficiary: {
+        include: { user: { select: { firstName: true, lastName: true, email: true } } },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  const calcIsMinor = (dob: Date | null) => {
+    if (!dob) return false;
+    const d = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+    return age < 18;
+  };
+  res.json({
+    allocations: allocations.map((a: any) => {
+      const isMinor = calcIsMinor(a.beneficiary?.dateOfBirth ?? null);
+      return {
+        id: a.id,
+        category: a.category,
+        limitAmount: Number(a.limitAmount),
+        remainingAmount: Number(a.remainingAmount),
+        status: a.status,
+        requiresApproval: a.requiresApproval,
+        expiresAt: a.expiresAt,
+        renewalPeriod: a.renewalPeriod,
+        createdAt: a.createdAt,
+        allowedMerchantIds: a.allowedMerchantIds,
+        beneficiary: {
+          id: a.beneficiary?.id,
+          isMinor,
+          user: a.beneficiary?.user,
+        },
+      };
+    }),
   });
 }));
 
@@ -694,6 +739,9 @@ mobileRouter.patch('/sponsor/allocations/:allocationId/approval', authenticate([
     where: { id: (req.params.allocationId as string), sponsorId },
   });
   if (!alloc) { res.status(404).json({ message: 'Allocation introuvable' }); return; }
+  const benefForAlloc = await prisma.beneficiary.findFirst({ where: { id: alloc.beneficiaryId } });
+  const isMinorBenef = benefForAlloc?.dateOfBirth ? (() => { const d = new Date(benefForAlloc.dateOfBirth!); const today = new Date(); let age = today.getFullYear() - d.getFullYear(); const m = today.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--; return age < 18; })() : false;
+  if (isMinorBenef) { res.status(400).json({ error: 'MINOR_LOCKED', message: 'Les allocations des mineurs nécessitent toujours une approbation' }); return; }
   const newValue = !alloc.requiresApproval;
   await prisma.allocation.update({ where: { id: alloc.id }, data: { requiresApproval: newValue } });
   res.json({ requiresApproval: newValue });
