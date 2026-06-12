@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ScrollView, View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Colors, Radius, Shadow } from '@/constants/theme';
@@ -37,6 +37,23 @@ export default function CreateAllocationScreen() {
   const [thresholdAutoSuspend, setThresholdAutoSuspend] = useState(false);
   const [limitMerchants,     setLimitMerchants]     = useState(false);
   const [selectedMerchants,  setSelectedMerchants]  = useState<string[]>([]);
+
+  // Reset complet du formulaire à chaque ouverture de l'écran
+  useFocusEffect(useCallback(() => {
+    setCategory('GENERAL');
+    setBeneficiary('');
+    setAmount('');
+    setExpiresAt('');
+    setCardId('');
+    setRequiresApproval(false);
+    setThresholdEnabled(false);
+    setThresholdType('PERCENT');
+    setThresholdValue('');
+    setThresholdPeriod('MONTHLY');
+    setThresholdAutoSuspend(false);
+    setLimitMerchants(false);
+    setSelectedMerchants([]);
+  }, []));
 
   const { data: cards } = useQuery({
     queryKey: ['sponsor-cards'],
