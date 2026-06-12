@@ -177,71 +177,71 @@ export default function CreateAllocationScreen() {
           <Switch value={requiresApproval} onValueChange={setRequiresApproval}
             trackColor={{ false: '#d1d5db', true: Colors.primary }} thumbColor="#fff"
             disabled={selectedBenef?.isMinor === true} />
-          {/* ── Section Seuil d'alerte ── */}
-          <View style={styles.divider} />
-          <View style={styles.thresholdToggleCard}>
-            <View style={styles.thresholdToggleTop}>
-              <Text style={styles.switchLabel}>📊 Seuil d'alerte</Text>
-              <Switch value={thresholdEnabled} onValueChange={setThresholdEnabled} trackColor={{ false: '#D1D5DB', true: '#5B3DF5' }} thumbColor="#fff" />
-            </View>
+        </View>
+
+        {/* ── Seuil d'alerte ── */}
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchLabel}>📊 Seuil d'alerte</Text>
             <Text style={styles.switchSub}>{thresholdEnabled ? 'Alerte et/ou suspension automatique' : 'Aucun seuil défini'}</Text>
           </View>
+          <Switch value={thresholdEnabled} onValueChange={setThresholdEnabled} trackColor={{ false: '#D1D5DB', true: '#5B3DF5' }} thumbColor="#fff" />
+        </View>
 
-          {thresholdEnabled && (
-            <View style={styles.thresholdBox}>
-              {/* Type: montant ou pourcentage */}
-              <Text style={styles.thresholdLabel}>Type de seuil</Text>
-              <View style={styles.segmentRow}>
-                {(['PERCENT', 'AMOUNT'] as const).map(t => (
-                  <TouchableOpacity key={t} style={[styles.segBtn, thresholdType === t && styles.segBtnActive]} onPress={() => setThresholdType(t)}>
-                    <Text style={[styles.segBtnText, thresholdType === t && styles.segBtnTextActive]}>{t === 'PERCENT' ? '% Pourcentage' : 'MAD Montant'}</Text>
+        {thresholdEnabled && (
+          <View style={styles.thresholdBox}>
+            {/* Type */}
+            <Text style={styles.thresholdLabel}>Type de seuil</Text>
+            <View style={styles.segmentRow}>
+              {(['PERCENT', 'AMOUNT'] as const).map(t => (
+                <TouchableOpacity key={t} style={[styles.segBtn, thresholdType === t && styles.segBtnActive]} onPress={() => setThresholdType(t)}>
+                  <Text style={[styles.segBtnText, thresholdType === t && styles.segBtnTextActive]}>{t === 'PERCENT' ? '% Pourcentage' : 'MAD Montant'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Valeur */}
+            <Text style={styles.thresholdLabel}>Valeur du seuil</Text>
+            <View style={styles.thresholdInputRow}>
+              <TextInput
+                style={styles.thresholdInput}
+                placeholder={thresholdType === 'PERCENT' ? 'ex: 80' : 'ex: 500'}
+                keyboardType="numeric"
+                value={thresholdValue}
+                onChangeText={setThresholdValue}
+                placeholderTextColor="#9CA3AF"
+              />
+              <Text style={styles.thresholdUnit}>{thresholdType === 'PERCENT' ? '%' : 'MAD'}</Text>
+            </View>
+
+            {/* Période */}
+            <Text style={styles.thresholdLabel}>Période</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {([
+                  { v: 'DAILY',      l: 'Journalier' },
+                  { v: 'MONTHLY',    l: 'Mensuel' },
+                  { v: 'SEMIANNUAL', l: 'Semestriel' },
+                  { v: 'ANNUAL',     l: 'Annuel' },
+                  { v: 'TOTAL',      l: 'Global' },
+                ] as const).map(({ v, l }) => (
+                  <TouchableOpacity key={v} style={[styles.periodBtn, thresholdPeriod === v && styles.periodBtnActive]} onPress={() => setThresholdPeriod(v)}>
+                    <Text style={[styles.periodBtnText, thresholdPeriod === v && styles.periodBtnTextActive]}>{l}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
+            </ScrollView>
 
-              {/* Valeur */}
-              <Text style={styles.thresholdLabel}>Valeur du seuil</Text>
-              <View style={styles.thresholdInputRow}>
-                <TextInput
-                  style={styles.thresholdInput}
-                  placeholder={thresholdType === 'PERCENT' ? 'ex: 80' : 'ex: 500'}
-                  keyboardType="numeric"
-                  value={thresholdValue}
-                  onChangeText={setThresholdValue}
-                  placeholderTextColor="#9CA3AF"
-                />
-                <Text style={styles.thresholdUnit}>{thresholdType === 'PERCENT' ? '%' : 'MAD'}</Text>
+            {/* Auto-suspension */}
+            <View style={[styles.switchRow, { marginBottom: 0, marginTop: 4 }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.switchLabel}>🔴 Suspension automatique</Text>
+                <Text style={styles.switchSub}>{thresholdAutoSuspend ? "L'allocation sera suspendue dès le seuil atteint" : 'Alerte uniquement, pas de suspension'}</Text>
               </View>
-
-              {/* Période */}
-              <Text style={styles.thresholdLabel}>Période</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {([
-                    { v: 'DAILY',      l: 'Journalier' },
-                    { v: 'MONTHLY',    l: 'Mensuel' },
-                    { v: 'SEMIANNUAL', l: 'Semestriel' },
-                    { v: 'ANNUAL',     l: 'Annuel' },
-                    { v: 'TOTAL',      l: 'Global' },
-                  ] as const).map(({ v, l }) => (
-                    <TouchableOpacity key={v} style={[styles.periodBtn, thresholdPeriod === v && styles.periodBtnActive]} onPress={() => setThresholdPeriod(v)}>
-                      <Text style={[styles.periodBtnText, thresholdPeriod === v && styles.periodBtnTextActive]}>{l}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-
-              {/* Auto-suspension */}
-              <View style={styles.switchRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.switchLabel}>🔴 Suspension automatique</Text>
-                  <Text style={styles.switchSub}>{thresholdAutoSuspend ? "L'allocation sera suspendue dès le seuil atteint" : "Alerte uniquement, pas de suspension"}</Text>
-                </View>
-                <Switch value={thresholdAutoSuspend} onValueChange={setThresholdAutoSuspend} trackColor={{ true: '#EF4444' }} />
-              </View>
+              <Switch value={thresholdAutoSuspend} onValueChange={setThresholdAutoSuspend} trackColor={{ false: '#D1D5DB', true: '#EF4444' }} thumbColor="#fff" />
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Limiter aux marchands */}
         <View style={styles.switchRow}>
