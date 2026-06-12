@@ -36,7 +36,7 @@ export default function AllocationsScreen() {
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['sponsor-allocations'],
-    queryFn: () => api.get('/sponsor/allocations').then(r => r.data.allocations ?? []),
+    queryFn: () => api.get('/mobile/sponsor/allocations').then(r => r.data.allocations ?? []),
   });
 
   const pauseMutation = useMutation({
@@ -61,6 +61,10 @@ export default function AllocationsScreen() {
     mutationFn: ({ id, value }: { id: string; value: boolean }) =>
       api.patch(`/mobile/sponsor/allocations/${id}/approval`, { requiresApproval: value }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sponsor-allocations'] }),
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message ?? 'Erreur';
+      if (Platform.OS === 'web') window.alert(msg); else Alert.alert('Erreur', msg);
+    },
   });
 
   const handleDelete = async (id: string, name: string) => {
