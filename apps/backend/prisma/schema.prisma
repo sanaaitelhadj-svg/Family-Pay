@@ -247,8 +247,12 @@ model Allocation {
   status          AllocationStatus   @default(ACTIVE)
   expiresAt       DateTime?
   renewalPeriod    String?
-  requiresApproval    Boolean            @default(false)
-  allowedMerchantIds  Json?
+  requiresApproval     Boolean            @default(false)
+  allowedMerchantIds   Json?
+  thresholdValue       Decimal?           @db.Decimal(12, 2)
+  thresholdType        String?
+  thresholdPeriod      String?
+  thresholdAutoSuspend Boolean            @default(false)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 

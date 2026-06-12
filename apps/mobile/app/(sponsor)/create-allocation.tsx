@@ -30,6 +30,11 @@ export default function CreateAllocationScreen() {
   const [expiresAt,          setExpiresAt]          = useState('');
   const [cardId,             setCardId]             = useState('');
   const [requiresApproval,   setRequiresApproval]   = useState(false);
+  const [thresholdEnabled,   setThresholdEnabled]   = useState(false);
+  const [thresholdType,      setThresholdType]      = useState<'AMOUNT'|'PERCENT'>('PERCENT');
+  const [thresholdValue,     setThresholdValue]     = useState('');
+  const [thresholdPeriod,    setThresholdPeriod]    = useState<'DAILY'|'MONTHLY'|'SEMIANNUAL'|'ANNUAL'|'TOTAL'>('MONTHLY');
+  const [thresholdAutoSuspend, setThresholdAutoSuspend] = useState(false);
   const [limitMerchants,     setLimitMerchants]     = useState(false);
   const [selectedMerchants,  setSelectedMerchants]  = useState<string[]>([]);
 
@@ -75,6 +80,12 @@ export default function CreateAllocationScreen() {
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       cardId: cardId || defaultCard?.id || undefined,
       requiresApproval,
+      ...(thresholdEnabled && thresholdValue ? {
+        thresholdValue:       Number(thresholdValue),
+        thresholdType,
+        thresholdPeriod,
+        thresholdAutoSuspend,
+      } : {}),
       allowedMerchantIds: limitMerchants && selectedMerchants.length > 0 ? selectedMerchants : null,
     }),
     onSuccess: () => {
@@ -166,6 +177,70 @@ export default function CreateAllocationScreen() {
           <Switch value={requiresApproval} onValueChange={setRequiresApproval}
             trackColor={{ false: '#d1d5db', true: Colors.primary }} thumbColor="#fff"
             disabled={selectedBenef?.isMinor === true} />
+          {/* ── Section Seuil d'alerte ── */}
+          <View style={styles.divider} />
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.switchLabel}>📊 Seuil d'alerte</Text>
+              <Text style={styles.switchSub}>{thresholdEnabled ? 'Alerte et/ou suspension automatique' : 'Aucun seuil défini'}</Text>
+            </View>
+            <Switch value={thresholdEnabled} onValueChange={setThresholdEnabled} trackColor={{ true: '#5B3DF5' }} />
+          </View>
+
+          {thresholdEnabled && (
+            <View style={styles.thresholdBox}>
+              {/* Type: montant ou pourcentage */}
+              <Text style={styles.thresholdLabel}>Type de seuil</Text>
+              <View style={styles.segmentRow}>
+                {(['PERCENT', 'AMOUNT'] as const).map(t => (
+                  <TouchableOpacity key={t} style={[styles.segBtn, thresholdType === t && styles.segBtnActive]} onPress={() => setThresholdType(t)}>
+                    <Text style={[styles.segBtnText, thresholdType === t && styles.segBtnTextActive]}>{t === 'PERCENT' ? '% Pourcentage' : 'MAD Montant'}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Valeur */}
+              <Text style={styles.thresholdLabel}>Valeur du seuil</Text>
+              <View style={styles.thresholdInputRow}>
+                <TextInput
+                  style={styles.thresholdInput}
+                  placeholder={thresholdType === 'PERCENT' ? 'ex: 80' : 'ex: 500'}
+                  keyboardType="numeric"
+                  value={thresholdValue}
+                  onChangeText={setThresholdValue}
+                  placeholderTextColor="#9CA3AF"
+                />
+                <Text style={styles.thresholdUnit}>{thresholdType === 'PERCENT' ? '%' : 'MAD'}</Text>
+              </View>
+
+              {/* Période */}
+              <Text style={styles.thresholdLabel}>Période</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {([
+                    { v: 'DAILY',      l: 'Journalier' },
+                    { v: 'MONTHLY',    l: 'Mensuel' },
+                    { v: 'SEMIANNUAL', l: 'Semestriel' },
+                    { v: 'ANNUAL',     l: 'Annuel' },
+                    { v: 'TOTAL',      l: 'Global' },
+                  ] as const).map(({ v, l }) => (
+                    <TouchableOpacity key={v} style={[styles.periodBtn, thresholdPeriod === v && styles.periodBtnActive]} onPress={() => setThresholdPeriod(v)}>
+                      <Text style={[styles.periodBtnText, thresholdPeriod === v && styles.periodBtnTextActive]}>{l}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+
+              {/* Auto-suspension */}
+              <View style={styles.switchRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.switchLabel}>🔴 Suspension automatique</Text>
+                  <Text style={styles.switchSub}>{thresholdAutoSuspend ? "L'allocation sera suspendue dès le seuil atteint" : "Alerte uniquement, pas de suspension"}</Text>
+                </View>
+                <Switch value={thresholdAutoSuspend} onValueChange={setThresholdAutoSuspend} trackColor={{ true: '#EF4444' }} />
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Limiter aux marchands */}
@@ -310,4 +385,19 @@ const styles = StyleSheet.create({
   cardChipSub:  { fontSize:11, color:Colors.textSecondary, marginTop:2 },
   cardChipAdd:  { paddingHorizontal:14, paddingVertical:10, borderRadius:10, backgroundColor:Colors.bg, borderWidth:1, borderColor:Colors.border, justifyContent:'center', alignItems:'center' },
   cardChipAddText:{ fontSize:12, fontWeight:'600', color:Colors.primary },
+  divider:           { height: 1, backgroundColor: '#F3F4F6', marginVertical: 4 },
+  thresholdBox:      { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 14, marginTop: 4, gap: 4, borderWidth: 1, borderColor: '#E5E7EB' },
+  thresholdLabel:    { fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 6, marginTop: 4 },
+  thresholdInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  thresholdInput:    { flex: 1, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, backgroundColor: '#fff', color: '#111827' },
+  thresholdUnit:     { fontSize: 14, fontWeight: '700', color: '#5B3DF5', minWidth: 36 },
+  segmentRow:        { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  segBtn:            { flex: 1, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', backgroundColor: '#fff' },
+  segBtnActive:      { backgroundColor: '#EEF2FF', borderColor: '#5B3DF5' },
+  segBtnText:        { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  segBtnTextActive:  { color: '#5B3DF5' },
+  periodBtn:         { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#D1D5DB', backgroundColor: '#fff' },
+  periodBtnActive:   { backgroundColor: '#5B3DF5', borderColor: '#5B3DF5' },
+  periodBtnText:     { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  periodBtnTextActive: { color: '#fff' },
 });

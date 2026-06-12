@@ -476,7 +476,7 @@ mobileRouter.get('/sponsor/merchants', authenticate(['SPONSOR']), wrap(async (re
 
 mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const sponsorId = req.user!.profileId;
-  const { beneficiaryId, category, limitAmount, expiresAt, requiresApproval, allowedMerchantIds } = req.body;
+  const { beneficiaryId, category, limitAmount, expiresAt, requiresApproval, allowedMerchantIds, thresholdValue, thresholdType, thresholdPeriod, thresholdAutoSuspend } = req.body;
 
   if (!beneficiaryId || !limitAmount || Number(limitAmount) <= 0) {
     res.status(400).json({ error: 'MISSING_FIELDS', message: 'Bénéficiaire et montant requis' }); return;
@@ -495,7 +495,11 @@ mobileRouter.post('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async 
       status:            'ACTIVE',
       expiresAt:         expiresAt ? new Date(expiresAt) : null,
       requiresApproval:  (() => { const dob = benef.dateOfBirth; if (!dob) return requiresApproval ?? false; const d = new Date(dob); const today = new Date(); let age = today.getFullYear() - d.getFullYear(); const m = today.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--; return age < 18 ? true : (requiresApproval ?? false); })(),
-      allowedMerchantIds: (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : Prisma.JsonNull,
+      allowedMerchantIds:   (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : Prisma.JsonNull,
+      thresholdValue:       thresholdValue   ? Number(thresholdValue) : null,
+      thresholdType:        thresholdType    ?? null,
+      thresholdPeriod:      thresholdPeriod  ?? null,
+      thresholdAutoSuspend: thresholdAutoSuspend === true,
     },
   });
 
@@ -546,7 +550,11 @@ mobileRouter.get('/sponsor/allocations', authenticate(['SPONSOR']), wrap(async (
         expiresAt: a.expiresAt,
         renewalPeriod: a.renewalPeriod,
         createdAt: a.createdAt,
-        allowedMerchantIds: a.allowedMerchantIds,
+        allowedMerchantIds:   a.allowedMerchantIds,
+        thresholdValue:       a.thresholdValue   ? Number(a.thresholdValue)   : null,
+        thresholdType:        a.thresholdType    ?? null,
+        thresholdPeriod:      a.thresholdPeriod  ?? null,
+        thresholdAutoSuspend: a.thresholdAutoSuspend,
         beneficiary: {
           id: a.beneficiary?.id,
           isMinor,
@@ -856,6 +864,39 @@ mobileRouter.post('/beneficiary/pay/confirm', authenticate(['BENEFICIARY']), wra
     data:  { remainingAmount: { decrement: qr.amount } },
   });
   await prisma.qrCode.update({ where: { token }, data: { usedAt: new Date(), authorizationId: authorization.id } });
+
+  // ── Vérification du seuil d'alerte ───────────────────────────────────────
+  const updatedAlloc = await prisma.allocation.findUnique({ where: { id: allocation.id } });
+  if (updatedAlloc?.thresholdValue && updatedAlloc.thresholdType) {
+    const getPeriodStart = (period: string | null): Date | null => {
+      if (!period || period === 'TOTAL') return null;
+      const now = new Date();
+      if (period === 'DAILY')      { return new Date(now.getFullYear(), now.getMonth(), now.getDate()); }
+      if (period === 'MONTHLY')    { return new Date(now.getFullYear(), now.getMonth(), 1); }
+      if (period === 'SEMIANNUAL') { const m = now.getMonth() < 6 ? 0 : 6; return new Date(now.getFullYear(), m, 1); }
+      if (period === 'ANNUAL')     { return new Date(now.getFullYear(), 0, 1); }
+      return null;
+    };
+    const periodStart = getPeriodStart(updatedAlloc.thresholdPeriod);
+    const txWhere: any = { authorization: { allocationId: allocation.id }, status: 'COMPLETED' };
+    if (periodStart) txWhere.createdAt = { gte: periodStart };
+    const txs = await prisma.transaction.findMany({ where: txWhere });
+    const spentInPeriod = txs.reduce((s: number, t: any) => s + Number(t.amount), 0);
+    const thresholdAmount = updatedAlloc.thresholdType === 'PERCENT'
+      ? (Number(updatedAlloc.limitAmount) * Number(updatedAlloc.thresholdValue)) / 100
+      : Number(updatedAlloc.thresholdValue);
+    if (spentInPeriod >= thresholdAmount) {
+      const benef = await prisma.beneficiary.findUnique({ where: { id: allocation.beneficiaryId }, include: { user: true } });
+      const periodLabel: Record<string, string> = { DAILY: 'journalier', MONTHLY: 'mensuel', SEMIANNUAL: 'semestriel', ANNUAL: 'annuel', TOTAL: 'global' };
+      const pLabel = periodLabel[updatedAlloc.thresholdPeriod ?? 'TOTAL'] ?? 'global';
+      const threshLabel = updatedAlloc.thresholdType === 'PERCENT' ? `${updatedAlloc.thresholdValue}%` : `${thresholdAmount} MAD`;
+      const notifBody = `Seuil ${pLabel} de ${threshLabel} atteint pour ${benef?.user?.firstName ?? 'bénéficiaire'}`;
+      await prisma.adminNotification.create({ data: { type: 'THRESHOLD_REACHED', title: '⚠️ Seuil atteint', body: notifBody, entityId: allocation.id } });
+      if (updatedAlloc.thresholdAutoSuspend) {
+        await prisma.allocation.update({ where: { id: allocation.id }, data: { status: 'PAUSED' } });
+      }
+    }
+  }
 
   res.json({ status: 'COMPLETED', amount: Number(qr.amount), message: 'Paiement effectué avec succès ✅' });
 }));

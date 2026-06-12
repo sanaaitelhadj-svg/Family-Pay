@@ -242,6 +242,13 @@ export default function AllocationsScreen() {
                               </Text>
                             </View>
                           )}
+                          {a.thresholdValue && (
+                            <View style={styles.thresholdBadge}>
+                              <Text style={styles.thresholdBadgeText}>
+                                📊 Seuil {a.thresholdPeriod === 'DAILY' ? 'journalier' : a.thresholdPeriod === 'MONTHLY' ? 'mensuel' : a.thresholdPeriod === 'SEMIANNUAL' ? 'semestriel' : a.thresholdPeriod === 'ANNUAL' ? 'annuel' : 'global'} : {a.thresholdType === 'PERCENT' ? `${a.thresholdValue}%` : `${a.thresholdValue} MAD`}{a.thresholdAutoSuspend ? ' · suspension auto' : ' · alerte'}
+                              </Text>
+                            </View>
+                          )}
                           {a.expiresAt && (
                             <Text style={styles.expiry}>⏳ Expire le {new Date(a.expiresAt).toLocaleDateString('fr-FR')}</Text>
                           )}
@@ -319,5 +326,7 @@ const styles = StyleSheet.create({
   actionBtnRed:    { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
   lockHint:   { marginTop: 8, backgroundColor: '#F5F3FF', borderRadius: Radius.sm, padding: 7, borderWidth: 1, borderColor: '#DDD6FE' },
   lockHintText: { fontSize: 11, color: '#5B3DF5' },
-  expiry:     { fontSize: 11, color: Colors.textMuted, marginTop: 6 },
+  expiry:        { fontSize: 11, color: Colors.textMuted, marginTop: 6 },
+  thresholdBadge: { marginTop: 6, backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BFDBFE' },
+  thresholdBadgeText: { fontSize: 11, color: '#1D4ED8', fontWeight: '600' },
 });
