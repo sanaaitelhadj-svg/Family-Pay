@@ -18,25 +18,29 @@ export default function SponsorLayout() {
       tabBarStyle: styles.tabBar,
       tabBarShowLabel: false,
     }}>
-      <Tabs.Screen name="index" options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏠" label="Accueil" focused={focused} /> }} />
-      <Tabs.Screen name="allocations" options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💰" label="Allocations" focused={focused} /> }} />
+      <Tabs.Screen name="index"         options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏠" label="Accueil"      focused={focused} /> }} />
+      <Tabs.Screen name="allocations"   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💰" label="Allocations"  focused={focused} /> }} />
       <Tabs.Screen name="beneficiaries" options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👥" label="Bénéficiaires" focused={focused} /> }} />
-      <Tabs.Screen name="profile" options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👤" label="Profil" focused={focused} /> }} />
-      <Tabs.Screen name="create-allocation" options={{ href: null }} />
-      <Tabs.Screen name="add-card"  options={{ href: null, title: "Carte" }} />
-      <Tabs.Screen name="invite" options={{ href: null }} />
+      <Tabs.Screen name="merchants"     options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏬" label="Marchands"    focused={focused} /> }} />
+      <Tabs.Screen name="profile"       options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👤" label="Profil"       focused={focused} /> }} />
+
+      {/* Écrans sans onglet */}
+      <Tabs.Screen name="create-allocation"  options={{ href: null }} />
+      <Tabs.Screen name="edit-allocation"    options={{ href: null }} />
+      <Tabs.Screen name="add-card"           options={{ href: null }} />
+      <Tabs.Screen name="invite"             options={{ href: null }} />
       <Tabs.Screen name="create-beneficiary" options={{ href: null }} />
-      <Tabs.Screen name="change-phone" options={{ href: null }} />
-      <Tabs.Screen name="cards" options={{ href: null }} />
+      <Tabs.Screen name="change-phone"       options={{ href: null }} />
+      <Tabs.Screen name="cards"              options={{ href: null }} />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBar:       { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#ECECF2', height: 72, paddingBottom: 8 },
-  tabItem:      { alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
-  tabIcon:      { fontSize: 22, opacity: 0.4 },
-  tabIconActive:{ opacity: 1 },
-  tabLabel:     { fontSize: 10, color: '#9CA3AF', marginTop: 2, fontWeight: '500' },
+  tabBar:        { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#ECECF2', height: 72, paddingBottom: 8 },
+  tabItem:       { alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
+  tabIcon:       { fontSize: 22, opacity: 0.4 },
+  tabIconActive: { opacity: 1 },
+  tabLabel:      { fontSize: 10, color: '#9CA3AF', marginTop: 2, fontWeight: '500' },
   tabLabelActive:{ color: Colors.primary, fontWeight: '700' },
 });
