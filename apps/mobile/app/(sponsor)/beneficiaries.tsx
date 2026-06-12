@@ -146,6 +146,49 @@ export default function BeneficiariesScreen() {
     return <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>;
   }
 
+  const editModal = (
+    <Modal visible={!!editBenef} transparent animationType="slide" onRequestClose={() => setEditBenef(null)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Modifier le bénéficiaire</Text>
+            <TouchableOpacity onPress={() => setEditBenef(null)}><Text style={styles.modalClose}>✕</Text></TouchableOpacity>
+          </View>
+          <ScrollView>
+            <Text style={styles.fieldLabel}>Prénom</Text>
+            <TextInput style={styles.fieldInput} value={editFirst} onChangeText={setEditFirst} placeholder="Prénom" placeholderTextColor="#9CA3AF" />
+            <Text style={styles.fieldLabel}>Nom</Text>
+            <TextInput style={styles.fieldInput} value={editLast} onChangeText={setEditLast} placeholder="Nom" placeholderTextColor="#9CA3AF" />
+            <Text style={styles.fieldLabel}>Téléphone</Text>
+            <TextInput style={styles.fieldInput} value={editPhone} onChangeText={setEditPhone} placeholder="+212..." keyboardType="phone-pad" placeholderTextColor="#9CA3AF" />
+            <Text style={styles.fieldLabel}>Date de naissance (YYYY-MM-DD)</Text>
+            <TextInput style={styles.fieldInput} value={editDob} onChangeText={setEditDob} placeholder="ex: 2010-05-20" placeholderTextColor="#9CA3AF" />
+            <Text style={styles.fieldLabel}>Relation</Text>
+            <TextInput style={styles.fieldInput} value={editRel} onChangeText={setEditRel} placeholder="ex: Enfant, Époux..." placeholderTextColor="#9CA3AF" />
+            {editBenef?.isMinor === false && editDob && (() => {
+              const d = new Date(editDob); const today = new Date();
+              let age = today.getFullYear() - d.getFullYear();
+              const m = today.getMonth() - d.getMonth();
+              if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+              return age < 18 ? (
+                <View style={styles.warnBox}>
+                  <Text style={styles.warnText}>⚠️ Cette date rend le bénéficiaire mineur — toutes ses allocations seront verrouillées automatiquement</Text>
+                </View>
+              ) : null;
+            })()}
+            <TouchableOpacity
+              style={[styles.saveBtn, updateBenef.isPending && { opacity: 0.6 }]}
+              onPress={() => editBenef && updateBenef.mutate(editBenef.id)}
+              disabled={updateBenef.isPending}
+            >
+              <Text style={styles.saveBtnText}>{updateBenef.isPending ? 'Enregistrement…' : 'Enregistrer'}</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <>
       {editModal}
