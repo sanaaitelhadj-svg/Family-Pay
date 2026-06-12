@@ -242,6 +242,10 @@ export default function ProfileScreen() {
       </View>
 
       <Text style={styles.version}>FamilyPay v1.0.0 — © ALTIVAX 2026</Text>
+      {/* Bouton déconnexion */}
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+        <Text style={styles.logoutText}>🚪 Déconnexion</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
