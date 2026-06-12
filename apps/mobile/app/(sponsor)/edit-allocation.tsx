@@ -26,6 +26,7 @@ export default function EditAllocationScreen() {
   const [thresholdValue,       setThresholdValue]       = useState('');
   const [thresholdPeriod,      setThresholdPeriod]      = useState<'DAILY'|'MONTHLY'|'SEMIANNUAL'|'ANNUAL'|'TOTAL'>('MONTHLY');
   const [thresholdAutoSuspend, setThresholdAutoSuspend] = useState(false);
+  const [renewalPeriod,      setRenewalPeriod]      = useState<string>('');
 
   useEffect(() => {
     if (!alloc) return;
@@ -37,6 +38,7 @@ export default function EditAllocationScreen() {
     setThresholdValue(alloc.thresholdValue ? String(alloc.thresholdValue) : '');
     setThresholdPeriod(alloc.thresholdPeriod ?? 'MONTHLY');
     setThresholdAutoSuspend(alloc.thresholdAutoSuspend ?? false);
+    setRenewalPeriod(alloc.renewalPeriod ?? '');
   }, [alloc]);
 
   const isMinor = alloc?.beneficiary?.isMinor ?? false;
@@ -46,6 +48,7 @@ export default function EditAllocationScreen() {
       limitAmount:         Number(amount),
       expiresAt:           expiresAt || null,
       requiresApproval,
+      renewalPeriod: renewalPeriod || null,
       ...(thresholdEnabled && thresholdValue ? {
         thresholdValue:       Number(thresholdValue),
         thresholdType,
@@ -169,7 +172,27 @@ export default function EditAllocationScreen() {
           </View>
         )}
 
-        <Button label="Enregistrer les modifications" onPress={() => mutation.mutate()}
+        {/* Renouvellement */}
+        <View style={[styles.switchRow, { marginTop: 8 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchLabel}>🔄 Renouvellement automatique</Text>
+            <Text style={styles.switchSub}>{renewalPeriod ? `Période : ${renewalPeriod === 'DAILY' ? 'Journalier' : renewalPeriod === 'WEEKLY' ? 'Hebdomadaire' : renewalPeriod === 'MONTHLY' ? 'Mensuel' : renewalPeriod === 'QUARTERLY' ? 'Trimestriel' : 'Annuel'}` : 'Aucun renouvellement'}</Text>
+          </View>
+          <Switch value={!!renewalPeriod} onValueChange={v => setRenewalPeriod(v ? 'MONTHLY' : '')} trackColor={{ false: '#D1D5DB', true: '#10B981' }} thumbColor="#fff" />
+        </View>
+        {!!renewalPeriod && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {([{v:'DAILY',l:'Journalier'},{v:'WEEKLY',l:'Hebdomadaire'},{v:'MONTHLY',l:'Mensuel'},{v:'QUARTERLY',l:'Trimestriel'},{v:'ANNUAL',l:'Annuel'}] as const).map(({v,l}) => (
+                <TouchableOpacity key={v} style={[styles.periodBtn, renewalPeriod === v && styles.periodBtnActive, renewalPeriod === v && { backgroundColor: '#ECFDF5', borderColor: '#10B981' }]} onPress={() => setRenewalPeriod(v)}>
+                  <Text style={[styles.periodBtnText, renewalPeriod === v && { color: '#10B981' }]}>{l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )}
+
+                <Button label="Enregistrer les modifications" onPress={() => mutation.mutate()}
           loading={mutation.isPending} disabled={!canSave} style={{ marginTop: 16 }} />
       </ScrollView>
     </View>

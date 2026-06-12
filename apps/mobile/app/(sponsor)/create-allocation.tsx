@@ -35,6 +35,7 @@ export default function CreateAllocationScreen() {
   const [thresholdValue,     setThresholdValue]     = useState('');
   const [thresholdPeriod,    setThresholdPeriod]    = useState<'DAILY'|'MONTHLY'|'SEMIANNUAL'|'ANNUAL'|'TOTAL'>('MONTHLY');
   const [thresholdAutoSuspend, setThresholdAutoSuspend] = useState(false);
+  const [renewalPeriod,      setRenewalPeriod]      = useState<string>('');
   const [limitMerchants,     setLimitMerchants]     = useState(false);
   const [selectedMerchants,  setSelectedMerchants]  = useState<string[]>([]);
 
@@ -51,6 +52,7 @@ export default function CreateAllocationScreen() {
     setThresholdValue('');
     setThresholdPeriod('MONTHLY');
     setThresholdAutoSuspend(false);
+    setRenewalPeriod('');
     setLimitMerchants(false);
     setSelectedMerchants([]);
   }, []));
@@ -97,6 +99,7 @@ export default function CreateAllocationScreen() {
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
       cardId: cardId || defaultCard?.id || undefined,
       requiresApproval,
+      renewalPeriod: renewalPeriod || null,
       ...(thresholdEnabled && thresholdValue ? {
         thresholdValue:       Number(thresholdValue),
         thresholdType,
@@ -338,7 +341,33 @@ export default function CreateAllocationScreen() {
           </View>
         )}
 
-        <Button label="Créer l'allocation" onPress={() => mutation.mutate()}
+        {/* ── Renouvellement automatique ── */}
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchLabel}>🔄 Renouvellement automatique</Text>
+            <Text style={styles.switchSub}>{renewalPeriod ? `Remis à zéro chaque période : ${renewalPeriod === 'DAILY' ? 'Journalier' : renewalPeriod === 'WEEKLY' ? 'Hebdomadaire' : renewalPeriod === 'MONTHLY' ? 'Mensuel' : renewalPeriod === 'QUARTERLY' ? 'Trimestriel' : 'Annuel'}` : 'Aucun renouvellement'}</Text>
+          </View>
+          <Switch value={!!renewalPeriod} onValueChange={v => setRenewalPeriod(v ? 'MONTHLY' : '')} trackColor={{ false: '#D1D5DB', true: '#10B981' }} thumbColor="#fff" />
+        </View>
+        {!!renewalPeriod && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+              {([
+                { v: 'DAILY',     l: 'Journalier' },
+                { v: 'WEEKLY',    l: 'Hebdomadaire' },
+                { v: 'MONTHLY',   l: 'Mensuel' },
+                { v: 'QUARTERLY', l: 'Trimestriel' },
+                { v: 'ANNUAL',    l: 'Annuel' },
+              ] as const).map(({ v, l }) => (
+                <TouchableOpacity key={v} style={[styles.periodBtn, renewalPeriod === v && styles.periodBtnActive, renewalPeriod === v && { backgroundColor: '#ECFDF5', borderColor: '#10B981' }]} onPress={() => setRenewalPeriod(v)}>
+                  <Text style={[styles.periodBtnText, renewalPeriod === v && { color: '#10B981' }]}>{l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )}
+
+                <Button label="Créer l'allocation" onPress={() => mutation.mutate()}
           loading={mutation.isPending} disabled={!canSubmit} style={{marginTop:8}} />
       </ScrollView>
     </View>
