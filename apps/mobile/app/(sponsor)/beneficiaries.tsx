@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, RefreshControl, ActivityIndicator, Modal, ScrollView, Switch, Alert, Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors, Radius } from '../../src/constants/theme';
@@ -46,7 +47,8 @@ export default function BeneficiariesScreen() {
   const [editLast,    setEditLast]    = useState('');
   const [editPhone,   setEditPhone]   = useState('');
   const [editDob,     setEditDob]     = useState('');
-  const [editRel,     setEditRel]     = useState('');
+  const [editRel,        setEditRel]        = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery<Beneficiary[]>({
     queryKey: ['sponsor-beneficiaries'],
@@ -161,8 +163,35 @@ export default function BeneficiariesScreen() {
             <TextInput style={styles.fieldInput} value={editLast} onChangeText={setEditLast} placeholder="Nom" placeholderTextColor="#9CA3AF" />
             <Text style={styles.fieldLabel}>Téléphone</Text>
             <TextInput style={styles.fieldInput} value={editPhone} onChangeText={setEditPhone} placeholder="+212..." keyboardType="phone-pad" placeholderTextColor="#9CA3AF" />
-            <Text style={styles.fieldLabel}>Date de naissance (YYYY-MM-DD)</Text>
-            <TextInput style={styles.fieldInput} value={editDob} onChangeText={setEditDob} placeholder="ex: 2010-05-20" placeholderTextColor="#9CA3AF" />
+            <Text style={styles.fieldLabel}>Date de naissance</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={editDob}
+                onChange={e => setEditDob(e.target.value)}
+                style={{ border: '1px solid #D1D5DB', borderRadius: 10, padding: '11px 14px', fontSize: 15, backgroundColor: '#F9FAFB', color: '#111827', width: '100%', boxSizing: 'border-box' }}
+              />
+            ) : (
+              <>
+                <TouchableOpacity style={styles.fieldInput} onPress={() => setShowDatePicker(true)}>
+                  <Text style={{ color: editDob ? '#111827' : '#9CA3AF', fontSize: 15 }}>
+                    {editDob || 'Sélectionner une date'}
+                  </Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={editDob ? new Date(editDob) : new Date(2010, 0, 1)}
+                    mode="date"
+                    display="default"
+                    maximumDate={new Date()}
+                    onChange={(_, date) => {
+                      setShowDatePicker(false);
+                      if (date) setEditDob(date.toISOString().split('T')[0]);
+                    }}
+                  />
+                )}
+              </>
+            )}
             <Text style={styles.fieldLabel}>Relation</Text>
             <TextInput style={styles.fieldInput} value={editRel} onChangeText={setEditRel} placeholder="ex: Enfant, Époux..." placeholderTextColor="#9CA3AF" />
             {editBenef?.isMinor === false && editDob && (() => {
