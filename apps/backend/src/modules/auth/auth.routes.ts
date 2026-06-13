@@ -133,42 +133,37 @@ authRouter.post('/merchant/login', wrap(async (req, res) => {
 
 
 authRouter.post('/merchant/forgot-password', wrap(async (req, res) => {
-  const bcrypt = await import('bcryptjs');
-  const { email } = req.body;
-  if (!email) { res.status(400).json({ message: 'Email requis' }); return; }
-
-  const user = await prisma.user.findFirst({
-    where: { email: email.trim().toLowerCase(), role: 'MERCHANT', isActive: true },
-  });
-
-  if (!user) { res.json({ message: 'Si ce compte existe, un email a été envoyé' }); return; }
-
-  await prisma.otpCode.updateMany({
-    where: { email: email.toLowerCase(), purpose: 'PASSWORD_RESET', usedAt: null },
-    data:  { usedAt: new Date() },
-  });
-
-  const code     = Math.floor(100000 + Math.random() * 900000).toString();
-  const codeHash = await bcrypt.hash(code, 10);
-
-  await prisma.otpCode.create({
-    data: {
-      phone:     'email:' + email.toLowerCase(),
-      email:     email.toLowerCase(),
-      purpose:   'PASSWORD_RESET',
-      codeHash,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    },
-  });
-
   try {
+    const bcrypt = await import('bcryptjs');
+    const { email } = req.body;
+    if (!email) { res.status(400).json({ message: 'Email requis' }); return; }
+
+    const user = await prisma.user.findFirst({
+      where: { email: email.trim().toLowerCase(), role: 'MERCHANT', isActive: true },
+    });
+
+    if (!user) { res.json({ message: 'Si ce compte existe, un email a été envoyé' }); return; }
+
+    await prisma.otpCode.updateMany({
+      where: { email: email.toLowerCase(), purpose: 'PASSWORD_RESET', usedAt: null },
+      data:  { usedAt: new Date() },
+    });
+
+    const code     = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = await bcrypt.hash(code, 10);
+
+    await prisma.otpCode.create({
+      data: {
+        phone:     'email:' + email.toLowerCase(),
+        email:     email.toLowerCase(),
+        purpose:   'PASSWORD_RESET',
+        codeHash,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
     await sendPasswordResetEmail(email.trim(), code);
-  } catch (emailErr: any) {
-    console.error('[forgot-password] SMTP error:', emailErr?.message ?? emailErr);
-    // On retourne quand même 200 pour ne pas exposer si le compte existe
-    res.json({ message: 'Si ce compte existe, un email a été envoyé' }); return;
-  }
-  res.json({ message: 'Si ce compte existe, un email a été envoyé' });
+    res.json({ message: 'Si ce compte existe, un email a été envoyé' });
   } catch (err: any) {
     console.error('[forgot-password] ERROR:', err?.message ?? err, err?.stack);
     res.status(500).json({ message: err?.message ?? 'Erreur interne' });
