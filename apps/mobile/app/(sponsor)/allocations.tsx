@@ -241,26 +241,22 @@ export default function AllocationsScreen() {
                             </TouchableOpacity>
 
                             {/* Renouveler manuellement */}
-                            {a.renewalPeriod && (
-                              <TouchableOpacity
-                                style={[styles.actionBtn, styles.actionBtnRenew]}
-                                onPress={() => renewMutation.mutate(a.id)}
-                                disabled={renewMutation.isPending}
-                              >
-                                <Text style={[styles.actionBtnText, { color: '#0369A1' }]}>🔄 Renouveler</Text>
-                              </TouchableOpacity>
-                            )}
+                            <TouchableOpacity
+                              style={[styles.actionBtn, styles.actionBtnRenew, !a.renewalPeriod && { opacity: 0.4 }]}
+                              onPress={() => a.renewalPeriod && renewMutation.mutate(a.id)}
+                              disabled={!a.renewalPeriod || renewMutation.isPending}
+                            >
+                              <Text style={[styles.actionBtnText, { color: '#0369A1' }]}>🔄 Renouveler</Text>
+                            </TouchableOpacity>
 
                             {/* Renouveler manuellement */}
-                            {a.renewalPeriod && (
-                              <TouchableOpacity
-                                style={[styles.actionBtn, styles.actionBtnRenew]}
-                                onPress={() => renewMutation.mutate(a.id)}
-                                disabled={renewMutation.isPending}
-                              >
-                                <Text style={[styles.actionBtnText, { color: '#0369A1' }]}>🔄 Renouveler</Text>
-                              </TouchableOpacity>
-                            )}
+                            <TouchableOpacity
+                              style={[styles.actionBtn, styles.actionBtnRenew, !a.renewalPeriod && { opacity: 0.4 }]}
+                              onPress={() => a.renewalPeriod && renewMutation.mutate(a.id)}
+                              disabled={!a.renewalPeriod || renewMutation.isPending}
+                            >
+                              <Text style={[styles.actionBtnText, { color: '#0369A1' }]}>🔄 Renouveler</Text>
+                            </TouchableOpacity>
 
                             {/* Delete */}
                             <TouchableOpacity
