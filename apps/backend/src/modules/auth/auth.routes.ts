@@ -169,6 +169,10 @@ authRouter.post('/merchant/forgot-password', wrap(async (req, res) => {
     res.json({ message: 'Si ce compte existe, un email a été envoyé' }); return;
   }
   res.json({ message: 'Si ce compte existe, un email a été envoyé' });
+  } catch (err: any) {
+    console.error('[forgot-password] ERROR:', err?.message ?? err, err?.stack);
+    res.status(500).json({ message: err?.message ?? 'Erreur interne' });
+  }
 }));
 
 authRouter.post('/merchant/reset-password', wrap(async (req, res) => {
