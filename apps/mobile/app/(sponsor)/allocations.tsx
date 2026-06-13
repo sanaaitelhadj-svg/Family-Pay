@@ -249,14 +249,7 @@ export default function AllocationsScreen() {
                               <Text style={[styles.actionBtnText, { color: '#0369A1' }]}>🔄 Renouveler</Text>
                             </TouchableOpacity>
 
-                            {/* Renouveler manuellement */}
-                            <TouchableOpacity
-                              style={[styles.actionBtn, styles.actionBtnRenew, !a.renewalPeriod && { opacity: 0.4 }]}
-                              onPress={() => a.renewalPeriod && renewMutation.mutate(a.id)}
-                              disabled={!a.renewalPeriod || renewMutation.isPending}
-                            >
-                              <Text style={[styles.actionBtnText, { color: '#0369A1' }]}>🔄 Renouveler</Text>
-                            </TouchableOpacity>
+
 
                             {/* Delete */}
                             <TouchableOpacity

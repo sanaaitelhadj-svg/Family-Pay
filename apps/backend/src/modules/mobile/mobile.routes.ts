@@ -644,7 +644,7 @@ mobileRouter.patch('/sponsor/beneficiaries/:id', authenticate(['SPONSOR']), wrap
 // ── Sponsor: modifier une allocation ─────────────────────────────────────
 mobileRouter.patch('/sponsor/allocations/:allocationId', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const sponsorId = req.user!.profileId;
-  const { limitAmount, expiresAt, requiresApproval, thresholdValue, thresholdType, thresholdPeriod, thresholdAutoSuspend, allowedMerchantIds } = req.body;
+  const { limitAmount, expiresAt, requiresApproval, thresholdValue, thresholdType, thresholdPeriod, thresholdAutoSuspend, allowedMerchantIds, renewalPeriod } = req.body;
 
   const alloc = await prisma.allocation.findFirst({
     where: { id: (req.params.allocationId as string), sponsorId },
@@ -676,6 +676,7 @@ mobileRouter.patch('/sponsor/allocations/:allocationId', authenticate(['SPONSOR'
   if (thresholdPeriod !== undefined)    data.thresholdPeriod    = thresholdPeriod ?? null;
   if (thresholdAutoSuspend !== undefined) data.thresholdAutoSuspend = thresholdAutoSuspend === true;
   if (allowedMerchantIds !== undefined) data.allowedMerchantIds = (Array.isArray(allowedMerchantIds) && allowedMerchantIds.length > 0) ? allowedMerchantIds : Prisma.JsonNull;
+  if (renewalPeriod !== undefined)      data.renewalPeriod      = renewalPeriod ?? null;
 
   const updated = await prisma.allocation.update({ where: { id: alloc.id }, data });
   res.json({ message: 'Allocation mise à jour', allocation: updated });
