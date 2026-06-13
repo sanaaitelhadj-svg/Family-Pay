@@ -1,4 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { prisma } from '../../lib/prisma.js';
+import { sendPasswordResetEmail } from '../../lib/email.js';
 import { AuthService } from './auth.service.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { AddCardSchema,
