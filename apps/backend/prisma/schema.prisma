@@ -65,6 +65,7 @@ enum OtpPurpose {
   SIGNUP
   LOGIN
   PHONE_CHANGE
+  PASSWORD_RESET
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -97,6 +98,8 @@ model User {
   auditLogs      AuditLog[] @relation("AuditLogAdmin")
   adminSessions      AdminSession[]     @relation("AdminSessions")
   impersonationsAsSuperAdmin ImpersonationLog[] @relation("ImpersonationBySuperAdmin")
+
+  passwordHistory PasswordHistory[]
 
   @@map("users")
 }
@@ -235,6 +238,18 @@ model Merchant {
 // ALLOCATION — enveloppe virtuelle par catégorie | remainingAmount >= 0 (CHECK DB)
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@map("password_history")
+}
+
 model Allocation {
   id              String             @id @default(uuid())
   sponsorId       String
@@ -346,11 +361,13 @@ model OtpCode {
   phone     String
   purpose   OtpPurpose
   codeHash  String
+  email     String?
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime   @default(now())
 
   @@index([phone])
+  @@index([email])
   @@map("otp_codes")
 }
 

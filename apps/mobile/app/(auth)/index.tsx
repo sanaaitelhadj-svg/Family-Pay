@@ -164,6 +164,17 @@ export default function WelcomeScreen() {
           style={{ marginTop: 8 }}
         />
 
+        {isMerchant && (
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/forgot-password' as any)}
+            style={{ alignItems: 'center', paddingVertical: 10 }}
+          >
+            <Text style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}>
+              Mot de passe oublié ?
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           onPress={() => router.push('/(auth)/register' as any)}
           style={{ alignItems: 'center', paddingVertical: 14 }}

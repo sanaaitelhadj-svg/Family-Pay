@@ -129,6 +129,105 @@ authRouter.post('/merchant/login', wrap(async (req, res) => {
   res.json(result);
 }));
 
+
+authRouter.post('/merchant/forgot-password', wrap(async (req, res) => {
+  const bcrypt = await import('bcryptjs');
+  const { email } = req.body;
+  if (!email) { res.status(400).json({ message: 'Email requis' }); return; }
+
+  const user = await prisma.user.findFirst({
+    where: { email: email.trim().toLowerCase(), role: 'PARTNER', isActive: true },
+  });
+
+  if (!user) { res.json({ message: 'Si ce compte existe, un email a été envoyé' }); return; }
+
+  await prisma.otpCode.updateMany({
+    where: { email: email.toLowerCase(), purpose: 'PASSWORD_RESET', usedAt: null },
+    data:  { usedAt: new Date() },
+  });
+
+  const code     = Math.floor(100000 + Math.random() * 900000).toString();
+  const codeHash = await bcrypt.hash(code, 10);
+
+  await prisma.otpCode.create({
+    data: {
+      phone:     'email:' + email.toLowerCase(),
+      email:     email.toLowerCase(),
+      purpose:   'PASSWORD_RESET',
+      codeHash,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    },
+  });
+
+  await sendPasswordResetEmail(email.trim(), code);
+  res.json({ message: 'Si ce compte existe, un email a été envoyé' });
+}));
+
+authRouter.post('/merchant/reset-password', wrap(async (req, res) => {
+  const bcrypt = await import('bcryptjs');
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    res.status(400).json({ message: 'Email, code OTP et nouveau mot de passe requis' }); return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: 'PASSWORD_TOO_SHORT', message: 'Le mot de passe doit contenir au moins 8 caractères' }); return;
+  }
+
+  const otpRecord = await prisma.otpCode.findFirst({
+    where: { email: email.toLowerCase(), purpose: 'PASSWORD_RESET', usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!otpRecord) {
+    res.status(400).json({ error: 'OTP_INVALID', message: 'Code invalide ou expiré' }); return;
+  }
+
+  const valid = await bcrypt.compare(otp, otpRecord.codeHash);
+  if (!valid) {
+    res.status(400).json({ error: 'OTP_INVALID', message: 'Code incorrect' }); return;
+  }
+
+  await prisma.otpCode.update({ where: { id: otpRecord.id }, data: { usedAt: new Date() } });
+
+  const user = await prisma.user.findFirst({ where: { email: email.toLowerCase(), role: 'PARTNER' } });
+  if (!user) { res.status(404).json({ message: 'Compte introuvable' }); return; }
+
+  // Vérifier les 6 derniers mots de passe
+  const history = await prisma.passwordHistory.findMany({
+    where:   { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+    take:    6,
+  });
+
+  for (const h of history) {
+    const isSame = await bcrypt.compare(newPassword, h.passwordHash);
+    if (isSame) {
+      res.status(400).json({
+        error:   'PASSWORD_REUSED',
+        message: 'Ce mot de passe a déjà été utilisé récemment. Choisissez-en un nouveau.',
+      }); return;
+    }
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({ where: { id: user.id }, data: { password: newHash } });
+  await prisma.passwordHistory.create({ data: { userId: user.id, passwordHash: newHash } });
+
+  // Garder seulement les 10 derniers
+  const allHistory = await prisma.passwordHistory.findMany({
+    where:   { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (allHistory.length > 10) {
+    await prisma.passwordHistory.deleteMany({
+      where: { id: { in: allHistory.slice(10).map((h: any) => h.id) } },
+    });
+  }
+
+  res.json({ message: 'Mot de passe réinitialisé avec succès ✅' });
+}));
+
 authRouter.post('/beneficiary/login', wrap(async (req, res) => {
   const { phone } = RequestOtpSchema.parse({ ...req.body, purpose: 'LOGIN' });
   const result = await AuthService.loginBeneficiary(phone);
