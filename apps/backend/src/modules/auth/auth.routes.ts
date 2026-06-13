@@ -194,12 +194,10 @@ authRouter.post('/merchant/reset-password', wrap(async (req, res) => {
     res.status(400).json({ error: 'OTP_INVALID', message: 'Code incorrect' }); return;
   }
 
-  await prisma.otpCode.update({ where: { id: otpRecord.id }, data: { usedAt: new Date() } });
-
   const user = await prisma.user.findFirst({ where: { email: email.toLowerCase(), role: 'MERCHANT' } });
   if (!user) { res.status(404).json({ message: 'Compte introuvable' }); return; }
 
-  // Vérifier les 6 derniers mots de passe
+  // Vérifier les 6 derniers mots de passe AVANT de consommer l'OTP
   const history = await prisma.passwordHistory.findMany({
     where:   { userId: user.id },
     orderBy: { createdAt: 'desc' },
@@ -215,6 +213,9 @@ authRouter.post('/merchant/reset-password', wrap(async (req, res) => {
       }); return;
     }
   }
+
+  // OTP valide + mot de passe accepté → on consomme l'OTP
+  await prisma.otpCode.update({ where: { id: otpRecord.id }, data: { usedAt: new Date() } });
 
   const newHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({ where: { id: user.id }, data: { password: newHash } });
