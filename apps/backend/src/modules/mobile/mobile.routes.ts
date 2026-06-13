@@ -290,35 +290,36 @@ mobileRouter.get('/merchant/transactions', authenticate(['MERCHANT']), wrap(asyn
   const transactions = await prisma.transaction.findMany({
     where: { merchantId: req.user!.profileId },
     include: {
-      authorization: { include: { allocation: true } },
-      sponsor: { include: { user: true } },
+      authorization: {
+        include: {
+          allocation: true,
+          beneficiary: { include: { user: { select: { firstName: true, lastName: true } } } },
+        },
+      },
+      sponsor: {
+        include: {
+          user:  { select: { firstName: true, lastName: true } },
+          cards: { where: { isDefault: true }, take: 1 },
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });
 
-  // Récupérer le bénéficiaire via authorization → allocation
-  const result = await Promise.all(transactions.map(async t => {
-    const beneficiary = await prisma.beneficiary.findUnique({
-      where: { id: t.authorization.allocation.beneficiaryId },
-      include: { user: true },
-    });
+  res.json(transactions.map(t => {
+    const card = t.sponsor?.cards?.[0];
     return {
-      id:        t.id,
-      amount:    Number(t.amount),
-      category:  t.authorization.allocation.category,
-      status:    t.status,
-      createdAt: t.createdAt,
-      beneficiary: {
-        user: {
-          firstName: beneficiary?.user.firstName ?? '',
-          lastName:  beneficiary?.user.lastName  ?? '',
-        },
-      },
+      id:           t.id,
+      amount:       Number(t.amount),
+      category:     t.authorization?.allocation?.category ?? 'GENERAL',
+      status:       t.status,
+      createdAt:    t.createdAt,
+      beneficiary:  `${t.authorization?.beneficiary?.user?.firstName ?? ''} ${t.authorization?.beneficiary?.user?.lastName ?? ''}`.trim(),
+      sponsorName:  `${t.sponsor?.user?.firstName ?? ''} ${t.sponsor?.user?.lastName ?? ''}`.trim(),
+      card:         card ? { brand: card.brand, maskedNumber: card.maskedNumber, cardHolder: card.cardHolder } : null,
     };
   }));
-
-  res.json(result);
 }));
 
 // GET /mobile/merchant/profile
