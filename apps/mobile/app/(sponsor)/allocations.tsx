@@ -256,6 +256,13 @@ export default function AllocationsScreen() {
                               </Text>
                             </View>
                           )}
+                          {a.renewalPeriod && (
+                            <View style={styles.renewalBadge}>
+                              <Text style={styles.renewalBadgeText}>
+                                🔄 Renouvellement {a.renewalPeriod === 'DAILY' ? 'quotidien' : a.renewalPeriod === 'WEEKLY' ? 'hebdomadaire' : a.renewalPeriod === 'MONTHLY' ? 'mensuel' : a.renewalPeriod === 'QUARTERLY' ? 'trimestriel' : 'annuel'}
+                              </Text>
+                            </View>
+                          )}
                           {a.expiresAt && (
                             <Text style={styles.expiry}>⏳ Expire le {new Date(a.expiresAt).toLocaleDateString('fr-FR')}</Text>
                           )}
@@ -337,4 +344,6 @@ const styles = StyleSheet.create({
   expiry:        { fontSize: 11, color: Colors.textMuted, marginTop: 6 },
   thresholdBadge: { marginTop: 6, backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BFDBFE' },
   thresholdBadgeText: { fontSize: 11, color: '#1D4ED8', fontWeight: '600' },
+  renewalBadge: { marginTop: 6, backgroundColor: '#F0FDF4', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BBF7D0' },
+  renewalBadgeText: { fontSize: 11, color: '#15803D', fontWeight: '600' },
 });
