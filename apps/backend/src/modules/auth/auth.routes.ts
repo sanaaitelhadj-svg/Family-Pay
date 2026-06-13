@@ -138,7 +138,7 @@ authRouter.post('/merchant/forgot-password', wrap(async (req, res) => {
   if (!email) { res.status(400).json({ message: 'Email requis' }); return; }
 
   const user = await prisma.user.findFirst({
-    where: { email: email.trim().toLowerCase(), role: 'PARTNER', isActive: true },
+    where: { email: email.trim().toLowerCase(), role: 'MERCHANT', isActive: true },
   });
 
   if (!user) { res.json({ message: 'Si ce compte existe, un email a été envoyé' }); return; }
@@ -192,7 +192,7 @@ authRouter.post('/merchant/reset-password', wrap(async (req, res) => {
 
   await prisma.otpCode.update({ where: { id: otpRecord.id }, data: { usedAt: new Date() } });
 
-  const user = await prisma.user.findFirst({ where: { email: email.toLowerCase(), role: 'PARTNER' } });
+  const user = await prisma.user.findFirst({ where: { email: email.toLowerCase(), role: 'MERCHANT' } });
   if (!user) { res.status(404).json({ message: 'Compte introuvable' }); return; }
 
   // Vérifier les 6 derniers mots de passe
