@@ -54,11 +54,7 @@ export default function AllocationsScreen() {
     onError:    (e: any) => Alert.alert('Erreur', e?.response?.data?.message ?? 'Erreur renouvellement'),
   });
 
-  const renewMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/mobile/sponsor/allocations/${id}/renew`),
-    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ['allocations'] }); Alert.alert('✅', 'Allocation renouvelée avec succès'); },
-    onError:    (e: any) => Alert.alert('Erreur', e?.response?.data?.message ?? 'Erreur renouvellement'),
-  });
+
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/mobile/sponsor/allocations/${id}`),
