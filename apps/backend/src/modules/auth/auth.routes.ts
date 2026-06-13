@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma.js';
 import { sendPasswordResetEmail } from '../../lib/email.js';
 import { AuthService } from './auth.service.js';
@@ -134,7 +135,6 @@ authRouter.post('/merchant/login', wrap(async (req, res) => {
 
 authRouter.post('/merchant/forgot-password', wrap(async (req, res) => {
   try {
-    const bcrypt = await import('bcryptjs');
     const { email } = req.body;
     if (!email) { res.status(400).json({ message: 'Email requis' }); return; }
 
@@ -171,7 +171,6 @@ authRouter.post('/merchant/forgot-password', wrap(async (req, res) => {
 }));
 
 authRouter.post('/merchant/reset-password', wrap(async (req, res) => {
-  const bcrypt = await import('bcryptjs');
   const { email, otp, newPassword } = req.body;
 
   if (!email || !otp || !newPassword) {
