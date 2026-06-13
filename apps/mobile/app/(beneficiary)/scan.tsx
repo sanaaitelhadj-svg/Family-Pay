@@ -25,6 +25,7 @@ export default function ScanScreen() {
   const [confirming, setConfirming] = useState(false);
   const [result, setResult]       = useState<{ ok: boolean; message: string } | null>(null);
   const [scanned, setScanned]     = useState(false);
+  const [manualMode, setManualMode] = useState(Platform.OS === 'web');
 
   // ── Preview (valider le QR sans débiter) ─────────────────────────────
   const handlePreview = async (tok: string) => {
@@ -77,8 +78,24 @@ export default function ScanScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>💳 Payer chez un marchand</Text>
 
-      {/* Sur web ou en fallback : saisie manuelle du token */}
-      {Platform.OS === 'web' && (
+      {/* Toggle scanner / saisie manuelle */}
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={[styles.toggleBtn, !manualMode && styles.toggleBtnActive]}
+          onPress={() => setManualMode(false)}
+        >
+          <Text style={[styles.toggleText, !manualMode && styles.toggleTextActive]}>📷 Scanner</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleBtn, manualMode && styles.toggleBtnActive]}
+          onPress={() => setManualMode(true)}
+        >
+          <Text style={[styles.toggleText, manualMode && styles.toggleTextActive]}>⌨️ Token manuel</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Saisie manuelle du token */}
+      {manualMode && (
         <View style={styles.webSection}>
           <Text style={styles.label}>Token du QR marchand</Text>
           <View style={styles.inputRow}>
@@ -102,8 +119,8 @@ export default function ScanScreen() {
         </View>
       )}
 
-      {/* Caméra native */}
-      {Platform.OS !== 'web' && renderCamera()}
+      {/* Caméra */}
+      {!manualMode && renderCamera()}
 
       {/* Modal aperçu paiement */}
       <Modal visible={!!preview} transparent animationType="slide">
@@ -208,6 +225,11 @@ const styles = StyleSheet.create({
   scanBtn:       { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: 16, justifyContent: 'center' },
   scanBtnText:   { color: '#fff', fontWeight: '700', fontSize: 14 },
   hint:          { fontSize: 11, color: Colors.textMuted, marginTop: 8 },
+  toggleRow:     { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: Radius.full, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: Colors.border },
+  toggleBtn:     { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.full },
+  toggleBtnActive: { backgroundColor: Colors.primary },
+  toggleText:    { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  toggleTextActive: { color: '#fff' },
   camera:        { flex: 1 },
   cameraOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   frame:         { width: 240, height: 240, borderWidth: 2, borderColor: '#fff', borderRadius: 16 },

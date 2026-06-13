@@ -13,7 +13,7 @@ type Transaction = {
   category: string;
   merchant: { user: { firstName: string; lastName: string }; businessName?: string };
   createdAt: string;
-  status: 'SUCCESS' | 'FAILED' | 'PENDING';
+  status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'COMPLETED';
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -32,7 +32,7 @@ export default function TransactionsScreen() {
     },
   });
 
-  const filtered = (data ?? []).filter(t => filter === 'ALL' || t.status === filter);
+  const filtered = (data ?? []).filter(t => filter === 'ALL' || (filter === 'SUCCESS' && (t.status === 'SUCCESS' || t.status === 'COMPLETED')) || t.status === filter);
 
   if (isLoading) {
     return <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>;
@@ -88,7 +88,15 @@ export default function TransactionsScreen() {
                   <Text style={[styles.amount, item.status === 'FAILED' && styles.amountFailed]}>
                     -{item.amount.toLocaleString('fr-MA')} MAD
                   </Text>
-                  <View style={[styles.statusDot, item.status === 'SUCCESS' ? styles.dotSuccess : item.status === 'FAILED' ? styles.dotFailed : styles.dotPending]} />
+                  <View style={[styles.statusBadge,
+                    (item.status === 'SUCCESS' || item.status === 'COMPLETED') ? styles.badgeSuccess :
+                    item.status === 'FAILED' ? styles.badgeFailed : styles.badgePending]}>
+                    <Text style={[styles.statusBadgeText,
+                      (item.status === 'SUCCESS' || item.status === 'COMPLETED') ? { color: '#166534' } :
+                      item.status === 'FAILED' ? { color: '#991B1B' } : { color: '#92400E' }]}>
+                      {(item.status === 'SUCCESS' || item.status === 'COMPLETED') ? '✓ Réussi' : item.status === 'FAILED' ? '✗ Échoué' : '⏳ En attente'}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -116,6 +124,11 @@ const styles = StyleSheet.create({
   date: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   amount: { fontSize: 15, fontWeight: '700', color: Colors.error },
   amountFailed: { textDecorationLine: 'line-through', color: Colors.textMuted },
+  statusBadge:      { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
+  statusBadgeText:  { fontSize: 11, fontWeight: '700' },
+  badgeSuccess:     { backgroundColor: '#DCFCE7' },
+  badgeFailed:      { backgroundColor: '#FEE2E2' },
+  badgePending:     { backgroundColor: '#FEF3C7' },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
   dotSuccess: { backgroundColor: Colors.success },
   dotFailed: { backgroundColor: Colors.error },
