@@ -1050,7 +1050,7 @@ mobileRouter.post('/sponsor/allocations/:allocationId/renew', authenticate, wrap
     data: {
       type:    'ALLOCATION_RENEWED',
       title:   'Allocation renouvelée manuellement',
-      message: `Allocation ${allocationId} renouvelée manuellement par le sponsor`,
+      body: `Allocation ${allocationId} renouvelée manuellement par le sponsor`,
       data:    JSON.stringify({ allocationId, sponsorId: sponsor.id }),
     },
   });
@@ -1104,7 +1104,7 @@ mobileRouter.post('/sponsor/allocations/:allocationId/renew', authenticate, wrap
     data: {
       type:    'ALLOCATION_RENEWED',
       title:   'Allocation renouvelée manuellement',
-      message: `Allocation ${allocationId} renouvelée manuellement par le sponsor`,
+      body: `Allocation ${allocationId} renouvelée manuellement par le sponsor`,
       data:    JSON.stringify({ allocationId, sponsorId: sponsor.id }),
     },
   });
