@@ -161,7 +161,13 @@ authRouter.post('/merchant/forgot-password', wrap(async (req, res) => {
     },
   });
 
-  await sendPasswordResetEmail(email.trim(), code);
+  try {
+    await sendPasswordResetEmail(email.trim(), code);
+  } catch (emailErr: any) {
+    console.error('[forgot-password] SMTP error:', emailErr?.message ?? emailErr);
+    // On retourne quand même 200 pour ne pas exposer si le compte existe
+    res.json({ message: 'Si ce compte existe, un email a été envoyé' }); return;
+  }
   res.json({ message: 'Si ce compte existe, un email a été envoyé' });
 }));
 
