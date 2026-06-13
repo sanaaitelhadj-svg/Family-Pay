@@ -1051,7 +1051,7 @@ mobileRouter.post('/sponsor/allocations/:allocationId/renew', authenticate, wrap
       type:    'ALLOCATION_RENEWED',
       title:   'Allocation renouvelée manuellement',
       body: `Allocation ${allocationId} renouvelée manuellement par le sponsor`,
-      data:    JSON.stringify({ allocationId, sponsorId: sponsor.id }),
+      entityId: allocationId,
     },
   });
 
@@ -1059,56 +1059,5 @@ mobileRouter.post('/sponsor/allocations/:allocationId/renew', authenticate, wrap
 }));
 
 
-// ── Renouvellement manuel d'une allocation ────────────────────────────────
-mobileRouter.post('/sponsor/allocations/:allocationId/renew', authenticate, wrap(async (req, res) => {
-  const userId       = (req as any).user?.userId;
-  const allocationId = req.params['allocationId'] as string;
 
-  const sponsor = await prisma.sponsor.findUnique({ where: { userId } });
-  if (!sponsor) { res.status(403).json({ message: 'Sponsor introuvable' }); return; }
-
-  const allocation = await prisma.allocation.findFirst({
-    where: { id: allocationId, sponsorId: sponsor.id },
-  });
-  if (!allocation) { res.status(404).json({ message: 'Allocation introuvable' }); return; }
-  if (!allocation.renewalPeriod) {
-    res.status(400).json({ message: 'Cette allocation n\'a pas de période de renouvellement' }); return;
-  }
-
-  const addPeriod = (date: Date, period: string): Date => {
-    const d = new Date(date);
-    switch (period) {
-      case 'DAILY':     d.setDate(d.getDate() + 1); break;
-      case 'WEEKLY':    d.setDate(d.getDate() + 7); break;
-      case 'MONTHLY':   d.setMonth(d.getMonth() + 1); break;
-      case 'QUARTERLY': d.setMonth(d.getMonth() + 3); break;
-      case 'ANNUAL':    d.setFullYear(d.getFullYear() + 1); break;
-    }
-    return d;
-  };
-
-  const newExpiresAt = allocation.expiresAt
-    ? addPeriod(allocation.expiresAt, allocation.renewalPeriod)
-    : addPeriod(new Date(), allocation.renewalPeriod);
-
-  const updated = await prisma.allocation.update({
-    where: { id: allocationId },
-    data: {
-      remainingAmount: allocation.limitAmount,
-      expiresAt:       newExpiresAt,
-      status:          'ACTIVE',
-    },
-  });
-
-  await prisma.adminNotification.create({
-    data: {
-      type:    'ALLOCATION_RENEWED',
-      title:   'Allocation renouvelée manuellement',
-      body: `Allocation ${allocationId} renouvelée manuellement par le sponsor`,
-      data:    JSON.stringify({ allocationId, sponsorId: sponsor.id }),
-    },
-  });
-
-  res.json({ message: 'Allocation renouvelée ✅', allocation: updated });
-}));
 
