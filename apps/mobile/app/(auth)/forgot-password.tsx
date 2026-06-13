@@ -63,9 +63,14 @@ export default function ForgotPasswordScreen() {
         otp,
         newPassword,
       });
-      Alert.alert('✅ Succès', 'Mot de passe réinitialisé. Vous pouvez vous connecter.', [
-        { text: 'OK', onPress: () => router.replace('/(auth)' as any) },
-      ]);
+      if (Platform.OS === 'web') {
+        window.alert('✅ Mot de passe réinitialisé avec succès ! Vous allez être redirigé.');
+        router.replace('/(auth)' as any);
+      } else {
+        Alert.alert('✅ Succès', 'Mot de passe réinitialisé. Vous pouvez vous connecter.', [
+          { text: 'OK', onPress: () => router.replace('/(auth)' as any) },
+        ]);
+      }
     } catch (e: any) {
       const code = e?.response?.data?.error;
       const msg  = e?.response?.data?.message ?? 'Erreur';
