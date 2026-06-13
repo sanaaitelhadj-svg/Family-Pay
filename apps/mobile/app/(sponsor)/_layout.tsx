@@ -22,6 +22,7 @@ export default function SponsorLayout() {
       <Tabs.Screen name="allocations"   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💰" label="Allocations"  focused={focused} /> }} />
       <Tabs.Screen name="beneficiaries" options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👥" label="Bénéficiaires" focused={focused} /> }} />
       <Tabs.Screen name="merchants"     options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏬" label="Marchands"    focused={focused} /> }} />
+      <Tabs.Screen name="transactions"   options={{ tabBarIcon: ({ focused }) => <TabIcon icon="📋" label="Transactions" focused={focused} /> }} />
       <Tabs.Screen name="profile"       options={{ tabBarIcon: ({ focused }) => <TabIcon icon="👤" label="Profil"       focused={focused} /> }} />
 
       {/* Écrans sans onglet */}
