@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Share, RefreshControl, Alert,
+  TextInput, ActivityIndicator, Share, RefreshControl, Alert, Platform,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import QRCode from 'react-native-qrcode-svg';
@@ -58,7 +58,7 @@ export default function MerchantHomeScreen() {
   };
 
   const handleShare = async () => {
-    await Share.share({ message: `FamilyPay — QR de paiement pour ${businessName}: ${qrData}` });
+    await Share.share({ message: `FamilyPay Token: ${qrToken}` });
   };
 
   if (isLoading) {
@@ -137,6 +137,13 @@ export default function MerchantHomeScreen() {
             </View>
             <Text style={styles.qrAmount}>{parseFloat(amount).toLocaleString('fr-MA')} MAD</Text>
             <Text style={styles.qrHint}>Le bénéficiaire scanne ce code pour valider le paiement</Text>
+            {Platform.OS === 'web' && (
+              <View style={{ width: '100%', backgroundColor: Colors.bg, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: Colors.border }}>
+                <Text selectable style={{ fontSize: 10, color: Colors.textMuted, fontFamily: 'monospace', textAlign: 'center' }}>
+                  {qrToken}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.qrActions}>
               <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
