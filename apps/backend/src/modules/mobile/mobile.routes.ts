@@ -422,6 +422,106 @@ mobileRouter.patch('/sponsor/authorizations/:authorizationId', authenticate(['SP
   }
 }));
 
+// GET /mobile/sponsor/transactions
+mobileRouter.get('/sponsor/transactions', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+
+  const sponsor = await prisma.sponsor.findUnique({
+    where: { id: sponsorId },
+    include: { cards: { where: { isDefault: true }, take: 1 } },
+  });
+  if (!sponsor) { res.status(404).json({ error: 'Sponsor introuvable' }); return; }
+
+  const transactions = await prisma.transaction.findMany({
+    where: { sponsorId },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+    include: {
+      merchant: { include: { user: { select: { firstName: true, lastName: true } } } },
+      authorization: {
+        include: {
+          allocation:  { select: { category: true, limitAmount: true } },
+          beneficiary: { include: { user: { select: { firstName: true, lastName: true } } } },
+        },
+      },
+    },
+  });
+
+  const card = sponsor.cards?.[0];
+
+  res.json(transactions.map(t => ({
+    id:              t.id,
+    amount:          Number(t.amount),
+    status:          t.status,
+    createdAt:       t.createdAt,
+    category:        t.authorization?.allocation?.category ?? 'GENERAL',
+    allocationLimit: Number(t.authorization?.allocation?.limitAmount ?? 0),
+    merchantName:    (t.merchant as any)?.businessName ?? `${t.merchant?.user?.firstName ?? ''} ${t.merchant?.user?.lastName ?? ''}`.trim(),
+    beneficiary:     `${(t.authorization?.beneficiary as any)?.user?.firstName ?? ''} ${(t.authorization?.beneficiary as any)?.user?.lastName ?? ''}`.trim(),
+    isMinor:         (t.authorization?.beneficiary as any)?.isMinor ?? false,
+    card:            card ? { brand: card.brand, maskedNumber: card.maskedNumber, cardHolder: card.cardHolder } : null,
+  })));
+}));
+
+// GET /mobile/sponsor/pending-authorizations
+mobileRouter.get('/sponsor/pending-authorizations', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId = req.user!.profileId;
+
+  const pending = await prisma.authorization.findMany({
+    where: { allocation: { sponsorId }, status: 'PENDING_REVIEW' },
+    include: {
+      allocation:  { select: { category: true, limitAmount: true, remainingAmount: true } },
+      beneficiary: { include: { user: { select: { firstName: true, lastName: true } } } },
+      merchant:    { include: { user: { select: { firstName: true, lastName: true } } } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+
+  res.json(pending.map(a => ({
+    id:           a.id,
+    amount:       Number(a.amount),
+    createdAt:    a.createdAt,
+    category:     a.allocation?.category ?? 'GENERAL',
+    merchantName: (a.merchant as any)?.businessName ?? `${a.merchant?.user?.firstName ?? ''} ${a.merchant?.user?.lastName ?? ''}`.trim(),
+    beneficiary:  `${a.beneficiary?.user?.firstName ?? ''} ${a.beneficiary?.user?.lastName ?? ''}`.trim(),
+  })));
+}));
+
+// PATCH /mobile/sponsor/authorizations/:authorizationId — approuver ou rejeter
+mobileRouter.patch('/sponsor/authorizations/:authorizationId', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const sponsorId       = req.user!.profileId;
+  const authorizationId = req.params['authorizationId'] as string;
+  const { action, rejectionReason } = req.body as { action: 'approve' | 'reject'; rejectionReason?: string };
+
+  if (!['approve', 'reject'].includes(action)) {
+    res.status(400).json({ error: 'Action doit être "approve" ou "reject"' }); return;
+  }
+
+  const auth = await prisma.authorization.findFirst({
+    where: { id: authorizationId, allocation: { sponsorId }, status: 'PENDING_REVIEW' },
+    include: { allocation: true },
+  });
+  if (!auth) { res.status(404).json({ error: 'Autorisation introuvable ou déjà traitée' }); return; }
+
+  const { randomUUID } = await import('crypto');
+
+  if (action === 'approve') {
+    await prisma.authorization.update({ where: { id: authorizationId }, data: { status: 'APPROVED' } });
+    await prisma.transaction.create({
+      data: { authorizationId, sponsorId, merchantId: auth.merchantId, amount: auth.amount, pspTransactionId: randomUUID(), status: 'COMPLETED' },
+    });
+    await prisma.allocation.update({ where: { id: auth.allocationId }, data: { remainingAmount: { decrement: auth.amount } } });
+    res.json({ status: 'APPROVED', message: 'Paiement approuvé ✅' });
+  } else {
+    await prisma.authorization.update({ where: { id: authorizationId }, data: { status: 'REJECTED', rejectionReason: rejectionReason ?? 'Refusé par le sponsor' } });
+    await prisma.transaction.create({
+      data: { authorizationId, sponsorId, merchantId: auth.merchantId, amount: auth.amount, pspTransactionId: randomUUID(), status: 'FAILED' },
+    });
+    res.json({ status: 'REJECTED', message: 'Paiement refusé ❌' });
+  }
+}));
+
 // GET /mobile/merchant/profile
 mobileRouter.get('/merchant/profile', authenticate(['MERCHANT']), wrap(async (req, res) => {
   const merchant = await prisma.merchant.findUnique({
