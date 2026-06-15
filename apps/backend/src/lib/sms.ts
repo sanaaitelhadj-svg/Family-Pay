@@ -4,7 +4,7 @@ export interface SmsProvider {
 
 class ConsoleSmsProvider implements SmsProvider {
   async send(phone: string, code: string): Promise<void> {
-    console.log(`[SMS] ${phone} → OTP: ${code}`);
+    console.log(`[SMS] ${phone} → OTP: ${'*'.repeat(code.length)}`);
   }
 }
 

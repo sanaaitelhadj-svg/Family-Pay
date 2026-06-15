@@ -35,7 +35,7 @@ export class QrService {
     const payload: QrPayload = { merchantId, category, amount, nonce, qrCodeId: created.id };
     const token = jwt.sign(
       payload as object,
-      process.env.JWT_SECRET ?? 'dev-secret',
+      process.env.JWT_SECRET!,
       { expiresIn: 60 },
     );
 
@@ -49,7 +49,7 @@ export class QrService {
     try {
       return jwt.verify(
         token,
-        process.env.JWT_SECRET ?? 'dev-secret',
+        process.env.JWT_SECRET!,
       ) as unknown as QrPayload;
     } catch {
       throw new AppError('QR code expiré ou invalide', 400, 'QR_INVALID');

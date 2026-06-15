@@ -7,6 +7,13 @@ const PORT = parseInt(process.env.PORT ?? '3000', 10);
 
 const app = createApp();
 
+
+// Guard: JWT_SECRET obligatoire en production
+if (!process.env.JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET non défini — arrêt du serveur');
+  process.exit(1);
+}
+
 app.listen(PORT, () => {
   logger.info(`Backend listening on port ${PORT}`);
   seedRoles();
