@@ -1100,12 +1100,37 @@ mobileRouter.post('/beneficiary/pay/preview', authenticate(['BENEFICIARY']), wra
     where: { beneficiaryId, category: qr.category, status: 'ACTIVE', remainingAmount: { gte: qr.amount } },
   });
   if (!allocation) {
+    // Logger la tentative échouée dès la preview
+    const anyAlloc = await prisma.allocation.findFirst({
+      where: { beneficiaryId, category: qr.category },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (anyAlloc) {
+      try {
+        const { randomUUID } = await import('crypto');
+        const failedAuth = await prisma.authorization.create({
+          data: { allocationId: anyAlloc.id, beneficiaryId, merchantId: qr.merchantId, amount: qr.amount, status: 'REJECTED', rejectionReason: 'INSUFFICIENT_FUNDS' },
+        });
+        await prisma.transaction.create({
+          data: { authorizationId: failedAuth.id, sponsorId: anyAlloc.sponsorId, merchantId: qr.merchantId, amount: qr.amount, pspTransactionId: randomUUID(), status: 'FAILED' },
+        });
+      } catch (err: any) { console.error('[preview:logFailed]', err?.message ?? err); }
+    }
     res.status(403).json({ error: 'NO_ALLOCATION', message: `Aucune allocation active en ${qr.category} avec fonds suffisants` }); return;
   }
 
   // Vérifier si l'allocation est limitée à certains marchands
   const allowedIds = allocation.allowedMerchantIds as string[] | null;
   if (allowedIds && allowedIds.length > 0 && !allowedIds.includes(qr.merchantId)) {
+    try {
+      const { randomUUID } = await import('crypto');
+      const failedAuth = await prisma.authorization.create({
+        data: { allocationId: allocation.id, beneficiaryId, merchantId: qr.merchantId, amount: qr.amount, status: 'REJECTED', rejectionReason: 'MERCHANT_NOT_ALLOWED' },
+      });
+      await prisma.transaction.create({
+        data: { authorizationId: failedAuth.id, sponsorId: allocation.sponsorId, merchantId: qr.merchantId, amount: qr.amount, pspTransactionId: randomUUID(), status: 'FAILED' },
+      });
+    } catch (err: any) { console.error('[preview:logFailed:merchant]', err?.message ?? err); }
     res.status(403).json({ error: 'MERCHANT_NOT_ALLOWED', message: `Ce marchand n'est pas autorisé par cette allocation.` }); return;
   }
 
