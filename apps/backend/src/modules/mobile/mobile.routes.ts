@@ -368,7 +368,7 @@ mobileRouter.get('/sponsor/pending-authorizations', authenticate(['SPONSOR']), w
   const sponsorId = req.user!.profileId;
 
   const pending = await prisma.authorization.findMany({
-    where: { allocation: { sponsorId }, status: 'PENDING_REVIEW' },
+    where: { allocation: { sponsorId }, status: 'PENDING_REVIEW', transaction: null },
     include: {
       allocation:  { select: { category: true, limitAmount: true, remainingAmount: true } },
       beneficiary: { include: { user: { select: { firstName: true, lastName: true } } } },
@@ -404,17 +404,17 @@ mobileRouter.patch('/sponsor/authorizations/:authorizationId', authenticate(['SP
   });
   if (!auth) { res.status(404).json({ error: 'Autorisation introuvable ou déjà traitée' }); return; }
 
+  // Authorization est INSERT ONLY (trigger DB) → on ne fait PAS .update()
+  // On crée juste la transaction avec le bon statut
   const { randomUUID } = await import('crypto');
 
   if (action === 'approve') {
-    await prisma.authorization.update({ where: { id: authorizationId }, data: { status: 'APPROVED' } });
     await prisma.transaction.create({
       data: { authorizationId, sponsorId, merchantId: auth.merchantId, amount: auth.amount, pspTransactionId: randomUUID(), status: 'COMPLETED' },
     });
     await prisma.allocation.update({ where: { id: auth.allocationId }, data: { remainingAmount: { decrement: auth.amount } } });
     res.json({ status: 'APPROVED', message: 'Paiement approuvé ✅' });
   } else {
-    await prisma.authorization.update({ where: { id: authorizationId }, data: { status: 'REJECTED', rejectionReason: rejectionReason ?? 'Refusé par le sponsor' } });
     await prisma.transaction.create({
       data: { authorizationId, sponsorId, merchantId: auth.merchantId, amount: auth.amount, pspTransactionId: randomUUID(), status: 'FAILED' },
     });
@@ -468,7 +468,7 @@ mobileRouter.get('/sponsor/pending-authorizations', authenticate(['SPONSOR']), w
   const sponsorId = req.user!.profileId;
 
   const pending = await prisma.authorization.findMany({
-    where: { allocation: { sponsorId }, status: 'PENDING_REVIEW' },
+    where: { allocation: { sponsorId }, status: 'PENDING_REVIEW', transaction: null },
     include: {
       allocation:  { select: { category: true, limitAmount: true, remainingAmount: true } },
       beneficiary: { include: { user: { select: { firstName: true, lastName: true } } } },
@@ -504,17 +504,17 @@ mobileRouter.patch('/sponsor/authorizations/:authorizationId', authenticate(['SP
   });
   if (!auth) { res.status(404).json({ error: 'Autorisation introuvable ou déjà traitée' }); return; }
 
+  // Authorization est INSERT ONLY (trigger DB) → on ne fait PAS .update()
+  // On crée juste la transaction avec le bon statut
   const { randomUUID } = await import('crypto');
 
   if (action === 'approve') {
-    await prisma.authorization.update({ where: { id: authorizationId }, data: { status: 'APPROVED' } });
     await prisma.transaction.create({
       data: { authorizationId, sponsorId, merchantId: auth.merchantId, amount: auth.amount, pspTransactionId: randomUUID(), status: 'COMPLETED' },
     });
     await prisma.allocation.update({ where: { id: auth.allocationId }, data: { remainingAmount: { decrement: auth.amount } } });
     res.json({ status: 'APPROVED', message: 'Paiement approuvé ✅' });
   } else {
-    await prisma.authorization.update({ where: { id: authorizationId }, data: { status: 'REJECTED', rejectionReason: rejectionReason ?? 'Refusé par le sponsor' } });
     await prisma.transaction.create({
       data: { authorizationId, sponsorId, merchantId: auth.merchantId, amount: auth.amount, pspTransactionId: randomUUID(), status: 'FAILED' },
     });
@@ -1143,7 +1143,7 @@ mobileRouter.post('/beneficiary/pay/confirm', authenticate(['BENEFICIARY']), wra
       await prisma.transaction.create({
         data: { authorizationId: failedAuth.id, sponsorId, merchantId: qr.merchantId, amount: qr.amount, pspTransactionId: randomUUID(), status: 'FAILED' },
       });
-    } catch (_) { /* best-effort, ne bloque pas */ }
+    } catch (err: any) { console.error('[logFailed]', err?.message ?? err); }
   };
 
   const allocation = await prisma.allocation.findFirst({
@@ -1167,7 +1167,22 @@ mobileRouter.post('/beneficiary/pay/confirm', authenticate(['BENEFICIARY']), wra
     res.status(403).json({ error: 'MERCHANT_NOT_ALLOWED', message: "Ce marchand n'est pas autorisé par cette allocation." }); return;
   }
 
-  if (allocation.requiresApproval) {
+  // Forcer approbation pour les mineurs même si l'allocation dit false
+  const benefForMinorCheck = await prisma.beneficiary.findUnique({
+    where: { id: beneficiaryId },
+    select: { isMinor: true, dateOfBirth: true },
+  });
+  const calcIsMinorNow = (dob: Date | null): boolean => {
+    if (!dob) return false;
+    const today = new Date(); let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    return age < 18;
+  };
+  const isMinorBenef = benefForMinorCheck?.isMinor || calcIsMinorNow(benefForMinorCheck?.dateOfBirth ?? null);
+  const needsApproval = allocation.requiresApproval || isMinorBenef;
+
+  if (needsApproval) {
     const authorization = await prisma.authorization.create({
       data: { allocationId: allocation.id, beneficiaryId, merchantId: qr.merchantId, amount: qr.amount, status: 'PENDING_REVIEW' },
     });
