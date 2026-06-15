@@ -1250,7 +1250,7 @@ mobileRouter.post('/beneficiary/pay/confirm', authenticate(['BENEFICIARY']), wra
         const merchantName = merchant?.businessName ?? 'un marchand';
         await sendExpoPush(
           sponsorUser.user.expoPushToken,
-          '⏳ Paiement en attente d'approbation',
+          "⏳ Paiement en attente d'approbation",
           `${benefName} souhaite payer ${Number(qr.amount).toLocaleString('fr-MA')} MAD chez ${merchantName}`,
           { type: 'PENDING_REVIEW', authorizationId: authorization.id }
         );
