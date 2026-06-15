@@ -83,9 +83,10 @@ model User {
   isFirstLogin  Boolean   @default(true)
   cndpConsentAt DateTime
   isVerified    Boolean  @default(false)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive       Boolean  @default(true)
+  expoPushToken  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   sponsor     Sponsor?
   beneficiary Beneficiary?

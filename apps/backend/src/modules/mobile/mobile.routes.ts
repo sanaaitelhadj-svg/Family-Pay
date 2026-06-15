@@ -10,6 +10,18 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<v
 
 export const mobileRouter = Router();
 
+// Helper: envoyer une push notification Expo
+async function sendExpoPush(pushToken: string, title: string, body: string, data?: Record<string, any>) {
+  if (!pushToken.startsWith('ExponentPushToken')) return;
+  try {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ to: pushToken, title, body, data: data ?? {}, sound: 'default', priority: 'high' }),
+    });
+  } catch (err: any) { console.error('[sendExpoPush]', err?.message); }
+}
+
 /* ═══════════════════════════════════════════════
    SPONSOR
 ══════════════════════════════════════════════════ */
@@ -996,6 +1008,15 @@ mobileRouter.patch('/sponsor/cards/:cardId/default', authenticate(['SPONSOR']), 
 }));
 
 // ── Sponsor: demander changement téléphone ────────────────────────────────
+// POST /mobile/sponsor/push-token — enregistrer le token Expo
+mobileRouter.post('/sponsor/push-token', authenticate(['SPONSOR']), wrap(async (req, res) => {
+  const userId = (req as any).user?.userId;
+  const { token } = req.body as { token: string };
+  if (!token) { res.status(400).json({ error: 'Token requis' }); return; }
+  await prisma.user.update({ where: { id: userId }, data: { expoPushToken: token } });
+  res.json({ ok: true });
+}));
+
 mobileRouter.post('/sponsor/phone/change-request', authenticate(['SPONSOR']), wrap(async (req, res) => {
   const { newPhone } = req.body;
   if (!newPhone) { res.status(400).json({ message: 'Numéro requis' }); return; }
@@ -1212,6 +1233,30 @@ mobileRouter.post('/beneficiary/pay/confirm', authenticate(['BENEFICIARY']), wra
       data: { allocationId: allocation.id, beneficiaryId, merchantId: qr.merchantId, amount: qr.amount, status: 'PENDING_REVIEW' },
     });
     await prisma.qrCode.update({ where: { token }, data: { usedAt: new Date(), authorizationId: authorization.id } });
+
+    // Notifier le sponsor
+    try {
+      const sponsorUser = await prisma.sponsor.findUnique({
+        where: { id: allocation.sponsorId },
+        include: { user: { select: { expoPushToken: true, firstName: true } } },
+      });
+      const benefUser = await prisma.beneficiary.findUnique({
+        where: { id: beneficiaryId },
+        include: { user: { select: { firstName: true } } },
+      });
+      if (sponsorUser?.user?.expoPushToken) {
+        const merchant = await prisma.merchant.findUnique({ where: { id: qr.merchantId }, select: { businessName: true } });
+        const benefName = benefUser?.user?.firstName ?? 'Un bénéficiaire';
+        const merchantName = merchant?.businessName ?? 'un marchand';
+        await sendExpoPush(
+          sponsorUser.user.expoPushToken,
+          '⏳ Paiement en attente d'approbation',
+          `${benefName} souhaite payer ${Number(qr.amount).toLocaleString('fr-MA')} MAD chez ${merchantName}`,
+          { type: 'PENDING_REVIEW', authorizationId: authorization.id }
+        );
+      }
+    } catch (err: any) { console.error('[notif:pending]', err?.message); }
+
     res.json({ status: 'PENDING_REVIEW', message: "Paiement en attente d'approbation du sponsor", authorizationId: authorization.id });
     return;
   }

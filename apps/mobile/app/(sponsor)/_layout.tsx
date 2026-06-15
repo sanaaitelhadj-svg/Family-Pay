@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/theme';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 function TabIcon({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
   return (
@@ -12,6 +13,7 @@ function TabIcon({ icon, label, focused }: { icon: string; label: string; focuse
 }
 
 export default function SponsorLayout() {
+  usePushNotifications();
   return (
     <Tabs screenOptions={{
       headerShown: false,
