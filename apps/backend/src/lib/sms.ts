@@ -22,9 +22,9 @@ class TwilioSmsProvider implements SmsProvider {
   async send(phone: string, code: string): Promise<void> {
     const url = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`;
     const body = new URLSearchParams({
-      To: phone,
-      From: this.from,
-      Body: `Votre code FamilyPay : ${code}. Valable 5 minutes.`,
+      To: `whatsapp:${phone}`,
+      From: `whatsapp:${this.from}`,
+      Body: `🔐 Votre code FamilyPay : *${code}*\n\nValable 5 minutes. Ne le partagez avec personne.`,
     });
 
     const res = await fetch(url, {
