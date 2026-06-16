@@ -10,8 +10,18 @@ import type {
   RegisterMerchantInput,
 } from './auth.schema.js';
 
+
+function normalizePhone(phone: string): string {
+  const clean = phone.replace(/\s/g, '');
+  if (clean.startsWith('+212')) return clean;
+  if (clean.startsWith('00212')) return '+' + clean.slice(2);
+  if (clean.startsWith('0')) return '+212' + clean.slice(1);
+  return clean;
+}
+
 export class AuthService {
   static async registerSponsor(input: RegisterSponsorInput): Promise<{ message: string; devOtp?: string }> {
+    input.phone = normalizePhone(input.phone);
     const existing = await prisma.user.findUnique({ where: { phone: input.phone } });
     if (existing) throw new AppError('Ce numéro est déjà utilisé', 409, 'PHONE_ALREADY_EXISTS');
 
@@ -36,6 +46,7 @@ export class AuthService {
   }
 
   static async loginSponsor(phone: string): Promise<{ message: string; devOtp?: string }> {
+    phone = normalizePhone(phone);
     const user = await prisma.user.findUnique({ where: { phone, role: 'SPONSOR', isActive: true } });
     if (!user) {
       return { message: 'Code OTP envoyé si le compte existe' };
