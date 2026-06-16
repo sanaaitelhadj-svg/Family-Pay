@@ -166,6 +166,7 @@ export class AuthService {
     code: string,
     purpose: 'SIGNUP' | 'LOGIN'
   ): Promise<{ accessToken: string; refreshToken: string; user: object }> {
+    phone = normalizePhone(phone);
     await OtpService.verifyOtp(phone, code, purpose);
 
     const user = await prisma.user.findUnique({
