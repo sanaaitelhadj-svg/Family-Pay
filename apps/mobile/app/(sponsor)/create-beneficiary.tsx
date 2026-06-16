@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../../src/lib/api';
 import { Colors, Radius } from '../../src/constants/theme';
 
@@ -19,6 +20,7 @@ export default function CreateBeneficiaryScreen() {
   const [form, setForm]     = useState({ phone: '', firstName: '', lastName: '', dateOfBirth: '', relationship: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const set = (k: string, v: string) => { setForm(f => ({ ...f, [k]: v })); setErrorMsg(null); };
@@ -137,7 +139,37 @@ export default function CreateBeneficiaryScreen() {
                 }}
               />
             ) : (
-              <TextInput style={[styles.input, errors.dateOfBirth && styles.inputErr]} placeholder="JJ/MM/AAAA" placeholderTextColor={Colors.textMuted} value={form.dateOfBirth} onChangeText={v => set('dateOfBirth', v)} keyboardType="number-pad" maxLength={10} />
+              <>
+                <TouchableOpacity
+                  style={[styles.input, styles.dateBtn]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={{ color: form.dateOfBirth ? Colors.textPrimary : Colors.textMuted, fontSize: 15 }}>
+                    {form.dateOfBirth || 'JJ/MM/AAAA'}
+                  </Text>
+                  <Text style={{ fontSize: 18 }}>📅</Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={form.dateOfBirth
+                      ? (() => { const [d,m,y] = form.dateOfBirth.split('/'); return new Date(`${y}-${m}-${d}`); })()
+                      : new Date(2005, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === 'android' ? 'calendar' : 'spinner'}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1920, 0, 1)}
+                    onChange={(_: any, date?: Date) => {
+                      setShowDatePicker(Platform.OS === 'ios');
+                      if (date) {
+                        const d = String(date.getDate()).padStart(2, '0');
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const y = date.getFullYear();
+                        set('dateOfBirth', `${d}/${m}/${y}`);
+                      }
+                    }}
+                  />
+                )}
+              </>
             )}
             {errors.dateOfBirth && <Text style={styles.err}>{errors.dateOfBirth}</Text>}
           </View>
@@ -174,4 +206,5 @@ const styles = StyleSheet.create({
   btn:             { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
   btnDisabled:     { opacity: 0.6 },
   btnText:         { color: '#fff', fontWeight: '700', fontSize: 16 },
+  dateBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13 },
 });

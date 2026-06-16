@@ -183,8 +183,34 @@ export default function CreateAllocationScreen() {
               style={{ flex: 1, backgroundColor: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: '#1a1a2e', padding: '2px 0' } as any}
               onChange={e => setExpiresAt(e.target.value)} />
           ) : (
-            <TextInput style={styles.input} placeholder="AAAA-MM-JJ"
-              value={expiresAt} onChangeText={setExpiresAt} placeholderTextColor={Colors.textMuted} />
+            <>
+              <TouchableOpacity
+                style={[styles.input, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={{ color: expiresAt ? '#1a1a2e' : Colors.textMuted, fontSize: 15 }}>
+                  {expiresAt ? (() => { const [y,m,d] = expiresAt.split('-'); return `${d}/${m}/${y}`; })() : 'JJ/MM/AAAA'}
+                </Text>
+                <Text style={{ fontSize: 18 }}>📅</Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={expiresAt ? new Date(expiresAt) : new Date()}
+                  mode="date"
+                  display={Platform.OS === 'android' ? 'calendar' : 'spinner'}
+                  minimumDate={new Date()}
+                  onChange={(_: any, date?: Date) => {
+                    setShowDatePicker(Platform.OS === 'ios');
+                    if (date) {
+                      const y = date.getFullYear();
+                      const m = String(date.getMonth() + 1).padStart(2, '0');
+                      const d = String(date.getDate()).padStart(2, '0');
+                      setExpiresAt(`${y}-${m}-${d}`);
+                    }
+                  }}
+                />
+              )}
+            </>
           )}
         </View>
 

@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors, Radius } from '../../src/constants/theme';
 import { apiClient } from '../../src/lib/api';
 
@@ -13,7 +14,7 @@ export default function RegisterBeneficiaryScreen() {
   const router = useRouter();
   const [form, setForm] = useState({
     phone: '', firstName: '', lastName: '',
-    dobDay: '', dobMonth: '', dobYear: '',
+    dob: '',  // format AAAA-MM-JJ pour l'API
     invitationToken: '',
   });
   const [cndp, setCndp]             = useState(false);
@@ -24,9 +25,8 @@ export default function RegisterBeneficiaryScreen() {
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const getAge = () => {
-    const { dobDay, dobMonth, dobYear } = form;
-    if (!dobDay || !dobMonth || !dobYear || dobYear.length < 4) return null;
-    const d = new Date(Number(dobYear), Number(dobMonth) - 1, Number(dobDay));
+    if (!form.dob) return null;
+    const d = new Date(form.dob);
     return Math.floor((Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000));
   };
 
@@ -38,8 +38,7 @@ export default function RegisterBeneficiaryScreen() {
     if (form.firstName.trim().length < 2)  e.firstName = 'Prénom requis';
     if (form.lastName.trim().length < 2)   e.lastName  = 'Nom requis';
 
-    const { dobDay, dobMonth, dobYear } = form;
-    if (!dobDay || !dobMonth || !dobYear || dobYear.length < 4) {
+    if (!form.dob) {
       e.dob = 'Date de naissance invalide';
     } else {
       const age = getAge();
@@ -58,7 +57,7 @@ export default function RegisterBeneficiaryScreen() {
   const submit = async () => {
     if (!validate()) return;
     setLoading(true);
-    const dob = `${form.dobYear}-${form.dobMonth.padStart(2,'0')}-${form.dobDay.padStart(2,'0')}`;
+    const dob = form.dob;
     try {
       await apiClient.post('/auth/beneficiary/register', {
         phone:           form.phone.replace(/\s/g, ''),
@@ -126,13 +125,35 @@ export default function RegisterBeneficiaryScreen() {
                 }}
               />
             ) : (
-              <View style={styles.dobRow}>
-                <TextInput style={[styles.dobInput, errors.dob && styles.inputErr]} placeholder="JJ" placeholderTextColor={Colors.textMuted} value={form.dobDay} onChangeText={v => set('dobDay', v)} keyboardType="number-pad" maxLength={2} />
-                <Text style={styles.dobSep}>/</Text>
-                <TextInput style={[styles.dobInput, errors.dob && styles.inputErr]} placeholder="MM" placeholderTextColor={Colors.textMuted} value={form.dobMonth} onChangeText={v => set('dobMonth', v)} keyboardType="number-pad" maxLength={2} />
-                <Text style={styles.dobSep}>/</Text>
-                <TextInput style={[styles.dobInputYear, errors.dob && styles.inputErr]} placeholder="AAAA" placeholderTextColor={Colors.textMuted} value={form.dobYear} onChangeText={v => set('dobYear', v)} keyboardType="number-pad" maxLength={4} />
-              </View>
+              <>
+                <TouchableOpacity
+                  style={[styles.input, styles.dateBtn, errors.dob && styles.inputErr]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={{ color: form.dob ? Colors.textPrimary : Colors.textMuted, fontSize: 15 }}>
+                    {form.dob ? (() => { const [y,m,d] = form.dob.split('-'); return `${d}/${m}/${y}`; })() : 'JJ/MM/AAAA'}
+                  </Text>
+                  <Text style={{ fontSize: 18 }}>📅</Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={form.dob ? new Date(form.dob) : new Date(2005, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === 'android' ? 'calendar' : 'spinner'}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1920, 0, 1)}
+                    onChange={(_: any, date?: Date) => {
+                      setShowDatePicker(Platform.OS === 'ios');
+                      if (date) {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        set('dob', `${y}-${m}-${d}`);
+                      }
+                    }}
+                  />
+                )}
+              </>
             )}
             {errors.dob && <Text style={styles.err}>{errors.dob}</Text>}
             {age !== null && age >= 0 && age <= 120 && (
@@ -230,4 +251,6 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   loginLink: { alignItems: 'center', marginTop: 16 },
   loginLinkText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: 14, fontSize: 15, color: Colors.textPrimary },
+  dateBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13 },
 });
