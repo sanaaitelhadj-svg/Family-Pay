@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { Button } from '@/components/Button';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Card } from '@/components/Card';
 
 const CATEGORIES = [
@@ -38,6 +39,7 @@ export default function CreateAllocationScreen() {
   const [renewalPeriod,      setRenewalPeriod]      = useState<string>('');
   const [limitMerchants,     setLimitMerchants]     = useState(false);
   const [selectedMerchants,  setSelectedMerchants]  = useState<string[]>([]);
+  const [showDatePicker,     setShowDatePicker]     = useState(false);
 
   // Reset complet du formulaire à chaque ouverture de l'écran
   useFocusEffect(useCallback(() => {
@@ -55,6 +57,7 @@ export default function CreateAllocationScreen() {
     setRenewalPeriod('');
     setLimitMerchants(false);
     setSelectedMerchants([]);
+    setShowDatePicker(false);
   }, []));
 
   const { data: cards } = useQuery({
