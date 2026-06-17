@@ -24,8 +24,7 @@ export default function BeneficiaryAllocationsScreen() {
       // Update local user state
       if (user) {
         const updatedUser = { ...user, isFirstLogin: false };
-        const { getAuth } = useAuthStore.getState();
-        useAuthStore.setState({ user: updatedUser });
+          useAuthStore.setState({ user: updatedUser });
       }
     } catch { /* ignore */ } finally {
       setDismissing(false);

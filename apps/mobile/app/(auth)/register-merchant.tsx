@@ -459,5 +459,7 @@ const styles = StyleSheet.create({
   cityOptionText:  { fontSize: 14, color: Colors.textPrimary },
   btn: { borderRadius: Radius.md, paddingVertical: 15, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
+  hint: { fontSize: 12, color: Colors.textSecondary, marginBottom: 8, lineHeight: 17 },
+  gpsButtons: { flexDirection: 'row', gap: 10, marginTop: 8 },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

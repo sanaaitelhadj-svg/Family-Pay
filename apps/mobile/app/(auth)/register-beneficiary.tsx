@@ -17,6 +17,7 @@ export default function RegisterBeneficiaryScreen() {
     dob: '',  // format AAAA-MM-JJ pour l'API
     invitationToken: '',
   });
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [cndp, setCndp]             = useState(false);
   const [parentalConsent, setParent] = useState(false);
   const [errors, setErrors]          = useState<Record<string, string>>({});
@@ -251,6 +252,6 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   loginLink: { alignItems: 'center', marginTop: 16 },
   loginLinkText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
-  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: 14, fontSize: 15, color: Colors.textPrimary },
+
   dateBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13 },
 });

@@ -1,3 +1,4 @@
+import * as ExpoClipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Share, Linking, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
 import { api } from '../../src/lib/api';
@@ -45,8 +46,7 @@ export default function InviteScreen() {
 
   async function handleCopy() {
     try {
-      const Clipboard = await import('expo-clipboard');
-      await Clipboard.setStringAsync(link);
+      await ExpoClipboard.setStringAsync(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

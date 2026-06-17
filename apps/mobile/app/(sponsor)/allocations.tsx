@@ -50,7 +50,7 @@ export default function AllocationsScreen() {
 
   const renewMutation = useMutation({
     mutationFn: (id: string) => api.post(`/mobile/sponsor/allocations/${id}/renew`),
-    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ['allocations'] }); Alert.alert('✅', 'Allocation renouvelée avec succès'); },
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['allocations'] }); Alert.alert('✅', 'Allocation renouvelée avec succès'); },
     onError:    (e: any) => Alert.alert('Erreur', e?.response?.data?.message ?? 'Erreur renouvellement'),
   });
 
@@ -363,7 +363,6 @@ const styles = StyleSheet.create({
   expiry:        { fontSize: 11, color: Colors.textMuted, marginTop: 6 },
   thresholdBadge: { marginTop: 6, backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BFDBFE' },
   thresholdBadgeText: { fontSize: 11, color: '#1D4ED8', fontWeight: '600' },
-  actionBtnRenew: { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD', borderWidth: 1 },
   actionBtnRenew: { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD', borderWidth: 1 },
   renewalBadge: { marginTop: 6, backgroundColor: '#F0FDF4', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BBF7D0' },
   renewalBadgeText: { fontSize: 11, color: '#15803D', fontWeight: '600' },
