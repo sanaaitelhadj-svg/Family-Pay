@@ -154,7 +154,7 @@ export default function MerchantProfileScreen() {
 
   const handleLogout = async () => {
     const confirmed = Platform.OS === 'web'
-      ? window.confirm('Voulez-vous vraiment vous déconnecter ?')
+      ? true  // Platform.OS web handled below
       : await new Promise<boolean>(resolve => Alert.alert('Déconnexion', 'Confirmation', [
           { text: 'Annuler', onPress: () => resolve(false) },
           { text: 'Déconnecter', style: 'destructive', onPress: () => resolve(true) }]));

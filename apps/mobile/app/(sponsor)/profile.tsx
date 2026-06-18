@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors, Radius } from '../../src/constants/theme';
@@ -45,7 +45,7 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     // Sur mobile, déconnexion directe (Alert optionnel)
     await clearAuth();
-    if (typeof window !== 'undefined') { (window as any).location.href = '/'; } else { router.replace('/(auth)'); }
+    if (Platform.OS === 'web') { (window as any).location.href = '/'; } else { router.replace('/(auth)'); }
   };
 
   const toggle = (s: 'phone' | 'cards') => {

@@ -43,9 +43,13 @@ export default function AddCardScreen() {
     if (!validate()) return;
     setLoading(true);
     try {
-      await apiClient.post('/auth/sponsor/add-card', {
-        maskedCardReference:  masked,
-        pspCustomerReference: pspRef,
+      const last4 = cardNumber.slice(-4);
+      await apiClient.post('/mobile/sponsor/cards', {
+        cardNumber:   cardNumber,
+        cardHolder:   'CARTE MVP',
+        expiryMonth:  12,
+        expiryYear:   2099,
+        brand:        'VISA',
       });
       await queryClient.invalidateQueries({ queryKey: ['sponsor-profile'] });
       Alert.alert('✅ Carte enregistrée', 'Votre carte a été ajoutée avec succès.', [

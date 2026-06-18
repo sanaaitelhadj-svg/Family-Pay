@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, SafeAreaView } from 'react-native';
+import { Alert, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../src/lib/api';
@@ -34,11 +34,11 @@ export default function CardsScreen() {
       qc.invalidateQueries({ queryKey: ['sponsor-cards'] });
       setShowForm(false);
       setForm({ cardNumber: '', cardHolder: '', expiryMonth: '', expiryYear: '', brand: 'VISA' });
-      if (typeof window !== 'undefined') window.alert('Carte ajoutée avec succès !');
+      Alert.alert('✅ Succès', 'Carte ajoutée avec succès !');
     },
     onError: (e: any) => {
       const msg = e?.response?.data?.message ?? 'Erreur';
-      if (typeof window !== 'undefined') window.alert('Erreur : ' + msg);
+      Alert.alert('Erreur', msg);
     },
   });
 
@@ -68,9 +68,14 @@ export default function CardsScreen() {
   const handleAdd = () => { if (validate()) addCard.mutate(); };
 
   const confirmDelete = (id: string) => {
-    if (typeof window !== 'undefined') {
-      if (window.confirm('Supprimer cette carte ?')) deleteCard.mutate(id);
-    } else deleteCard.mutate(id);
+    Alert.alert(
+      'Supprimer la carte',
+      'Voulez-vous vraiment supprimer cette carte ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: () => deleteCard.mutate(id) },
+      ]
+    );
   };
 
   return (
