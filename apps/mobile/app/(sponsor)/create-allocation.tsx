@@ -122,7 +122,7 @@ export default function CreateAllocationScreen() {
     },
   });
 
-  const canSubmit = beneficiary && amount && Number(amount) > 0 && !mutation.isPending && !(thresholdEnabled && (!thresholdValue || Number(thresholdValue) <= 0));
+  const canSubmit = beneficiary && amount && Number(amount) > 0 && (cardId || defaultCard?.id) && !mutation.isPending && !(thresholdEnabled && (!thresholdValue || Number(thresholdValue) <= 0));
 
   return (
     <View style={styles.container}>

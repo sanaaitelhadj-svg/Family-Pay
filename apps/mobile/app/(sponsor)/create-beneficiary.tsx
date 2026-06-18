@@ -30,7 +30,8 @@ export default function CreateBeneficiaryScreen() {
     if (!MOROCCAN_PHONE.test(form.phone)) e.phone = 'Format : 06XXXXXXXX ou +212 6XXXXXXXX';
     if (form.firstName.trim().length < 2) e.firstName = 'Prénom requis (min. 2 caractères)';
     if (!form.relationship) e.relationship = 'Veuillez sélectionner le lien familial';
-    if (form.dateOfBirth && !/^\d{2}\/\d{2}\/\d{4}$/.test(form.dateOfBirth)) e.dateOfBirth = 'Format : JJ/MM/AAAA';
+    if (!form.dateOfBirth) e.dateOfBirth = 'Date de naissance requise';
+    else if (!/^\d{2}\/\d{2}\/\d{4}$/.test(form.dateOfBirth)) e.dateOfBirth = 'Format : JJ/MM/AAAA';
     setErrors(e);
     return Object.keys(e).length === 0;
   };

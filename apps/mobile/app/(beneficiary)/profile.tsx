@@ -28,10 +28,7 @@ export default function BeneficiaryProfileScreen() {
   });
 
   const handleLogout = async () => {
-    const confirmed = typeof window !== 'undefined'
-      ? window.confirm('Voulez-vous vraiment vous déconnecter ?')
-      : true;
-    if (!confirmed) return;
+    // Sur mobile, déconnexion directe
     await clearAuth();
     if (typeof window !== 'undefined') {
       (window as any).location.href = '/';
