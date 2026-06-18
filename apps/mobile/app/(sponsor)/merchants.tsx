@@ -97,8 +97,8 @@ export default function MerchantsScreen() {
 
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: Colors.bg },
-  header:       { paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  title:        { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
+  header:       { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 14, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  title:        { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
   subtitle:     { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
   searchBox:    { padding: 12, paddingBottom: 4 },
   searchInput:  { backgroundColor: Colors.surface, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, borderWidth: 1, borderColor: Colors.border, color: Colors.textPrimary },
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   center:       { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8 },
   emptyIcon:    { fontSize: 40 },
   emptyText:    { fontSize: 15, color: Colors.textSecondary },
-  card:         { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 14, flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: Colors.border, ...Shadow.sm },
+  card:         { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 16, flexDirection: 'row', gap: 14, borderWidth: 1, borderColor: Colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
   cardIcon:     { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   cardIconText: { fontSize: 22 },
   cardTop:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' },

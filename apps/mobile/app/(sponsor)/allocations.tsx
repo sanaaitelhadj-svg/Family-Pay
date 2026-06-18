@@ -302,19 +302,19 @@ export default function AllocationsScreen() {
 const styles = StyleSheet.create({
   container:  { flex: 1, backgroundColor: Colors.bg },
   center:     { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  title:      { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  newBtn:     { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 8, paddingHorizontal: 14 },
+  header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 14, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  title:      { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
+  newBtn:     { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 9, paddingHorizontal: 16 },
   newBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   // Empty state
   emptyState: { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyIcon:  { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
   emptySub:   { fontSize: 13, color: Colors.textSecondary },
-  createBtn:  { marginTop: 12, backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 12, paddingHorizontal: 24 },
+  createBtn:  { marginTop: 16, backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 4 },
   createBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   // Category block
-  categoryBlock: { backgroundColor: Colors.surface, borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, ...Shadow.sm },
+  categoryBlock: { backgroundColor: Colors.surface, borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   catHeader:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   catIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   catIconText: { fontSize: 22 },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   chevron:    { fontSize: 12, fontWeight: '700', marginLeft: 4 },
   // Beneficiaries
   benefList:  { borderTopWidth: 1, borderTopColor: Colors.border },
-  benefItem:  { padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  benefItem:  { padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
   benefRow:   { flexDirection: 'row', gap: 12, marginBottom: 10 },
   benefAvatar: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
   benefAvatarText: { fontSize: 17, fontWeight: '700' },
