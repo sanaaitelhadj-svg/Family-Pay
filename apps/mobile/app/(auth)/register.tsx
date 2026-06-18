@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   cards: { gap: 14 },
   card: { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1.5 },
   cardIcon: { fontSize: 32 },
-  cardLabel: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  cardLabel: { fontSize: 17, fontWeight: '700', marginBottom: 2 },
   cardDesc: { fontSize: 12, color: Colors.textSecondary },
   chevron: { fontSize: 24, fontWeight: '300' },
   legal: { marginTop: 'auto', paddingTop: 24, fontSize: 11, color: Colors.textMuted, textAlign: 'center', lineHeight: 17 },

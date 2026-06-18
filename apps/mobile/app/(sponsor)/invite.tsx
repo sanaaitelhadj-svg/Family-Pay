@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   scroll:         { padding: 20, paddingBottom: 40 },
   header:         { alignItems: 'center', marginBottom: 24, marginTop: 12 },
   icon:           { fontSize: 48, marginBottom: 12 },
-  title:          { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', marginBottom: 8 },
+  title:          { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', marginBottom: 8 },
   subtitle:       { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   stepsCard:      { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 16, borderWidth: 1, borderColor: Colors.border, marginBottom: 20, gap: 12 },
   step:           { flexDirection: 'row', alignItems: 'center', gap: 12 },

@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   avatar:          { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
   avatarText:      { color: '#fff', fontWeight: '800', fontSize: 20 },
   heroInfo:        { flex: 1 },
-  name:            { color: '#fff', fontSize: 16, fontWeight: '700' },
+  name:            { color: '#fff', fontSize: 17, fontWeight: '700' },
   heroSub:         { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 },
   logoutBtnSmall:  { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   logoutBtnSmallText: { fontSize: 18 },

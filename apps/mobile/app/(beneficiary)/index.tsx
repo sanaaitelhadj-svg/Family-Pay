@@ -82,10 +82,10 @@ const styles = StyleSheet.create({
   overlay:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   welcomeCard:    { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', width: '100%', maxWidth: 380 },
   welcomeIcon:    { fontSize: 52, marginBottom: 12 },
-  welcomeTitle:   { fontSize: 22, fontWeight: '800', color: '#1a1a2e', textAlign: 'center', marginBottom: 12 },
+  welcomeTitle:   { fontSize: 24, fontWeight: '800', color: '#1a1a2e', textAlign: 'center', marginBottom: 12 },
   welcomeText:    { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 24 },
-  welcomeBtn:     { backgroundColor: '#6C47FF', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, width: '100%', alignItems: 'center' },
+  welcomeBtn:     { backgroundColor: '#6C47FF', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, width: '100%', alignItems: 'center' },
   welcomeBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  merchantsBtn:     { marginHorizontal: 16, marginBottom: 8, backgroundColor: '#EEF2FF', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#C7D2FE' },
+  merchantsBtn:     { marginHorizontal: 16, marginBottom: 8, backgroundColor: '#EEF2FF', borderRadius: 14, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#C7D2FE' },
   merchantsBtnText: { fontSize: 14, fontWeight: '700', color: '#5B3DF5' },
 });

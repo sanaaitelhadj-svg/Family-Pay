@@ -193,23 +193,63 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll:         { flexGrow: 1, padding: 24, backgroundColor: Colors.bg, justifyContent: 'center' },
-  header:         { alignItems: 'center', marginBottom: 36 },
-  logoWrap:       { width: 72, height: 72, borderRadius: 20, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 12, ...Shadow.md },
-  logoText:       { color: '#fff', fontSize: 28, fontWeight: '800' },
-  appName:        { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
-  tagline:        { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
-  sectionLabel:   { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, marginTop: 8 },
-  roleRow:        { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  roleCard:       { flex: 1, backgroundColor: Colors.surface, borderRadius: Radius.md, padding: 12, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border, ...Shadow.sm },
-  roleCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
-  roleIcon:       { fontSize: 22, marginBottom: 4 },
+  scroll:         { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 32, backgroundColor: Colors.bg, justifyContent: 'center' },
+
+  // ── Header ──────────────────────────────────────────────────────────
+  header:         { alignItems: 'center', marginBottom: 40 },
+  logoWrap:       {
+    width: 80, height: 80, borderRadius: 24,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.30,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  logoText:       { color: '#fff', fontSize: 30, fontWeight: '800', letterSpacing: -1 },
+  appName:        { fontSize: 30, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.8 },
+  tagline:        { fontSize: 14, color: Colors.textSecondary, marginTop: 6, letterSpacing: 0.1 },
+
+  // ── Role selector ────────────────────────────────────────────────────
+  sectionLabel:   { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12, marginTop: 4 },
+  roleRow:        { flexDirection: 'row', gap: 10, marginBottom: 28 },
+  roleCard:       {
+    flex: 1, backgroundColor: Colors.surface,
+    borderRadius: Radius.lg, padding: 14,
+    alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border,
+    ...Shadow.xs,
+  },
+  roleCardActive: {
+    borderColor: Colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: Colors.primaryLight,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  roleIcon:       { fontSize: 24, marginBottom: 6 },
   roleLabel:      { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
   roleLabelActive:{ color: Colors.primary },
-  roleDesc:       { fontSize: 10, color: Colors.textMuted, textAlign: 'center', marginTop: 2 },
-  inputWrap:      { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1.5, borderColor: Colors.border, paddingHorizontal: 14, marginBottom: 16, ...Shadow.sm },
-  flag:           { fontSize: 22, marginRight: 10 },
-  input:          { flex: 1, fontSize: 17, paddingVertical: 14, color: Colors.textPrimary },
-  legal:          { textAlign: 'center', fontSize: 12, color: Colors.textMuted, marginTop: 20 },
+  roleDesc:       { fontSize: 10, color: Colors.textMuted, textAlign: 'center', marginTop: 3, lineHeight: 14 },
+
+  // ── Inputs ───────────────────────────────────────────────────────────
+  inputWrap:      {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 16, marginBottom: 14,
+    ...Shadow.xs,
+  },
+  flag:           { fontSize: 20, marginRight: 12, opacity: 0.8 },
+  input:          { flex: 1, fontSize: 16, paddingVertical: 15, color: Colors.textPrimary },
+
+  // ── Footer ───────────────────────────────────────────────────────────
+  legal:          { textAlign: 'center', fontSize: 11, color: Colors.textMuted, marginTop: 24, lineHeight: 16 },
   legalLink:      { color: Colors.primary, fontWeight: '600' },
 });

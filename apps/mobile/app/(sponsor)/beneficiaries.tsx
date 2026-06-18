@@ -468,6 +468,6 @@ const styles = StyleSheet.create({
   fieldInput:    { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, backgroundColor: '#F9FAFB', color: '#111827' },
   warnBox:       { backgroundColor: '#FFF8E6', borderRadius: 10, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#FDE68A' },
   warnText:      { fontSize: 12, color: '#B45309' },
-  saveBtn:       { backgroundColor: '#5B3DF5', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 20, marginBottom: 8 },
+  saveBtn:       { backgroundColor: '#5B3DF5', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20, marginBottom: 8 },
   saveBtnText:   { color: '#fff', fontWeight: '800', fontSize: 15 },
 });

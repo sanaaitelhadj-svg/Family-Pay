@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   scroll:          { padding: 20, paddingBottom: 40 },
   backBtn:         { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, marginBottom: 20, marginTop: 8 },
   backArrow:       { fontSize: 18, color: Colors.textPrimary },
-  title:           { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, marginBottom: 6 },
+  title:           { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 6 },
   subtitle:        { fontSize: 13, color: Colors.textSecondary, marginBottom: 24, lineHeight: 18 },
   errorBanner:     { backgroundColor: '#fff1f1', borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, padding: 12, marginBottom: 16 },
   errorBannerText: { color: Colors.error, fontSize: 13, fontWeight: '600' },

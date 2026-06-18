@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   container:  { flex: 1, backgroundColor: Colors.bg },
   center:     { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  title:      { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
+  title:      { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
   newBtn:     { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 8, paddingHorizontal: 14 },
   newBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   // Empty state
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   // Category block
   categoryBlock: { backgroundColor: Colors.surface, borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, ...Shadow.sm },
   catHeader:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  catIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  catIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   catIconText: { fontSize: 22 },
   catTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
   catName:    { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   benefItem:  { padding: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   benefRow:   { flexDirection: 'row', gap: 12, marginBottom: 10 },
   benefAvatar: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
-  benefAvatarText: { fontSize: 16, fontWeight: '700' },
+  benefAvatarText: { fontSize: 17, fontWeight: '700' },
   benefNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' },
   benefName:  { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   minorBadge: { backgroundColor: '#FEF3C7', borderRadius: 20, paddingHorizontal: 6, paddingVertical: 1 },
@@ -361,9 +361,9 @@ const styles = StyleSheet.create({
   lockHint:   { marginTop: 8, backgroundColor: '#F5F3FF', borderRadius: Radius.sm, padding: 7, borderWidth: 1, borderColor: '#DDD6FE' },
   lockHintText: { fontSize: 11, color: '#5B3DF5' },
   expiry:        { fontSize: 11, color: Colors.textMuted, marginTop: 6 },
-  thresholdBadge: { marginTop: 6, backgroundColor: '#EFF6FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BFDBFE' },
+  thresholdBadge: { marginTop: 6, backgroundColor: '#EFF6FF', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BFDBFE' },
   thresholdBadgeText: { fontSize: 11, color: '#1D4ED8', fontWeight: '600' },
   actionBtnRenew: { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD', borderWidth: 1 },
-  renewalBadge: { marginTop: 6, backgroundColor: '#F0FDF4', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BBF7D0' },
+  renewalBadge: { marginTop: 6, backgroundColor: '#F0FDF4', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#BBF7D0' },
   renewalBadgeText: { fontSize: 11, color: '#15803D', fontWeight: '600' },
 });

@@ -138,7 +138,7 @@ export default function MerchantHomeScreen() {
             <Text style={styles.qrAmount}>{parseFloat(amount).toLocaleString('fr-MA')} MAD</Text>
             <Text style={styles.qrHint}>Le bénéficiaire scanne ce code pour valider le paiement</Text>
             {Platform.OS === 'web' && (
-              <View style={{ width: '100%', backgroundColor: Colors.bg, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: Colors.border }}>
+              <View style={{ width: '100%', backgroundColor: Colors.bg, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: Colors.border }}>
                 <Text selectable style={{ fontSize: 10, color: Colors.textMuted, fontFamily: 'monospace', textAlign: 'center' }}>
                   {qrToken}
                 </Text>

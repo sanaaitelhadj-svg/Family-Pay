@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   inputErr: { borderColor: Colors.error },
   err: { fontSize: 12, color: Colors.error },
   catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  catBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.surface },
+  catBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   catBtnActive: { borderColor: '#F59E0B', backgroundColor: '#FFF8E6' },
   catText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   catTextActive: { color: '#92400E' },

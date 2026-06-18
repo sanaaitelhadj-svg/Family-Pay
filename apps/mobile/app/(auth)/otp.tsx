@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   subtitle:  { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 40 },
   phone:     { fontWeight: '700', color: Colors.textPrimary },
   otpRow:    { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 32 },
-  otpBox:    { width: 48, height: 56, borderRadius: Radius.md, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.surface, textAlign: 'center', fontSize: 22, fontWeight: '700', color: Colors.textPrimary, ...Shadow.sm },
+  otpBox:    { width: 48, height: 56, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, textAlign: 'center', fontSize: 22, fontWeight: '700', color: Colors.textPrimary, ...Shadow.sm },
   otpBoxFilled: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
   resendBtn: { alignItems: 'center', padding: 12 },
   resendText:{ fontSize: 14, color: Colors.primary, fontWeight: '600' },

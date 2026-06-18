@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   switchRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: Colors.border, marginTop: 8 },
   switchLabel: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 2 },
   switchSub:  { fontSize: 12, color: Colors.textSecondary },
-  thresholdBox: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 14, marginTop: 4, borderWidth: 1, borderColor: '#E5E7EB' },
+  thresholdBox: { backgroundColor: '#F9FAFB', borderRadius: 14, padding: 14, marginTop: 4, borderWidth: 1, borderColor: '#E5E7EB' },
   thresholdLabel: { fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 6, marginTop: 4 },
   thresholdInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   thresholdInput: { flex: 1, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, backgroundColor: '#fff', color: '#111827' },

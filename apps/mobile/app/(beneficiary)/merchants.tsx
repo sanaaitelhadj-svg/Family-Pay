@@ -105,7 +105,7 @@ export default function BeneficiaryMerchantsScreen() {
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: Colors.bg },
   header:       { paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  title:        { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
+  title:        { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
   subtitle:     { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
   searchBox:    { padding: 12, paddingBottom: 4 },
   searchInput:  { backgroundColor: Colors.surface, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, borderWidth: 1, borderColor: Colors.border, color: Colors.textPrimary },
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   emptyIcon:    { fontSize: 40 },
   emptyText:    { fontSize: 15, color: Colors.textSecondary },
   catHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  catIconBox:   { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  catIconBox:   { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   catIconText:  { fontSize: 16 },
   catName:      { fontSize: 14, fontWeight: '800', flex: 1 },
   catCount:     { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },

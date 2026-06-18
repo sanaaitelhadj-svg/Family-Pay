@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   scroll:      { padding: 24, paddingBottom: 40 },
   backBtn:     { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, marginBottom: 24, marginTop: 8 },
   backArrow:   { fontSize: 18, color: Colors.textPrimary },
-  title:       { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 },
+  title:       { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 },
   subtitle:    { fontSize: 13, color: Colors.textSecondary, marginBottom: 24, lineHeight: 20 },
   errorBanner: { backgroundColor: '#fff1f1', borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, padding: 12, marginBottom: 16 },
   errorText:   { color: Colors.error, fontSize: 13 },

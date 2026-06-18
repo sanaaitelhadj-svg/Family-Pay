@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   manualSection:  { backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 20, borderWidth: 1, borderColor: Colors.border },
   label:          { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8 },
   inputRow:       { flexDirection: 'row', gap: 8 },
-  input:          { flex: 1, backgroundColor: Colors.bg, borderRadius: Radius.md, borderWidth: 1.5, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: Colors.textPrimary },
+  input:          { flex: 1, backgroundColor: Colors.bg, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: Colors.textPrimary },
   scanBtn:        { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: 16, justifyContent: 'center' },
   scanBtnText:    { color: '#fff', fontWeight: '700', fontSize: 14 },
   hint:           { fontSize: 11, color: Colors.textMuted, marginTop: 8 },
